@@ -49,4 +49,9 @@
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>
+  <ItemGroup>
+    <QtUic Include="login.ui">
+      <Filter>Form Files</Filter>
+    </QtUic>
+  </ItemGroup>
 </Project>
