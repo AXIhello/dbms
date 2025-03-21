@@ -1,6 +1,6 @@
-#include "user.h"
+ï»¿#include "user.h"
 
-// ¶ÁÈ¡ÓÃ»§ÁĞ±í
+// è¯»å–ç”¨æˆ·åˆ—è¡¨
 std::vector<user::User> user::loadUsers() {
     std::vector<User> users;
     std::ifstream file("users.dat", std::ios::binary);
@@ -14,7 +14,7 @@ std::vector<user::User> user::loadUsers() {
     return users;
 }
 
-// ¼ì²éÓÃ»§ÊÇ·ñ´æÔÚ
+// æ£€æŸ¥ç”¨æˆ·æ˜¯å¦å­˜åœ¨
 bool user::userExists(const std::string& username) {
     auto users = loadUsers();
     for (const auto& u : users) {
@@ -25,10 +25,10 @@ bool user::userExists(const std::string& username) {
     return false;
 }
 
-// ´´½¨ sysdba ÓÃ»§
-void user::createSysDBA() {  // Ìí¼Ó user:: ×÷ÓÃÓò
+// åˆ›å»º sysdba ç”¨æˆ·
+void user::createSysDBA() {  // æ·»åŠ  user:: ä½œç”¨åŸŸ
     if (userExists("sysdba")) {
-        std::cout << "sysdba ÓÃ»§ÒÑ´æÔÚ" << std::endl;
+        std::cout << "sysdba ç”¨æˆ·å·²å­˜åœ¨" << std::endl;
         return;
     }
 
@@ -41,5 +41,5 @@ void user::createSysDBA() {  // Ìí¼Ó user:: ×÷ÓÃÓò
     file.write(reinterpret_cast<char*>(&sysdba), sizeof(User));
     file.close();
 
-    std::cout << "sysdba ÓÃ»§´´½¨³É¹¦£¬²¢¸³Óè conn ºÍ resource È¨ÏŞ" << std::endl;
+    std::cout << "sysdba ç”¨æˆ·åˆ›å»ºæˆåŠŸï¼Œå¹¶èµ‹äºˆ conn å’Œ resource æƒé™" << std::endl;
 }
