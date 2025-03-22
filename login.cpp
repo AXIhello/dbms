@@ -6,7 +6,6 @@ login::login(QWidget *parent)
 	: QWidget(parent)
 {
 	ui.setupUi(this);
-	connect(ui.loginButton, &QPushButton::clicked, this, &login::on_loginButton_clicked);
 }
 
 login::~login()
@@ -14,6 +13,7 @@ login::~login()
 
 void login::on_loginButton_clicked()
 {
+	
 	QString username = ui.nameEdit->text();
 	QString password = ui.passwordEdit->text();
 	if (authenticate(username, password))
