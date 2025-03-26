@@ -96,8 +96,8 @@
     <ClCompile Include="dbManager.cpp" />
     <ClCompile Include="login.cpp" />
     <ClCompile Include="database.cpp" />
-    <ClCompile Include="table.cpp" />
-    <ClCompile Include="Record.cpp" />
+        <ClCompile Include="table.cpp" />
+            <ClCompile Include="Record.cpp" />
     <ClCompile Include="user.cpp" />
     <QtRcc Include="dbms.qrc" />
     <QtUic Include="dbms.ui" />
