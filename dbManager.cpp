@@ -26,41 +26,21 @@ void dbManager::createDatabase(const std::string& db_name) {
         std::cerr << "数据库 " << db_name << " 已存在！" << std::endl;
         return;
     }
-    if (db_name.length() > 128) {
-        std::cerr << "数据库名称过长！" << std::endl;
-        return;
+	if (db_name.length() > 128) {
+		std::cerr << "字符过长！" << std::endl;
+		return;
+	}
+
+    std::string dbPath = basePath + db_name;
+    if (!fs::exists(dbPath)) {
+        fs::create_directory(dbPath);
     }
 
-    std::string dbFolder = basePath + db_name + "/";  // 数据库文件夹
+    dbs[db_name] = new database(db_name);
+    std::cout << "数据库 " << db_name << " 创建成功，存储于: " << dbPath << std::endl;
 
-    std::string dbFilePath;
-    if (db_name.find(".db") == std::string::npos) {
-        dbFilePath = dbFolder + db_name + ".db";  // 确保只加一次 .db
-    }
-    else {
-        dbFilePath = dbFolder + db_name;
-    }
-
-    if (!fs::exists(dbFolder)) {
-        fs::create_directory(dbFolder);  // 确保数据库文件夹存在
-    }
-
-    // 检查 .db 文件是否存在，不存在则创建
-    if (!fs::exists(dbFilePath)) {
-        std::ofstream dbFile(dbFilePath);
-        if (!dbFile) {
-            std::cerr << "无法创建数据库文件: " << dbFilePath << std::endl;
-            return;
-        }
-        dbFile.close();
-    }
-
-    dbs[db_name] = new database(dbFilePath);  // 传递完整路径
-    std::cout << "数据库 " << db_name << " 创建成功，存储于: " << dbFolder << std::endl;
-
-    saveMetaData(); 
+    saveMetaData(); // 更新数据库元数据
 }
-
 
 // 删除数据库
 void dbManager::dropDatabase(const std::string& db_name) {
@@ -113,14 +93,13 @@ void dbManager::loadMetaData() {
 
     std::ifstream file(metaDataFile);
     if (!file) {
-        std::cerr << "法加载数据库元数据文件！" << std::endl;
+        std::cerr << "无法加载数据库元数据文件！" << std::endl;
         return;
     }
 
     std::string dbName;
     while (std::getline(file, dbName)) {
-        std::string dbFilePath = basePath + dbName + "/" + dbName + ".db";  // **修正路径**
-        dbs[dbName] = new database(dbFilePath);
+        dbs[dbName] = new database(dbName);  // 加载数据库
     }
     file.close();
     std::cout << "数据库元数据加载完成！" << std::endl;
