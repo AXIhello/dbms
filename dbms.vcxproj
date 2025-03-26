@@ -37,12 +37,12 @@
   </ImportGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)' == 'Debug|x64'" Label="QtSettings">
     <QtInstall>6.2.13_msvc2019_64</QtInstall>
-    <QtInstall>6.2.13_msvc2019_64</QtInstall>
+    <QtInstall>6.7.0_msvc2019_64</QtInstall>
     <QtModules>core;gui;widgets</QtModules>
     <QtBuildConfig>debug</QtBuildConfig>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)' == 'Release|x64'" Label="QtSettings">
-    <QtInstall>6.5.3_msvc2019_64</QtInstall>
+    <QtInstall>6.7.0_msvc2019_64</QtInstall>
     <QtModules>core;gui;widgets</QtModules>
     <QtBuildConfig>release</QtBuildConfig>
   </PropertyGroup>
@@ -95,6 +95,7 @@
   <ItemGroup>
     <ClCompile Include="login.cpp" />
     <ClCompile Include="database.cpp" />
+    <ClCompile Include="Record.cpp" />
     <ClCompile Include="user.cpp" />
     <QtRcc Include="dbms.qrc" />
     <QtUic Include="dbms.ui" />
@@ -106,6 +107,7 @@
   <ItemGroup>
     <QtMoc Include="login.h" />
     <ClInclude Include="database.h" />
+    <ClInclude Include="Record.h" />
     <ClInclude Include="user.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
