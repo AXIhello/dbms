@@ -3,6 +3,7 @@
 #include <QtWidgets/QMainWindow>
 #include "ui_dbms.h"
 
+
 class dbms : public QMainWindow
 {
     Q_OBJECT
