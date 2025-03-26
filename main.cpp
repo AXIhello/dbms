@@ -2,10 +2,12 @@
 #include <QtWidgets/QApplication>
 #include"user.h"
 #include"login.h"
+#include"dbManager.h"
 using namespace std;
 int main(int argc, char *argv[])
 {
     QApplication a(argc, argv);
+
     dbms w;
     user::createSysDBA();
 	login loginWidget;
