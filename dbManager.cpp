@@ -49,6 +49,10 @@ void dbManager::dropDatabase(const std::string& db_name) {
         std::cerr << "数据库 " << db_name << " 不存在！" << std::endl;
         return;
     }
+	if (db_name == "sysdb") {
+		std::cerr << "系统数据库不能删除！" << std::endl;
+		return;
+	}
 
     delete it->second;  // 删除数据库实例
     dbs.erase(it);  // 从映射中移除
