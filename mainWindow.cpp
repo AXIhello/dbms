@@ -1,7 +1,10 @@
 #include "mainwindow.h"
 #include "ui_mainwindow.h"  // 包含 UI 头文件
-#include <qsplitter.h>
-#include <qboxlayout.h>
+#include <QSplitter>
+#include <QBoxLayout>
+#include <QTextEdit>
+#include <QPushButton>
+#include <QMessageBox>
 
 MainWindow::MainWindow(QWidget* parent)
     : QMainWindow(parent)
@@ -15,6 +18,8 @@ MainWindow::MainWindow(QWidget* parent)
     menuBar()->setStyleSheet("QMenuBar { background-color: lightgray; }");
     ui->dockWidget->setMinimumWidth(200);
     ui->outputEdit->setReadOnly(true);
+
+
     // 输入框和输出框使用垂直分割
     QSplitter* ioSplitter = new QSplitter(Qt::Vertical);
     ioSplitter->addWidget(ui->inputEdit);
@@ -44,8 +49,41 @@ MainWindow::MainWindow(QWidget* parent)
     // 将DockWidget添加到主窗口
     addDockWidget(Qt::LeftDockWidgetArea, dockWidget);
 
+    // 连接按钮点击事件到槽函数
+    connect(ui->runButton, &QPushButton::clicked, this, &MainWindow::onRunButtonClicked);
+
 }
 
 MainWindow::~MainWindow() {
     delete ui;  // 释放 UI 资源
+}
+
+void MainWindow::onRunButtonClicked() {
+    QString sql = ui->inputEdit->toPlainText().trimmed(); // 获取 SQL 语句
+
+    if (sql.isEmpty())
+    {
+        QMessageBox::warning(this, "警告", "SQL 语句不能为空！");
+        return;
+    }
+
+    QString message;
+    if (sql.startsWith("SELECT", Qt::CaseInsensitive))
+    {
+        message = "解析结果：这是一个 SELECT 语句。";
+    }
+    else if (sql.startsWith("INSERT", Qt::CaseInsensitive) ||
+        sql.startsWith("UPDATE", Qt::CaseInsensitive) ||
+        sql.startsWith("DELETE", Qt::CaseInsensitive) ||
+        sql.startsWith("CREATE", Qt::CaseInsensitive) ||
+        sql.startsWith("DROP", Qt::CaseInsensitive))
+    {
+        message = "解析结果：这是一个 数据修改 语句。";
+    }
+    else
+    {
+        message = "解析结果：不支持的 SQL 语句！";
+    }
+
+    QMessageBox::information(this, "SQL 解析", message);
 }
