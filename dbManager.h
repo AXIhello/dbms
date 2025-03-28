@@ -1,32 +1,35 @@
-#pragma once
+#ifndef DBMANAGER_H
+#define DBMANAGER_H
+
+#include <iostream>
+#include <filesystem>
+#include <fstream>
 #include <string>
 #include <unordered_map>
-#include "database.h"
-#include <filesystem>
-#include <iostream>
-#include <fstream>
+
 namespace fs = std::filesystem;
 
-class dbManager
-{
-private:
-	std::unordered_map<std::string, database*> dbs; //数据库实例
-	std::string basePath = "./data/"; //数据库文件存储路径
-	std::string metaDataFile = "./data/databases.meta"; //数据库元数据文件
-	std::string systemDBName = "sysdb"; // 系统数据库名称
-
-//持久化（磁盘）
-	void loadMetaData();
-	void saveMetaData();
-
+class dbManager {
 public:
-	dbManager();
-	~dbManager();
+    dbManager();  // 初始化DBMS根目录
+    ~dbManager();
 
-	void createDatabase(const std::string& db_name); 
-	void dropDatabase(const std::string& db_name);
+    void createDatabase(const std::string& db_name);  
+    void dropDatabase(const std::string& db_name); 
 
-	database* getDatabase(const std::string& db_name); //获取数据库实例
-	std::vector<std::string> getDatabaseNames();
+    void listDatabases(); 
+    void initializeSystemDatabase();  // 初始化系统数据库（ruanko.db）
+
+private:
+    std::string basePath;  // 根目录
+    const std::string systemDBFile = "ruanko.db";  // 系统数据库文件名(后期可更改）
+
+    void createDatabaseFolder(const std::string& db_name);  // 创建数据库文件夹
+    void createDatabaseFiles(const std::string& db_name);  // 创建数据库文件（tb, log）
+    void deleteDatabaseFolder(const std::string& db_name);  // 删除数据库文件夹
+    
+    void createSystemDBFile();  // 创建系统数据库文件
+    void loadSystemDBInfo();  // 加载系统数据库信息
 };
 
+#endif // DBMANAGER_H
