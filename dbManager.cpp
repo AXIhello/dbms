@@ -1,142 +1,214 @@
 #include "dbManager.h"
+#include <iostream>
+#include <fstream>
+#include <filesystem>
 
+namespace fs = std::filesystem;
+
+// 构造函数
 dbManager::dbManager() {
-    // 确保默认存储目录存在
+    // 默认将 DBMS_ROOT 设置在当前工程文件夹下（便于测试）
+    basePath = std::filesystem::current_path().string() + "/DBMS_ROOT";
+
     if (!fs::exists(basePath)) {
         fs::create_directory(basePath);
-        std::cout << "数据库存储目录创建: " << basePath << std::endl;
+        std::cout << "创建 DBMS 根目录: " << basePath << std::endl;
     }
-    loadMetaData(); 
 
-    if (dbs.find(systemDBName) == dbs.end()) {
-        createDatabase(systemDBName);
-	} // 确保系统数据库存在
+    // 确保系统数据库文件 ruanko.db 存在
+    if (!fs::exists(basePath + "/" + systemDBFile)) {
+        createSystemDBFile();
+    }
+
+    loadSystemDBInfo();
+
+    // 创建存储目录
+    if (!fs::exists(basePath + "/data")) {
+        fs::create_directory(basePath + "/data");
+        std::cout << "创建数据存储目录: " << basePath + "/data" << std::endl;
+    }
 }
 
 dbManager::~dbManager() {
-    for (auto& pair : dbs) {
-        delete pair.second; // 释放内存
+    
+}
+
+bool dbManager::isConnected() {
+	return false;
+}
+
+// 初始化系统数据库（创建 ruanko.db 文件）
+void dbManager::createSystemDBFile() {
+    std::ofstream sysDBFile(basePath + "/" + systemDBFile, std::ios::binary);
+    if (!sysDBFile) {
+        std::cerr << "无法创建系统数据库文件 ruanko.db" << std::endl;
+        return;
     }
-    saveMetaData(); // 退出时保存数据库列表
+
+    // 写入初始数据
+    sysDBFile << "system_database=1" << std::endl;  // 1 表示系统数据库
+    sysDBFile << "database_name=ruanko" << std::endl;
+    sysDBFile << "path=" + basePath + "/data" << std::endl;
+
+    sysDBFile.close();
+    std::cout << "系统数据库文件 'ruanko.db' 已创建并初始化。" << std::endl;
+}
+
+// 加载系统数据库信息
+void dbManager::loadSystemDBInfo() {
+    std::ifstream sysDBFile(basePath + "/" + systemDBFile, std::ios::binary);
+    if (!sysDBFile) {
+        std::cerr << "无法读取系统数据库文件 ruanko.db" << std::endl;
+        return;
+    }
+
+    std::string line;
+    while (std::getline(sysDBFile, line)) {
+        if (line.find("database_name=") == 0) {
+            std::cout << "系统数据库名: " << line.substr(14) << std::endl;
+        }
+        if (line.find("path=") == 0) {
+            std::cout << "数据库存放路径: " << line.substr(5) << std::endl;
+        }
+    }
+
+    sysDBFile.close();
 }
 
 // 创建数据库
 void dbManager::createDatabase(const std::string& db_name) {
-    if (dbs.find(db_name) != dbs.end()) {
+    std::string dbDir = basePath + "/data/" + db_name;
+
+    if (fs::exists(dbDir)) {
         std::cerr << "数据库 " << db_name << " 已存在！" << std::endl;
         return;
     }
-    if (db_name.length() > 128) {
-        std::cerr << "数据库名称过长！" << std::endl;
+
+    createDatabaseFolder(db_name);
+
+    createDatabaseFiles(db_name);
+    
+    /*写入.db文件中*/
+    std::ofstream sysDBFile(basePath + "/" + systemDBFile, std::ios::app);
+    if (!sysDBFile) {
         return;
     }
+    sysDBFile << "database_name=" << db_name << std::endl;
+    sysDBFile << "path=" << basePath << "/data/" << db_name << std::endl;
+    sysDBFile.close();
+   
 
-    std::string dbFolder = basePath + db_name + "/";  // 数据库文件夹
 
-    std::string dbFilePath;
-    if (db_name.find(".db") == std::string::npos) {
-        dbFilePath = dbFolder + db_name + ".db";  // 确保只加一次 .db
-    }
-    else {
-        dbFilePath = dbFolder + db_name;
-    }
-
-    if (!fs::exists(dbFolder)) {
-        fs::create_directory(dbFolder);  // 确保数据库文件夹存在
-    }
-
-    // 检查 .db 文件是否存在，不存在则创建
-    if (!fs::exists(dbFilePath)) {
-        std::ofstream dbFile(dbFilePath);
-        if (!dbFile) {
-            std::cerr << "无法创建数据库文件: " << dbFilePath << std::endl;
-            return;
-        }
-        dbFile.close();
-    }
-
-    dbs[db_name] = new database(dbFilePath);  // 传递完整路径
-    std::cout << "数据库 " << db_name << " 创建成功，存储于: " << dbFolder << std::endl;
-
-    saveMetaData(); 
+    std::cout << "数据库 " << db_name << " 创建成功！" << std::endl;
 }
 
 
-// 删除数据库
 void dbManager::dropDatabase(const std::string& db_name) {
-    auto it = dbs.find(db_name);
-    if (it == dbs.end()) {
+ 
+    if (db_name == "ruanko") {
+        std::cerr << "系统数据库 ruanko 不能被删除！" << std::endl;
+        return;
+    }
+
+    std::string dbDir = basePath + "/data/" + db_name;
+
+    if (!fs::exists(dbDir)) {
         std::cerr << "数据库 " << db_name << " 不存在！" << std::endl;
         return;
     }
-	if (db_name == "sysdb") {
-		std::cerr << "系统数据库不能删除！" << std::endl;
-		return;
-	}
-
-    delete it->second;  // 删除数据库实例
-    dbs.erase(it);  // 从映射中移除
-
-    std::string dbPath = basePath + db_name;
-    if (fs::exists(dbPath)) {
-        fs::remove_all(dbPath); // 删除数据库文件夹
+    if (isConnected()) {
+        std::cerr << "数据库" << db_name << "正在使用！" << std::endl;
+        return;
     }
+
+    /*从.db文件中删除*/
+    std::string sysDBPath = basePath + "/" + systemDBFile;
+    std::ifstream sysDBFile(sysDBPath);
+    if (!sysDBFile) {
+        std::cerr << "无法打开系统数据库文件 ruanko.db 进行读取！" << std::endl;
+        return;
+    }
+
+    std::ofstream tempFile(sysDBPath + ".tmp");  // 创建临时文件
+    if (!tempFile) {
+        std::cerr << "无法创建临时文件！" << std::endl;
+        return;
+    }
+
+    std::string line;
+    bool skipNext = false;  // 用于跳过 path=xxx 这一行
+    while (std::getline(sysDBFile, line)) {
+        if (line == "database_name=" + db_name) {
+            skipNext = true;  // 标记，跳过下一行（path）
+            continue;
+        }
+        if (skipNext) {
+            skipNext = false;
+            continue;
+        }
+        tempFile << line << std::endl;
+    }
+
+    sysDBFile.close();
+    tempFile.close();
+
+    // 替换原文件
+    fs::remove(sysDBPath);
+    fs::rename(sysDBPath + ".tmp", sysDBPath);
+
+    std::cout << "数据库 " << db_name << " 已从系统数据库 ruanko.db 中移除。" << std::endl;
+
+    // 删除数据库文件夹及文件
+    deleteDatabaseFolder(db_name);
 
     std::cout << "数据库 " << db_name << " 已删除！" << std::endl;
-    saveMetaData(); 
-}
-
-// 获取数据库
-database* dbManager::getDatabase(const std::string& db_name) {
-    auto it = dbs.find(db_name);
-    if (it != dbs.end()) {
-        return it->second;
-    }
-    std::cerr << "数据库 " << db_name << " 不存在！" << std::endl;
-    return nullptr;
 }
 
 
-
-// 获取所有数据库名称
-std::vector<std::string> dbManager::getDatabaseNames() {
-    std::vector<std::string> dbList;
-    for (const auto& pair : dbs) {
-        dbList.push_back(pair.first);
+void dbManager::listDatabases() {
+    bool found = false;
+    for (const auto& entry : fs::directory_iterator(basePath + "/data")) {
+        if (fs::is_directory(entry.path())) {
+            std::cout << "数据库: " << entry.path().filename().string() << std::endl;
+            found = true;
+        }
     }
-    return dbList;
+
+    if (!found) {
+        std::cout << "没有任何数据库存在。" << std::endl;
+    }
 }
 
-// 从磁盘加载数据库元数据
-void dbManager::loadMetaData() {
-    if (!fs::exists(metaDataFile)) return;
-
-    std::ifstream file(metaDataFile);
-    if (!file) {
-        std::cerr << "法加载数据库元数据文件！" << std::endl;
-        return;
-    }
-
-    std::string dbName;
-    while (std::getline(file, dbName)) {
-        std::string dbFilePath = basePath + dbName + "/" + dbName + ".db";  // **修正路径**
-        dbs[dbName] = new database(dbFilePath);
-    }
-    file.close();
-    std::cout << "数据库元数据加载完成！" << std::endl;
+// 创建数据库文件夹
+void dbManager::createDatabaseFolder(const std::string& db_name) {
+    std::string dbDir = basePath + "/data/" + db_name;
+    fs::create_directory(dbDir);
 }
 
-// 将数据库列表存入磁盘
-void dbManager::saveMetaData() {
-    std::ofstream file(metaDataFile);
-    if (!file) {
-        std::cerr << "无法保存数据库元数据！" << std::endl;
-        return;
+// 创建数据库文件（tb, log）
+void dbManager::createDatabaseFiles(const std::string& db_name) {
+    std::string dbDir = basePath + "/data/" + db_name;
+
+    // 创建表描述文件 (.tb)
+    std::ofstream tbFile(dbDir + "/" + db_name + ".tb");
+    tbFile << "Table Descriptions for " << db_name << std::endl;
+    tbFile.close();
+
+    // 创建日志文件 (.log)
+    std::ofstream logFile(dbDir + "/" + db_name + ".log");
+    logFile << "Log File for " << db_name << std::endl;
+    logFile.close();
+}
+
+// 删除数据库文件夹及文件
+void dbManager::deleteDatabaseFolder(const std::string& db_name) {
+    std::string dbDir = basePath + "/data/" + db_name;
+
+    // 删除所有表文件
+    for (const auto& entry : fs::directory_iterator(dbDir)) {
+        fs::remove(entry.path());
     }
 
-    for (const auto& pair : dbs) {
-        file << pair.first << std::endl;
-    }
-    file.close();
-    std::cout << "数据库元数据已更新！" << std::endl;
+    // 删除数据库文件夹
+    fs::remove_all(dbDir);
 }
