@@ -19,16 +19,24 @@ MainWindow::MainWindow(QWidget* parent)
     ui->dockWidget->setMinimumWidth(200);
     ui->outputEdit->setReadOnly(true);
 
+    // 设置按钮的宽度
+    ui->runButton->setMinimumWidth(150);  // 设置按钮最小宽度
+    ui->runButton->setMaximumWidth(150);  // 设置按钮最大宽度
+
+    // 创建一个单独的QWidget来包裹runButton
+    buttonWidget = new QWidget(this);  // 把 buttonWidget 声明为成员变量
+    QHBoxLayout* buttonLayout = new QHBoxLayout(buttonWidget);
+    buttonLayout->addWidget(ui->runButton);
+    buttonWidget->setLayout(buttonLayout);
 
     // 输入框和输出框使用垂直分割
     QSplitter* ioSplitter = new QSplitter(Qt::Vertical);
-    ioSplitter->addWidget(ui->inputEdit);
-    ioSplitter->addWidget(ui->runButton);
-    ioSplitter->addWidget(ui->outputEdit);
+    ioSplitter->addWidget(ui->inputEdit);  // 输入框
+    ioSplitter->addWidget(buttonWidget);   // 按钮放在单独的布局里
+    ioSplitter->addWidget(ui->outputEdit); // 输出框
     ioSplitter->setStretchFactor(0, 5);  // 输入框占较多空间
     ioSplitter->setStretchFactor(1, 1);  // 按钮占较少空间
     ioSplitter->setStretchFactor(2, 3);  // 输出框占较少空间
-
 
     // 左侧导航栏使用 DockWidget
     QDockWidget* dockWidget = new QDockWidget("Navigation", this);
@@ -51,7 +59,6 @@ MainWindow::MainWindow(QWidget* parent)
 
     // 连接按钮点击事件到槽函数
     connect(ui->runButton, &QPushButton::clicked, this, &MainWindow::onRunButtonClicked);
-
 }
 
 MainWindow::~MainWindow() {
