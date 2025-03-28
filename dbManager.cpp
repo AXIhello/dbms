@@ -134,12 +134,17 @@ void dbManager::loadSystemDBInfo() {
 
 // 创建数据库
 void dbManager::createUserDatabase(const std::string& db_name) {
+	if (db_name.length() > 128) { // 数据库名过长
+        return;
+    }
+    
     std::string dbDir = basePath + "/data/" + db_name;
 
     if (fs::exists(dbDir)) {
         std::cerr << "数据库 " << db_name << " 已存在！" << std::endl;
         return;
     }
+
 
     createDatabaseFolder(db_name);
 
