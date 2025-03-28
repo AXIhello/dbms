@@ -17,7 +17,7 @@ dbManager::dbManager() {
 
     // 确保系统数据库文件 ruanko.db 存在
     if (!fs::exists(basePath + "/" + systemDBFile)) {
-        createSystemDBFile();
+        createSystemDB();
     }
 
     loadSystemDBInfo();
@@ -37,21 +37,78 @@ bool dbManager::isConnected() {
 	return false;
 }
 
-// 初始化系统数据库（创建 ruanko.db 文件）
-void dbManager::createSystemDBFile() {
-    std::ofstream sysDBFile(basePath + "/" + systemDBFile, std::ios::binary);
+// 初始化系统数据库（创建并写入 ruanko.db 文件）
+void dbManager::createSystemDB() {
+    std::string sysDBPath = basePath + "/" + systemDBFile;
+
+    std::ofstream sysDBFile(sysDBPath, std::ios::binary);
     if (!sysDBFile) {
         std::cerr << "无法创建系统数据库文件 ruanko.db" << std::endl;
         return;
     }
-
     // 写入初始数据
-    sysDBFile << "system_database=1" << std::endl;  // 1 表示系统数据库
-    sysDBFile << "database_name=ruanko" << std::endl;
-    sysDBFile << "path=" + basePath + "/data" << std::endl;
+	DatabaseBlock systemDB;
+    memset(systemDB.dbName, 0, sizeof(systemDB.dbName));
+    strcpy_s(systemDB.dbName, "ruanko");  // 赋值数据库名称
 
+    systemDB.type = false;  // false 代表系统数据库
+
+    memset(systemDB.filename, 0, sizeof(systemDB.filename));
+    strcpy_s(systemDB.filename, sysDBPath.c_str());  // 赋值文件路径
+
+    systemDB.crtime = std::chrono::system_clock::to_time_t(std::chrono::system_clock::now());  // 获取当前时间
+
+    // 写入 `ruanko.db` 文件
+    sysDBFile.write(reinterpret_cast<char*>(&systemDB), sizeof(DatabaseBlock));
     sysDBFile.close();
-    std::cout << "系统数据库文件 'ruanko.db' 已创建并初始化。" << std::endl;
+}
+
+void dbManager::saveDatabaseInfo(const std::string& dbName, const std::string& dbPath) {
+    std::ofstream sysDBFile(basePath + "/" + systemDBFile, std::ios::binary | std::ios::app);
+    if (!sysDBFile) {
+        std::cerr << "无法打开系统数据库文件 ruanko.db" << std::endl;
+        return;
+    }
+
+    DatabaseBlock dbInfo;
+    memset(&dbInfo, 0, sizeof(DatabaseBlock));  // 清空结构体，避免脏数据
+
+    strncpy_s(dbInfo.dbName, dbName.c_str(), sizeof(dbInfo.dbName) - 1);
+    dbInfo.type = true;  // 默认为用户数据库
+    strncpy_s(dbInfo.filename, dbPath.c_str(), sizeof(dbInfo.filename) - 1);
+    dbInfo.crtime = std::time(nullptr);  // 记录当前时间
+
+    sysDBFile.write(reinterpret_cast<const char*>(&dbInfo), sizeof(DatabaseBlock));
+    sysDBFile.close();
+}
+
+void dbManager::removeDatabaseInfo(const std::string& db_name)
+{
+        std::ifstream inFile(basePath + "/" + systemDBFile, std::ios::binary);
+        if (!inFile) {
+            return;
+        }
+
+        std::vector<DatabaseBlock> dbRecords;
+        DatabaseBlock dbInfo;
+
+        while (inFile.read(reinterpret_cast<char*>(&dbInfo), sizeof(DatabaseBlock))) {
+            if (std::string(dbInfo.dbName) != db_name) {
+                dbRecords.push_back(dbInfo);  // 保存非目标数据库的记录
+            }
+        }
+        inFile.close();
+
+        // 将更新后的内容写回系统数据库文件
+        std::ofstream outFile(basePath + "/" + systemDBFile, std::ios::binary | std::ios::trunc);
+        if (!outFile) {
+            return;
+        }
+
+        for (const auto& record : dbRecords) {
+            outFile.write(reinterpret_cast<const char*>(&record), sizeof(DatabaseBlock));
+        }
+        outFile.close();
 }
 
 // 加载系统数据库信息
@@ -76,7 +133,7 @@ void dbManager::loadSystemDBInfo() {
 }
 
 // 创建数据库
-void dbManager::createDatabase(const std::string& db_name) {
+void dbManager::createUserDatabase(const std::string& db_name) {
     std::string dbDir = basePath + "/data/" + db_name;
 
     if (fs::exists(dbDir)) {
@@ -88,18 +145,8 @@ void dbManager::createDatabase(const std::string& db_name) {
 
     createDatabaseFiles(db_name);
     
-    /*写入.db文件中*/
-    std::ofstream sysDBFile(basePath + "/" + systemDBFile, std::ios::app);
-    if (!sysDBFile) {
-        return;
-    }
-    sysDBFile << "database_name=" << db_name << std::endl;
-    sysDBFile << "path=" << basePath << "/data/" << db_name << std::endl;
-    sysDBFile.close();
-   
-
-
-    std::cout << "数据库 " << db_name << " 创建成功！" << std::endl;
+	saveDatabaseInfo(db_name, dbDir);
+    
 }
 
 
@@ -121,42 +168,9 @@ void dbManager::dropDatabase(const std::string& db_name) {
         return;
     }
 
-    /*从.db文件中删除*/
-    std::string sysDBPath = basePath + "/" + systemDBFile;
-    std::ifstream sysDBFile(sysDBPath);
-    if (!sysDBFile) {
-        std::cerr << "无法打开系统数据库文件 ruanko.db 进行读取！" << std::endl;
-        return;
-    }
+    //从.db文件中删除
+	removeDatabaseInfo(db_name);
 
-    std::ofstream tempFile(sysDBPath + ".tmp");  // 创建临时文件
-    if (!tempFile) {
-        std::cerr << "无法创建临时文件！" << std::endl;
-        return;
-    }
-
-    std::string line;
-    bool skipNext = false;  // 用于跳过 path=xxx 这一行
-    while (std::getline(sysDBFile, line)) {
-        if (line == "database_name=" + db_name) {
-            skipNext = true;  // 标记，跳过下一行（path）
-            continue;
-        }
-        if (skipNext) {
-            skipNext = false;
-            continue;
-        }
-        tempFile << line << std::endl;
-    }
-
-    sysDBFile.close();
-    tempFile.close();
-
-    // 替换原文件
-    fs::remove(sysDBPath);
-    fs::rename(sysDBPath + ".tmp", sysDBPath);
-
-    std::cout << "数据库 " << db_name << " 已从系统数据库 ruanko.db 中移除。" << std::endl;
 
     // 删除数据库文件夹及文件
     deleteDatabaseFolder(db_name);
