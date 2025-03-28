@@ -19,6 +19,7 @@ public:
 
     void listDatabases(); 
     void initializeSystemDatabase();  // 初始化系统数据库（ruanko.db）
+    bool isConnected();//待扩展与实现；
 
 private:
     std::string basePath;  // 根目录

@@ -33,6 +33,10 @@ dbManager::~dbManager() {
     
 }
 
+bool dbManager::isConnected() {
+	return false;
+}
+
 // 初始化系统数据库（创建 ruanko.db 文件）
 void dbManager::createSystemDBFile() {
     std::ofstream sysDBFile(basePath + "/" + systemDBFile, std::ios::binary);
@@ -83,6 +87,17 @@ void dbManager::createDatabase(const std::string& db_name) {
     createDatabaseFolder(db_name);
 
     createDatabaseFiles(db_name);
+    
+    /*写入.db文件中*/
+    std::ofstream sysDBFile(basePath + "/" + systemDBFile, std::ios::app);
+    if (!sysDBFile) {
+        return;
+    }
+    sysDBFile << "database_name=" << db_name << std::endl;
+    sysDBFile << "path=" << basePath << "/data/" << db_name << std::endl;
+    sysDBFile.close();
+   
+
 
     std::cout << "数据库 " << db_name << " 创建成功！" << std::endl;
 }
@@ -101,6 +116,47 @@ void dbManager::dropDatabase(const std::string& db_name) {
         std::cerr << "数据库 " << db_name << " 不存在！" << std::endl;
         return;
     }
+    if (isConnected()) {
+        std::cerr << "数据库" << db_name << "正在使用！" << std::endl;
+        return;
+    }
+
+    /*从.db文件中删除*/
+    std::string sysDBPath = basePath + "/" + systemDBFile;
+    std::ifstream sysDBFile(sysDBPath);
+    if (!sysDBFile) {
+        std::cerr << "无法打开系统数据库文件 ruanko.db 进行读取！" << std::endl;
+        return;
+    }
+
+    std::ofstream tempFile(sysDBPath + ".tmp");  // 创建临时文件
+    if (!tempFile) {
+        std::cerr << "无法创建临时文件！" << std::endl;
+        return;
+    }
+
+    std::string line;
+    bool skipNext = false;  // 用于跳过 path=xxx 这一行
+    while (std::getline(sysDBFile, line)) {
+        if (line == "database_name=" + db_name) {
+            skipNext = true;  // 标记，跳过下一行（path）
+            continue;
+        }
+        if (skipNext) {
+            skipNext = false;
+            continue;
+        }
+        tempFile << line << std::endl;
+    }
+
+    sysDBFile.close();
+    tempFile.close();
+
+    // 替换原文件
+    fs::remove(sysDBPath);
+    fs::rename(sysDBPath + ".tmp", sysDBPath);
+
+    std::cout << "数据库 " << db_name << " 已从系统数据库 ruanko.db 中移除。" << std::endl;
 
     // 删除数据库文件夹及文件
     deleteDatabaseFolder(db_name);
