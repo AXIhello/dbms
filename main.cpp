@@ -3,6 +3,7 @@
 #include"user.h"
 #include"login.h"
 #include"dbManager.h"
+#include <QMessageBox>
 using namespace std;
 int main(int argc, char *argv[])
 {
