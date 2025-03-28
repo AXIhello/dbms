@@ -1,19 +1,20 @@
-#include "dbms.h"
 #include <QtWidgets/QApplication>
 #include"user.h"
 #include"login.h"
 #include"dbManager.h"
+#include "mainWindow.h"
 using namespace std;
 int main(int argc, char *argv[])
 {
     QApplication a(argc, argv);
 
-    dbms w;
+    MainWindow w;
     user::createSysDBA();
 	login loginWidget;
+    loginWidget.show();
     QObject::connect(&loginWidget, &login::acceptedLogin, [&w]() {
-        w.show();
+        w.showMaximized();
         });
-	loginWidget.show();
+	//loginWidget.show();
     return a.exec();
 }
