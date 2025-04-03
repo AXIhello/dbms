@@ -29,12 +29,6 @@
     <QtUic Include="dbms.ui">
       <Filter>Form Files</Filter>
     </QtUic>
-    <QtMoc Include="dbms.h">
-      <Filter>Header Files</Filter>
-    </QtMoc>
-    <ClCompile Include="dbms.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="main.cpp">
@@ -55,7 +49,10 @@
     <ClCompile Include="dbManager.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-        <ClCompile Include="Record.cpp">
+    <ClCompile Include="Record.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="mainWindow.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>
@@ -66,14 +63,23 @@
     <ClInclude Include="database.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="dbManager.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <QtMoc Include="login.h">
       <Filter>Header Files</Filter>
     </QtMoc>
+    <QtMoc Include="mainWindow.h">
+      <Filter>Header Files</Filter>
+    </QtMoc>
   </ItemGroup>
   <ItemGroup>
     <QtUic Include="login.ui">
+      <Filter>Form Files</Filter>
+    </QtUic>
+    <QtUic Include="MainWindow.ui">
       <Filter>Form Files</Filter>
     </QtUic>
   </ItemGroup>

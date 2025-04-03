@@ -37,7 +37,7 @@
   </ImportGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)' == 'Debug|x64'" Label="QtSettings">
     <QtInstall>6.2.13_msvc2019_64</QtInstall>
-    <QtInstall>6.7.0_msvc2019_64</QtInstall>
+    <QtInstall>6.2.13_msvc2019_64</QtInstall>
     <QtModules>core;gui;widgets</QtModules>
     <QtBuildConfig>debug</QtBuildConfig>
   </PropertyGroup>
@@ -96,19 +96,20 @@
     <ClCompile Include="dbManager.cpp" />
     <ClCompile Include="login.cpp" />
     <ClCompile Include="database.cpp" />
+    <ClCompile Include="mainWindow.cpp" />
     <ClCompile Include="table.cpp" />
     <ClCompile Include="Record.cpp" />
     <ClCompile Include="user.cpp" />
     <QtRcc Include="dbms.qrc" />
     <QtUic Include="dbms.ui" />
-    <QtMoc Include="dbms.h" />
-    <ClCompile Include="dbms.cpp" />
     <ClCompile Include="main.cpp" />
     <QtUic Include="login.ui" />
+    <QtUic Include="MainWindow.ui" />
   </ItemGroup>
   <ItemGroup>
     <QtMoc Include="login.h" />
     <ClInclude Include="database.h" />
+    <QtMoc Include="mainWindow.h" />
     <ClInclude Include="dbManager.h" />
     <ClInclude Include="Record.h" />
     <ClInclude Include="user.h" />

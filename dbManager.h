@@ -6,19 +6,27 @@
 #include <fstream>
 #include <string>
 #include <unordered_map>
+#include <chrono>  // 添加此行以包含 std::chrono
 
 namespace fs = std::filesystem;
 
+struct DatabaseBlock {
+    char dbName[128];  // 修正数组声明
+    bool type;  // 0: 系统数据库；1: 用户数据库
+    char filename[259];  // 修正数组声明
+    time_t crtime;  // 创建时间
+};
+
 class dbManager {
 public:
-    dbManager();  // 初始化DBMS根目录
+    dbManager();  // DBMS_ROOT根目录
     ~dbManager();
 
-    void createDatabase(const std::string& db_name);  
+    void createUserDatabase(const std::string& db_name);  
     void dropDatabase(const std::string& db_name); 
 
     void listDatabases(); 
-    void initializeSystemDatabase();  // 初始化系统数据库（ruanko.db）
+    bool isConnected();//待扩展与实现；
 
 private:
     std::string basePath;  // 根目录
@@ -28,7 +36,10 @@ private:
     void createDatabaseFiles(const std::string& db_name);  // 创建数据库文件（tb, log）
     void deleteDatabaseFolder(const std::string& db_name);  // 删除数据库文件夹
     
-    void createSystemDBFile();  // 创建系统数据库文件
+    void saveDatabaseInfo(const std::string& dbName, const std::string& dbPath);  // 保存数据库信息到系统数据库文件
+	void removeDatabaseInfo(const std::string& db_name);  // 从系统数据库文件中移除数据库信息
+   
+    void createSystemDB();  // 创建系统数据库文件
     void loadSystemDBInfo();  // 加载系统数据库信息
 };
 
