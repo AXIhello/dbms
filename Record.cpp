@@ -9,27 +9,17 @@ Record::Record(const std::string& record) {
     // 暂定为空
 }
 
-void Record::insert_record(const std::string& record) {
-    // 匹配带列名的情况: insert into table_name (col1, col2) values (val1, val2)
-    std::regex insert_with_columns_regex(R"(insert\s+into\s+(\w+)\s*\((.*?)\)\s*values\s*\((.*?)\))", std::regex::icase);
-
-    // 匹配不带列名的情况: insert into table_name values (val1, val2)
-    std::regex insert_without_columns_regex(R"(insert\s+into\s+(\w+)\s+values\s*\((.*?)\))", std::regex::icase);
-
-    std::smatch match;
-
-    if (std::regex_search(record, match, insert_with_columns_regex)) {
+void Record::insert_record(const std::string& table_name,const std::string& cols,const std::string& vals) {
+    this->table_name = table_name;
+    // 检查表是否存在
+    if (!table_exists(this->table_name)) {
+        throw std::runtime_error("表 '" + this->table_name + "' 不存在。");
+    }
+    if (!cols.empty()) {
         // 带列名的情况
-        this->table_name = match[1].str();
-
-        // 检查表是否存在
-        if (!table_exists(this->table_name)) {
-            throw std::runtime_error("表 '" + this->table_name + "' 不存在。");
-        }
-
         // 解析列名和值
-        parse_columns(match[2].str());
-        parse_values(match[3].str());
+        parse_columns(cols);
+        parse_values(vals);
 
         // 验证列名是否存在于表中
         validate_columns();
@@ -37,20 +27,12 @@ void Record::insert_record(const std::string& record) {
         // 验证值的类型是否匹配
         validate_types();
     }
-    else if (std::regex_search(record, match, insert_without_columns_regex)) {
-        // 不带列名的情况
-        this->table_name = match[1].str();
-
-        // 检查表是否存在
-        if (!table_exists(this->table_name)) {
-            throw std::runtime_error("表 '" + this->table_name + "' 不存在。");
-        }
-
+    else if (cols.empty()) {
         // 从.tdf文件中读取字段信息
         read_table_structure();
 
         // 解析值
-        parse_values(match[2].str());
+        parse_values(vals);
         /*
         * 注释，如果值的数量小于字段数量 补空
         * 

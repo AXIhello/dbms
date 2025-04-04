@@ -34,8 +34,8 @@ public:
     Record(const std::string& record);
 
     // 插入记录相关函数
-    void insert_record(const std::string& record);
-    void insert_into(const std::string& db_name);
+    void insert_record(const std::string& table_name, const std::string& cols, const std::string& vals);
+    void insert_into(const std::string& table_name);
 };
 
 #endif // RECORD_H
