@@ -1,4 +1,7 @@
 #include "Record.h"
+#include "parse.h"
+#include "output.h"
+
 #include <regex>
 #include <iostream>
 #include <fstream>
@@ -410,4 +413,9 @@ const std::vector<std::string>& Record::get_columns() const {
 // 获取所有值
 const std::vector<std::string>& Record::get_values() const {
     return values;
+}
+
+void Record::alterTable(const std::string& tableName, const std::string& alterCommand) {
+    // 处理 ALTER 操作
+    
 }

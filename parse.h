@@ -10,6 +10,7 @@ class Parse {
 public:
     Parse();  // 
     void execute(const QString& sql);
+   
 
 private:
     struct SqlPattern {
@@ -25,6 +26,9 @@ private:
     void handleDropDatabase(const std::smatch& m);
     void handleInsertInto(const std::smatch& m);
     void handleSelect(const std::smatch& m);
+   
+    void handleAlterTable(const std::smatch& m);
+
 };
 
 #endif // PARSE_H

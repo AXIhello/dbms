@@ -1,6 +1,11 @@
 #include "parse.h"
 #include "dbManager.h"
 #include "Record.h"
+#include "output.h"
+
+#include <QRegularExpression>
+#include <QStringList>
+#include <sstream>
 
 Parse::Parse() {
     registerPatterns();
@@ -26,6 +31,12 @@ void Parse::registerPatterns() {
         std::regex(R"(^SELECT\s+\*\s+FROM\s+(\w+)(?:\s+WHERE\s+(.+))?;?$)", std::regex::icase),
         [this](const std::smatch& m) { handleSelect(m); }
         });
+
+    patterns.push_back({
+    std::regex(R"(^ALTER\s+TABLE\s+(\w+)\s+ADD\s+(\w+)\s+(\w+);?$)", std::regex::icase),
+    [this](const std::smatch& m) { handleAlterTable(m); }
+        });
+
 }
 
 void Parse::execute(const QString& sql_qt) {
@@ -59,5 +70,12 @@ void Parse::handleInsertInto(const std::smatch& m) {
 
 void Parse::handleSelect(const std::smatch& m) {
     auto records = Record::select("*", m[1]);
+    
+}
+
+void Parse::handleAlterTable(const std::smatch& m) {
+    Record r;
+    // 假设 m[1] 是表名，m[2] 是 ALTER 命令的具体内容
+    r.alterTable(m[1], m[2]);
     
 }
