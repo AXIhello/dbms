@@ -415,7 +415,10 @@ const std::vector<std::string>& Record::get_values() const {
     return values;
 }
 
-void Record::alterTable(const std::string& tableName, const std::string& alterCommand) {
-    // 处理 ALTER 操作
+void Record::update(const std::string& tableName, const std::string& alterCommand) {
+   
     
+}
+void Record::delete_(const std::string& tableName, const std::string& condition) {
+
 }
