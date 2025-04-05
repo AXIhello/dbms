@@ -1,3 +1,4 @@
+//TODO: ①createUserDatabase()待修改，从.db文件中读取数据，而非直接根据文件路径判断
 #include "dbManager.h"
 #include <iostream>
 #include <fstream>
@@ -142,7 +143,7 @@ void dbManager::createUserDatabase(const std::string& db_name) {
 
     if (fs::exists(dbDir)) {
         std::cerr << "数据库 " << db_name << " 已存在！" << std::endl;
-        return;
+        return;//待修改：从.db文件中读取数据，而非直接根据文件路径判断
     }
 
 

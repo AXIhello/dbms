@@ -5,6 +5,8 @@
 #include <QTextEdit>
 #include <QPushButton>
 #include <QMessageBox>
+#include<output.h>
+#include "parse.h" 
 
 MainWindow::MainWindow(QWidget* parent)
     : QMainWindow(parent)
@@ -73,8 +75,10 @@ void MainWindow::onRunButtonClicked() {
         QMessageBox::warning(this, "警告", "SQL 语句不能为空！");
         return;
     }
-
-    QString message;
+    
+    Parse parser;
+    parser.execute(sql);
+   /* QString message;
     if (sql.startsWith("SELECT", Qt::CaseInsensitive))
     {
         message = "解析结果：这是一个 SELECT 语句。";
@@ -92,5 +96,5 @@ void MainWindow::onRunButtonClicked() {
         message = "解析结果：不支持的 SQL 语句！";
     }
 
-    QMessageBox::information(this, "SQL 解析", message);
+    QMessageBox::information(this, "SQL 解析", message);*/
 }
