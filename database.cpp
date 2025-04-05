@@ -2,72 +2,79 @@
 #include <iostream>
 #include <fstream>
 #include <unordered_map>
+#include <filesystem>
 
-// 构造函数：加载数据库
-database::database(const std::string& db_name) : m_db_name(db_name) {
-    std::cout << "Loading database: " << m_db_name << std::endl;
-    loadDatabase(m_db_name + ".db");
+// 构造函数：加载数据库√
+Database::Database(const std::string& db_name) : m_db_name(db_name) {
+    std::cout << "加载数据库：" << m_db_name << std::endl;
+    loadTable(m_db_name + ".db");
 }
 
-// 析构函数：保存数据库
-database::~database() {
-    std::cout << "Saving database: " << m_db_name << std::endl;
-    saveDatabase(m_db_name + ".db");
+// 析构函数：保存数据库√
+Database::~Database() {
+    std::cout << "保存数据库： " << m_db_name << std::endl;
+    saveTable(m_db_name + ".db");
 }
 
-// 创建新表
-void database::createTable(const std::string& table_name) {
+// 创建新表√
+void Database::createTable(const std::string& table_name) {
     if (m_tables.find(table_name) != m_tables.end()) {
-        std::cerr << "Table " << table_name << " already exists!" << std::endl;
+        std::cerr << "表 " << table_name << " 已存在" << std::endl;
         return;
     }
-    Table* new_table = new Table();
+    Table* new_table = new Table(m_db_name,table_name);
     m_tables[table_name] = new_table;
-    std::cout << "Table " << table_name << " created successfully." << std::endl;
+    std::cout << "表 " << table_name << " 已成功创建" << std::endl;
 }
 
-// 删除表
-void database::dropTable(const std::string& table_name) {
+// 删除表√
+void Database::dropTable(const std::string& table_name) {
     auto it = m_tables.find(table_name);
     if (it == m_tables.end()) {
-        std::cerr << "Table " << table_name << " not found!" << std::endl;
+        std::cerr << "表 " << table_name << " 未找到" << std::endl;
         return;
     }
-    delete it->second;
+    delete it->second;//调用Table析构函数
     m_tables.erase(it);
-    std::cout << "Table " << table_name << " dropped successfully." << std::endl;
+    std::cout << "表 " << table_name << " 已成功删除" << std::endl;
 }
 
-// 查找表
-Table* database::getTable(const std::string& table_name) {
+// 查找表√
+Table* Database::getTable(const std::string& table_name) {
     auto it = m_tables.find(table_name);
     if (it != m_tables.end()) {
         return it->second;
     }
-    std::cerr << "Table " << table_name << " not found!" << std::endl;
+    std::cerr << "表 " << table_name << " 未找到" << std::endl;
     return nullptr;
 }
 
 // 从文件加载数据库数据
-void database::loadDatabase(const std::string& file_path) {
+void Database::loadTable(const std::string& table_name) {
+
+    std::string file_path = m_db_name + ".db";
     std::ifstream file(file_path, std::ios::binary);
     if (!file) {
-        std::cerr << "Failed to load database file: " << file_path << std::endl;
+        std::cerr << "加载数据库文件： " << file_path << " 失败" << std::endl;
         return;
     }
-    // 加载数据（这里只是一个示例）
-    std::cout << "Database loaded from " << file_path << std::endl;
+    // 加载数据（这里只是一个示例,要把数据表数组加载出来）
+    std::cout << "加载数据库文件： " << file_path << " 成功" << std::endl;
 }
 
-// 保存数据库数据到文件
-void database::saveDatabase(const std::string& file_path) {
+// 保存表数据到文件
+void Database::saveTable(const std::string& table_name) {
+
+    // 拼接文件路径
+    std::string file_path = m_db_name + ".db";
+
     std::ofstream file(file_path, std::ios::binary);
     if (!file) {
-        std::cerr << "Failed to save database file: " << file_path << std::endl;
+        std::cerr << "保存数据库文件： " << file_path << " 失败" << std::endl;
         return;
     }
-    // 保存数据（这里只是一个示例）
-    std::cout << "Database saved to " << file_path << std::endl;
+    // 保存数据（这里只是一个示例，要修改tb文件）
+    std::cout << "数据库已保存至 " << file_path << std::endl;
 }
 
 /*
