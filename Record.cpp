@@ -34,16 +34,14 @@ void Record::insert_record(const std::string& table_name, const std::string& col
 
         // 解析值
         parse_values(vals);
-        /*
-        * 注释，如果值的数量小于字段数量 补空
-        *
+
         // 检查值的数量是否与表中字段数量匹配
         if (values.size() != table_structure.size()) {
             throw std::runtime_error("Value count (" + std::to_string(values.size()) +
                 ") does not match column count (" +
                 std::to_string(table_structure.size()) + ").");
         }
-        */
+
         // 验证值的类型是否匹配
         validate_types_without_columns();
     }
