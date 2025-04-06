@@ -78,7 +78,6 @@ void Parse::handleDropDatabase(const std::smatch& m) {
 void Parse::handleInsertInto(const std::smatch& m) {
     Record r;
     r.insert_record(m[1], m[2], m[3]);
-    r.insert_into("当前数据库路径或名称");
    
 }
 
@@ -98,9 +97,8 @@ bool Parse::matchesCondition(const Record& record, const std::string& condition)
 
     return false;  // 默认不匹配
 }
-    r.alterTable(m[1], m[2]);
     
-}
+    
 
 void Parse::handleShowDatabases(const std::smatch& m) {
     auto dbs = dbManager().getDatabaseList();

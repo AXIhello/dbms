@@ -33,7 +33,7 @@ public:
 
     // 表操作相关函数
     void insert_record(const std::string& table_name, const std::string& cols, const std::string& vals);
-    void insert_into(const std::string& db_name);
+    void insert_into();
     static std::vector<Record> select(const std::string& columns, const std::string& table_name);
     void update(const std::string& tableName, const std::string& alterCommand);
     void delete_(const std::string& tableName, const std::string& condition);

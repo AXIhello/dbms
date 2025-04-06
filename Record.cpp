@@ -51,6 +51,7 @@ void Record::insert_record(const std::string& table_name, const std::string& col
     else {
         throw std::invalid_argument("Invalid SQL insert statement.");
     }
+    insert_into();
 }
 
 bool Record::table_exists(const std::string& table_name) {
@@ -212,7 +213,7 @@ void Record::validate_types_without_columns() {
     }
 }
 
-void Record::insert_into(const std::string& db_name) {
+void Record::insert_into() {
     std::string file_name = this->table_name + ".trd";
     std::ofstream file(file_name, std::ios::app);
 
