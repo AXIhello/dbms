@@ -16,37 +16,37 @@ Parse::Parse(QTextEdit * outputEdit) {
 
 void Parse::registerPatterns() {
     patterns.push_back({
-        std::regex(R"(^CREATE\s+DATABASE\s+(\w+);?$)", std::regex::icase),
+        std::regex(R"(^CREATE\s+DATABASE\s+(\w+);$)", std::regex::icase),
         [this](const std::smatch& m) { handleCreateDatabase(m); }
         });
 
     patterns.push_back({
-        std::regex(R"(^DROP\s+DATABASE\s+(\w+);?$)", std::regex::icase),
+        std::regex(R"(^DROP\s+DATABASE\s+(\w+);$)", std::regex::icase),
         [this](const std::smatch& m) { handleDropDatabase(m); }
         });
 
     patterns.push_back({
-        std::regex(R"(^INSERT\s+INTO\s+(\w+)\s*\(([^)]+)\)\s*VALUES\s*\(([^)]+)\);?$)", std::regex::icase),
+        std::regex(R"(^INSERT\s+INTO\s+(\w+)\s*\(([^)]+)\)\s*VALUES\s*\(([^)]+)\);$)", std::regex::icase),
         [this](const std::smatch& m) { handleInsertInto(m); }
         });
 
     patterns.push_back({
-        std::regex(R"(^SELECT\s+\*\s+FROM\s+(\w+)(?:\s+WHERE\s+(.+))?;?$)", std::regex::icase),
+        std::regex(R"(^SELECT\s+\*\s+FROM\s+(\w+)(?:\s+WHERE\s+(.+))?;$)", std::regex::icase),
         [this](const std::smatch& m) { handleSelect(m); }
         });
 
     patterns.push_back({
-    std::regex(R"(^ALTER\s+TABLE\s+(\w+)\s+ADD\s+(\w+)\s+(\w+);?$)", std::regex::icase),
+    std::regex(R"(^ALTER\s+TABLE\s+(\w+)\s+ADD\s+(\w+)\s+(\w+);$)", std::regex::icase),
     [this](const std::smatch& m) { handleAlterTable(m); }
         });
 
     patterns.push_back({
-        std::regex(R"(^SHOW\s+DATABASES\s*;?$)", std::regex::icase),
+        std::regex(R"(^SHOW\s+DATABASES\s*;$)", std::regex::icase),
         [this](const std::smatch& m) { handleShowDatabases(m); }
         });
 
     patterns.push_back({
-        std::regex(R"(^SHOW\s+TABLES\s*;?$)", std::regex::icase),
+        std::regex(R"(^SHOW\s+TABLES\s*;$)", std::regex::icase),
         [this](const std::smatch& m) { handleShowTables(m); }
         });
 
@@ -83,39 +83,30 @@ void Parse::handleInsertInto(const std::smatch& m) {
 
 void Parse::handleSelect(const std::smatch& m) {
     std::string table_name = m[1];
-    //权限检查
-    if (!user::hasPermission("select|" + table_name))
-    {
+
+    // 权限检查
+    if (!user::hasPermission("select|" + table_name)) {
+        Output::printError(outputEdit, "无权限访问表 '" + QString::fromStdString(table_name) + "'。");
         return;
     }
 
     try {
-        std::string columns = m[2].str();
-        if (columns.empty()) {
-            columns = "*";  // 默认选择所有列
+        std::string columns = "*"; // 目前仅支持 SELECT *
+        std::string condition;
+
+        // 如果有 WHERE 子句则获取
+        if (m.size() > 2 && m[2].matched) {
+            condition = m[2].str();
         }
 
-        auto records = Record::select(columns, table_name," ");//获取数据
+        // 直接调用封装了 where 逻辑的 Record::select
+        auto records = Record::select(columns, table_name, condition);
 
-        //处理WHERE字句
-        std::string where_condition = m[3].str();  //
-        if (!where_condition.empty()) {
-            // 解析 WHERE 子句
-            std::vector<Record> filtered_records;
-            for (const auto& record : records) {
-                if (matchesCondition(record, where_condition)) {
-                    filtered_records.push_back(record);
-                }
-            }
-            records = filtered_records;  // 替换为筛选后的记录
-        }
-
-        // 将 records 传递给 Output 进行处理
+        // 显示查询结果
         Output::printSelectResult(outputEdit, records);
-
     }
     catch (const std::exception& e) {
-        std::cerr << "查询失败: " << e.what() << std::endl;
+        Output::printError(outputEdit, "查询失败: " + QString::fromStdString(e.what()));
     }
 }
 
@@ -126,10 +117,7 @@ void Parse::handleAlterTable(const std::smatch& m) {
     
 }
 
-bool Parse::matchesCondition(const Record& record, const std::string& condition) {
 
-    return false;  // 默认不匹配
-}
     
     
 
