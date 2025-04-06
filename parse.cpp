@@ -6,6 +6,7 @@
 #include <QRegularExpression>
 #include <QStringList>
 #include <sstream>
+#include <regex>
 
 Parse::Parse() {
     registerPatterns();
@@ -36,6 +37,17 @@ void Parse::registerPatterns() {
     std::regex(R"(^ALTER\s+TABLE\s+(\w+)\s+ADD\s+(\w+)\s+(\w+);?$)", std::regex::icase),
     [this](const std::smatch& m) { handleAlterTable(m); }
         });
+
+    patterns.push_back({
+        std::regex(R"(^SHOW\s+DATABASES\s*;?$)", std::regex::icase),
+        [this](const std::smatch& m) { handleShowDatabases(m); }
+        });
+
+    patterns.push_back({
+        std::regex(R"(^SHOW\s+TABLES\s*;?$)", std::regex::icase),
+        [this](const std::smatch& m) { handleShowTables(m); }
+        });
+
 
 }
 
@@ -79,3 +91,17 @@ void Parse::handleAlterTable(const std::smatch& m) {
     r.alterTable(m[1], m[2]);
     
 }
+
+void Parse::handleShowDatabases(const std::smatch& m) {
+    auto dbs = dbManager().getDatabaseList();
+
+    if (dbs.empty()) {
+        std::cout << "没有任何数据库存在。" << std::endl;
+    }
+    else {
+        for (const auto& name : dbs) {
+            std::cout << "数据库: " << name << std::endl;
+        }
+    }
+}
+

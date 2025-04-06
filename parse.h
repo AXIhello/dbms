@@ -29,6 +29,10 @@ private:
    
     void handleAlterTable(const std::smatch& m);
 
+    void handleShowDatabases(const std::smatch& m);
+    void handleShowTables(const std::smatch& m);
+    void handleShowColumns(const std::smatch& m);
+
 };
 
 #endif // PARSE_H
