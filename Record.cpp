@@ -234,93 +234,7 @@ void Record::insert_into() {
     std::cout << "记录插入表 " << this->table_name << " 成功。" << std::endl;
 }
 
-std::vector<Record> Record::select(const std::string& columns, const std::string& table_name) {
-    std::vector<Record> results;
 
-    // 检查表是否存在
-    if (!table_exists(table_name)) {
-        throw std::runtime_error("表 '" + table_name + "' 不存在。");
-    }
-
-    // 读取表结构以获取所有字段信息
-    std::unordered_map<std::string, std::string> table_structure = read_table_structure_static(table_name);
-    std::vector<std::string> all_columns = get_column_order(table_name);
-
-    // 确定要查询的列
-    std::vector<std::string> selected_columns;
-    if (columns == "*") {
-        // 查询所有列
-        selected_columns = all_columns;
-    }
-    else {
-        // 解析指定的列
-        selected_columns = parse_column_list(columns);
-
-        // 验证指定的列是否存在于表中
-        for (const auto& col : selected_columns) {
-            if (table_structure.find(col) == table_structure.end()) {
-                throw std::runtime_error("字段 '" + col + "' 不存在于表 '" + table_name + "' 中。");
-            }
-        }
-    }
-
-    // 读取记录文件
-    std::string trd_filename = table_name + ".trd";
-    std::ifstream file(trd_filename);
-
-    if (!file) {
-        // 文件不存在或不可读，返回空结果
-        return results;
-    }
-
-    std::string line;
-    // 读取每一行记录
-    while (std::getline(file, line)) {
-        // 解析记录行，格式：字段1.值1,字段2.值2,...,END
-        std::unordered_map<std::string, std::string> record_data;
-        std::string field_value_pair;
-        std::stringstream ss(line);
-
-        // 处理每个字段值对
-        while (std::getline(ss, field_value_pair, ',')) {
-            // 如果遇到END标记，结束当前记录的解析
-            if (field_value_pair == "END") {
-                break;
-            }
-
-            // 分割字段名和值
-            size_t dot_pos = field_value_pair.find('.');
-            if (dot_pos != std::string::npos) {
-                std::string field = field_value_pair.substr(0, dot_pos);
-                std::string value = field_value_pair.substr(dot_pos + 1);
-
-                // 存储字段和值
-                record_data[field] = value;
-            }
-        }
-
-        // 创建一个新的记录对象
-        Record record;
-        record.set_table_name(table_name);
-
-        // 添加选中的列和对应的值
-        for (const auto& col : selected_columns) {
-            record.add_column(col);
-            // 如果记录中有该列，则添加值，否则添加NULL或空值
-            if (record_data.find(col) != record_data.end()) {
-                record.add_value(record_data[col]);
-            }
-            else {
-                record.add_value("NULL");  // 或者其他表示缺失值的标记
-            }
-        }
-
-        // 将记录添加到结果集
-        results.push_back(record);
-    }
-
-    return results;
-}
 
 // 静态版本的表结构读取函数，用于select操作
 std::unordered_map<std::string, std::string> Record::read_table_structure_static(const std::string& table_name) {
@@ -423,6 +337,262 @@ void Record::update(const std::string& tableName, const std::string& alterComman
 void Record::delete_(const std::string& tableName, const std::string& condition) {
 
 }
+// 实现条件解析方法
 void Record::parse_condition(const std::string& condition) {
+    // 清除之前的条件数据
+    condition_field = "";
+    condition_operator = "";
+    condition_value = "";
 
+    // 如果条件为空则跳过
+    if (condition.empty()) {
+        return;
+    }
+
+    // 用于匹配不同比较运算符的正则表达式
+    std::regex eq_regex("\\s*(\\w+)\\s*=\\s*([^\\s]+)\\s*");   // 字段 = 值
+    std::regex neq_regex("\\s*(\\w+)\\s*!=\\s*([^\\s]+)\\s*"); // 字段 != 值
+    std::regex gt_regex("\\s*(\\w+)\\s*>\\s*([^\\s]+)\\s*");   // 字段 > 值
+    std::regex lt_regex("\\s*(\\w+)\\s*<\\s*([^\\s]+)\\s*");   // 字段 < 值
+    std::regex gte_regex("\\s*(\\w+)\\s*>=\\s*([^\\s]+)\\s*"); // 字段 >= 值
+    std::regex lte_regex("\\s*(\\w+)\\s*<=\\s*([^\\s]+)\\s*"); // 字段 <= 值
+
+    std::smatch matches;
+
+    // 尝试匹配每种操作符模式
+    if (std::regex_match(condition, matches, eq_regex)) {
+        condition_field = matches[1];
+        condition_operator = "=";
+        condition_value = matches[2];
+    }
+    else if (std::regex_match(condition, matches, neq_regex)) {
+        condition_field = matches[1];
+        condition_operator = "!=";
+        condition_value = matches[2];
+    }
+    else if (std::regex_match(condition, matches, gt_regex)) {
+        condition_field = matches[1];
+        condition_operator = ">";
+        condition_value = matches[2];
+    }
+    else if (std::regex_match(condition, matches, lt_regex)) {
+        condition_field = matches[1];
+        condition_operator = "<";
+        condition_value = matches[2];
+    }
+    else if (std::regex_match(condition, matches, gte_regex)) {
+        condition_field = matches[1];
+        condition_operator = ">=";
+        condition_value = matches[2];
+    }
+    else if (std::regex_match(condition, matches, lte_regex)) {
+        condition_field = matches[1];
+        condition_operator = "<=";
+        condition_value = matches[2];
+    }
+    else {
+        throw std::runtime_error("无效的条件格式：" + condition);
+    }
+
+    // 验证字段是否存在于表中
+    if (!table_structure.empty() && table_structure.find(condition_field) == table_structure.end()) {
+        throw std::runtime_error("字段 '" + condition_field + "' 不存在于表 '" + table_name + "' 中。");
+    }
+}
+
+// 实现条件匹配判断方法
+bool Record::matches_condition(const std::unordered_map<std::string, std::string>& record_data) const {
+    // 如果没有条件，则所有记录都匹配
+    if (condition_field.empty() || condition_operator.empty()) {
+        return true;
+    }
+
+    // 检查记录中是否包含条件字段
+    if (record_data.find(condition_field) == record_data.end()) {
+        return false; // 字段不存在，不匹配
+    }
+
+    // 获取记录中对应字段的值
+    std::string field_value = record_data.at(condition_field);
+
+    // 根据字段类型进行比较
+    std::string field_type = table_structure[condition_field];
+
+    // 数值型比较
+    if (field_type == "INT" || field_type == "FLOAT" || field_type == "DOUBLE") {
+        try {
+            // 将字符串转换为数值进行比较
+            double record_val = std::stod(field_value);
+            double condition_val = std::stod(condition_value);
+
+            if (condition_operator == "=") return record_val == condition_val;
+            if (condition_operator == "!=") return record_val != condition_val;
+            if (condition_operator == ">") return record_val > condition_val;
+            if (condition_operator == "<") return record_val < condition_val;
+            if (condition_operator == ">=") return record_val >= condition_val;
+            if (condition_operator == "<=") return record_val <= condition_val;
+        }
+        catch (const std::exception& e) {
+            // 转换失败，按字符串比较
+            std::cerr << "数值转换失败，按字符串比较: " << e.what() << std::endl;
+        }
+    }
+
+    // 字符串比较（或数值转换失败的情况）
+    if (field_type == "VARCHAR" || field_type == "CHAR" || field_type == "TEXT" ||
+        condition_operator == "=" || condition_operator == "!=") {
+
+        // 处理引号
+        std::string clean_field_value = field_value;
+        std::string clean_condition_value = condition_value;
+
+        // 去除可能存在的引号
+        auto remove_quotes = [](std::string& s) {
+            if ((s.front() == '\'' && s.back() == '\'') ||
+                (s.front() == '\"' && s.back() == '\"')) {
+                s = s.substr(1, s.length() - 2);
+            }
+            };
+
+        remove_quotes(clean_field_value);
+        remove_quotes(clean_condition_value);
+
+        if (condition_operator == "=") return clean_field_value == clean_condition_value;
+        if (condition_operator == "!=") return clean_field_value != clean_condition_value;
+        if (condition_operator == ">") return clean_field_value > clean_condition_value;
+        if (condition_operator == "<") return clean_field_value < clean_condition_value;
+        if (condition_operator == ">=") return clean_field_value >= clean_condition_value;
+        if (condition_operator == "<=") return clean_field_value <= clean_condition_value;
+    }
+
+    // 日期比较 (简单实现，可能需要更复杂的日期解析)
+    if (field_type == "DATE" || field_type == "DATETIME") {
+        // 去除引号后直接比较字符串（因为ISO格式日期字符串可以直接比较）
+        std::string clean_field_value = field_value;
+        std::string clean_condition_value = condition_value;
+
+        auto remove_quotes = [](std::string& s) {
+            if ((s.front() == '\'' && s.back() == '\'') ||
+                (s.front() == '\"' && s.back() == '\"')) {
+                s = s.substr(1, s.length() - 2);
+            }
+            };
+
+        remove_quotes(clean_field_value);
+        remove_quotes(clean_condition_value);
+
+        if (condition_operator == "=") return clean_field_value == clean_condition_value;
+        if (condition_operator == "!=") return clean_field_value != clean_condition_value;
+        if (condition_operator == ">") return clean_field_value > clean_condition_value;
+        if (condition_operator == "<") return clean_field_value < clean_condition_value;
+        if (condition_operator == ">=") return clean_field_value >= clean_condition_value;
+        if (condition_operator == "<=") return clean_field_value <= clean_condition_value;
+    }
+
+    // 默认返回false
+    return false;
+}
+
+// 实现带条件的select方法
+std::vector<Record> Record::select(const std::string& columns, const std::string& table_name, const std::string& condition) {
+    std::vector<Record> results;
+
+    // 检查表是否存在
+    if (!table_exists(table_name)) {
+        throw std::runtime_error("表 '" + table_name + "' 不存在。");
+    }
+
+    // 读取表结构以获取所有字段信息
+    std::unordered_map<std::string, std::string> table_structure = read_table_structure_static(table_name);
+    std::vector<std::string> all_columns = get_column_order(table_name);
+
+    // 确定要查询的列
+    std::vector<std::string> selected_columns;
+    if (columns == "*") {
+        // 查询所有列
+        selected_columns = all_columns;
+    }
+    else {
+        // 解析指定的列
+        selected_columns = parse_column_list(columns);
+
+        // 验证指定的列是否存在于表中
+        for (const auto& col : selected_columns) {
+            if (table_structure.find(col) == table_structure.end()) {
+                throw std::runtime_error("字段 '" + col + "' 不存在于表 '" + table_name + "' 中。");
+            }
+        }
+    }
+
+    // 创建一个临时Record对象用于解析条件
+    Record temp_record;
+    temp_record.set_table_name(table_name);
+    temp_record.table_structure = table_structure;
+
+    // 解析条件
+    if (!condition.empty()) {
+        temp_record.parse_condition(condition);
+    }
+
+    // 读取记录文件
+    std::string trd_filename = table_name + ".trd";
+    std::ifstream file(trd_filename);
+
+    if (!file) {
+        // 文件不存在或不可读，返回空结果
+        return results;
+    }
+
+    std::string line;
+    // 读取每一行记录
+    while (std::getline(file, line)) {
+        // 解析记录行，格式：字段1.值1,字段2.值2,...,END
+        std::unordered_map<std::string, std::string> record_data;
+        std::string field_value_pair;
+        std::stringstream ss(line);
+
+        // 处理每个字段值对
+        while (std::getline(ss, field_value_pair, ',')) {
+            // 如果遇到END标记，结束当前记录的解析
+            if (field_value_pair == "END") {
+                break;
+            }
+
+            // 分割字段名和值
+            size_t dot_pos = field_value_pair.find('.');
+            if (dot_pos != std::string::npos) {
+                std::string field = field_value_pair.substr(0, dot_pos);
+                std::string value = field_value_pair.substr(dot_pos + 1);
+
+                // 存储字段和值
+                record_data[field] = value;
+            }
+        }
+
+        // 检查记录是否满足条件
+        if (!condition.empty() && !temp_record.matches_condition(record_data)) {
+            continue; // 不满足条件，跳过此记录
+        }
+
+        // 创建一个新的记录对象
+        Record record;
+        record.set_table_name(table_name);
+
+        // 添加选中的列和对应的值
+        for (const auto& col : selected_columns) {
+            record.add_column(col);
+            // 如果记录中有该列，则添加值，否则添加NULL或空值
+            if (record_data.find(col) != record_data.end()) {
+                record.add_value(record_data[col]);
+            }
+            else {
+                record.add_value("NULL");  // 或者其他表示缺失值的标记
+            }
+        }
+
+        // 将记录添加到结果集
+        results.push_back(record);
+    }
+
+    return results;
 }
