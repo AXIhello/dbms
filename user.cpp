@@ -1,4 +1,4 @@
-﻿#include "user.h"
+#include "user.h"
 
 // 读取用户列表
 std::vector<user::User> user::loadUsers() {
@@ -42,4 +42,14 @@ void user::createSysDBA() {  // 添加 user:: 作用域
     file.close();
 
     std::cout << "sysdba 用户创建成功，并赋予 conn 和 resource 权限" << std::endl;
+}
+
+user::User user::currentUser = {};
+void user::setCurrentUser(const User& user) {
+	currentUser = user;
+}
+
+bool user::hasPermission(const std::string& permission) {
+    std::string permissions(currentUser.permissions);
+    return permissions.find(permission) != std::string::npos;
 }
