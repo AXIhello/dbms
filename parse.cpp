@@ -95,7 +95,7 @@ void Parse::handleSelect(const std::smatch& m) {
             columns = "*";  // 默认选择所有列
         }
 
-        auto records = Record::select(columns, table_name);//获取数据
+        auto records = Record::select(columns, table_name," ");//获取数据
 
         //处理WHERE字句
         std::string where_condition = m[3].str();  //
@@ -145,4 +145,9 @@ void Parse::handleShowDatabases(const std::smatch& m) {
         }
     }
 }
+void Parse:: handleShowTables(const std::smatch& m) {
 
+}
+void Parse::handleShowColumns(const std::smatch& m) {
+
+}

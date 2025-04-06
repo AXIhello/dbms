@@ -416,7 +416,7 @@ bool Record::matches_condition(const std::unordered_map<std::string, std::string
     std::string field_value = record_data.at(condition_field);
 
     // 根据字段类型进行比较
-    std::string field_type = table_structure[condition_field];
+    std::string field_type = table_structure.at(condition_field);
 
     // 数值型比较
     if (field_type == "INT" || field_type == "FLOAT" || field_type == "DOUBLE") {
