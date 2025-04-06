@@ -11,7 +11,7 @@ private:
     std::vector<std::string> columns;
     std::vector<std::string> values;
     std::unordered_map<std::string, std::string> table_structure; // 列名 -> 数据类型
-
+    void parse_condition(const std::string& condition);
     // 解析列名和值
     void parse_columns(const std::string& cols);
     void parse_values(const std::string& vals);

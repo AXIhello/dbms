@@ -423,3 +423,6 @@ void Record::update(const std::string& tableName, const std::string& alterComman
 void Record::delete_(const std::string& tableName, const std::string& condition) {
 
 }
+void Record::parse_condition(const std::string& condition) {
+
+}
