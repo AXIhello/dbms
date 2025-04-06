@@ -35,7 +35,8 @@ public:
     void insert_record(const std::string& table_name, const std::string& cols, const std::string& vals);
     void insert_into(const std::string& db_name);
     static std::vector<Record> select(const std::string& columns, const std::string& table_name);
-    void alterTable(const std::string& tableName, const std::string& alterCommand);
+    void update(const std::string& tableName, const std::string& alterCommand);
+    void delete_(const std::string& tableName, const std::string& condition);
 
     // 辅助函数
     static bool table_exists(const std::string& table_name);

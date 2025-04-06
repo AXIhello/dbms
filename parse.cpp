@@ -2,13 +2,15 @@
 #include "dbManager.h"
 #include "Record.h"
 #include "output.h"
+#include"user.h"
 
 #include <QRegularExpression>
 #include <QStringList>
 #include <sstream>
 #include <regex>
 
-Parse::Parse() {
+Parse::Parse(QTextEdit * outputEdit) {
+    this->outputEdit = outputEdit;
     registerPatterns();
 }
 
@@ -66,7 +68,7 @@ void Parse::execute(const QString& sql_qt) {
 
 void Parse::handleCreateDatabase(const std::smatch& m) {
     dbManager().createUserDatabase(m[1]);
-   
+    Output::printMessage(outputEdit, "数据库 '" + QString::fromStdString(m[1]) + "' 创建成功！");
 }
 
 void Parse::handleDropDatabase(const std::smatch& m) {
@@ -88,6 +90,14 @@ void Parse::handleSelect(const std::smatch& m) {
 void Parse::handleAlterTable(const std::smatch& m) {
     Record r;
     // 假设 m[1] 是表名，m[2] 是 ALTER 命令的具体内容
+   // r.alterTable(m[1], m[2]);
+    
+}
+
+bool Parse::matchesCondition(const Record& record, const std::string& condition) {
+
+    return false;  // 默认不匹配
+}
     r.alterTable(m[1], m[2]);
     
 }

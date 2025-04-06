@@ -40,6 +40,7 @@ bool login::authenticate(const QString& username, const QString& password)
 	{
 		if (u.username == username.toStdString() && u.password == password.toStdString())
 		{
+			user::setCurrentUser(u);
 			return true;
 		}
 	}

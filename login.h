@@ -3,6 +3,7 @@
 #include <QWidget>
 #include "ui_login.h"
 
+
 class login : public QWidget
 {
 	Q_OBJECT
