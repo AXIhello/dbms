@@ -76,7 +76,7 @@ void MainWindow::onRunButtonClicked() {
         return;
     }
     
-    Parse parser;
+    Parse parser(ui->outputEdit);
     parser.execute(sql);
    /* QString message;
     if (sql.startsWith("SELECT", Qt::CaseInsensitive))

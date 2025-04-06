@@ -185,7 +185,7 @@ void dbManager::dropDatabase(const std::string& db_name) {
 }
 
 
-void dbManager::listDatabases() {
+/*void dbManager::listDatabases() {
     bool found = false;
     for (const auto& entry : fs::directory_iterator(basePath + "/data")) {
         if (fs::is_directory(entry.path())) {
@@ -197,7 +197,22 @@ void dbManager::listDatabases() {
     if (!found) {
         std::cout << "没有任何数据库存在。" << std::endl;
     }
+}*/
+/*改*/
+std::vector<std::string> dbManager::getDatabaseList() {
+    std::vector<std::string> databases;
+
+    for (const auto& entry : fs::directory_iterator(basePath + "/data")) {
+        if (fs::is_directory(entry.path())) {
+            databases.push_back(entry.path().filename().string());
+        }
+    }
+
+    return databases;
 }
+
+/*改*/
+
 
 // 创建数据库文件夹
 void dbManager::createDatabaseFolder(const std::string& db_name) {

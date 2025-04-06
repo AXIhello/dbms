@@ -1,0 +1,39 @@
+#include "output.h"
+
+void Output::printSelectResult(QTextEdit* outputEdit, const std::vector<Record>& results) {
+    if (!outputEdit) return;
+
+    if (results.empty()) {
+        outputEdit->append("无查询结果。");
+        return;
+    }
+
+    // 打印表头
+    const auto& columns = results[0].get_columns();
+    QString header;
+    for (const auto& col : columns) {
+        header += QString::fromStdString(col) + "\t";
+    }
+    outputEdit->append(header);
+    outputEdit->append(QString(columns.size() * 8, '-'));
+
+    // 打印每条记录
+    for (const auto& record : results) {
+        const auto& values = record.get_values();
+        QString row;
+        for (const auto& val : values) {
+            row += QString::fromStdString(val) + "\t";
+        }
+        outputEdit->append(row);
+    }
+}
+
+void Output::printMessage(QTextEdit* outputEdit, const QString& message) {
+    if (!outputEdit) return;
+    outputEdit->append(message);
+}
+
+void Output::printError(QTextEdit* outputEdit, const QString& error) {
+    if (!outputEdit) return;
+    outputEdit->append("[错误] " + error);
+}

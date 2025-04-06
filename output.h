@@ -1,23 +1,18 @@
-// output.h
 #ifndef OUTPUT_H
 #define OUTPUT_H
 
-#include <QString>
-#include <QWidget>
 #include <QTextEdit>
 #include <vector>
-#include "Record.h"
+#include "record.h"  // 假设 Record 类定义在这个头文件里
 
 class Output {
 public:
-    static void setOutputTarget(QTextEdit* target);
-    static void info(const QString& msg);
-    static void error(const QString& msg);
-    static void showTable(const std::vector<Record>& records);
-    void displayResult(const QString& result, QTextEdit* outputEdit);
+    // 打印 SELECT 查询结果
+    static void printSelectResult(QTextEdit* outputEdit, const std::vector<Record>& results);
 
-private:
-    static QTextEdit* outputTarget;
+    // 其他通用输出方法（可选）
+    static void printMessage(QTextEdit* outputEdit, const QString& message);
+    static void printError(QTextEdit* outputEdit, const QString& error);
 };
 
 #endif // OUTPUT_H

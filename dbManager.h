@@ -25,7 +25,8 @@ public:
     void createUserDatabase(const std::string& db_name);  
     void dropDatabase(const std::string& db_name); 
 
-    void listDatabases(); 
+    //void listDatabases(); 
+    std::vector<std::string> getDatabaseList();
     bool isConnected();//待扩展与实现；
 
 private:
