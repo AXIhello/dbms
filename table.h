@@ -26,6 +26,9 @@ public:
 
     ~Table();
 
+	//获取表名
+	string getTableName() const { return m_tableName; }
+
     // 获取表的元数据
     void getTableMetadata();
 
