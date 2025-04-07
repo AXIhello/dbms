@@ -78,10 +78,28 @@ private:
     // 辅助方法：将时间戳转为字符串格式
     string timeToString(time_t time) const;
     /*
-    string tdfFilePath; // 表的元数据文件路径 (.tdf)
-    string ticFilePath; // 表的索引文件路径 (.tic)
-    string trdFilePath; // 表的数据文件路径 (.trd)
-    string tidFilePath; // 表的ID文件路径 (.tid)
+	表元数据文件 (数据库名.tb)
+	格式：
+	TableName:
+	FieldCount:（字段数）
+	RecordCount:（记录数）
+	CreateTime:（创建时间）
+	LastModifyTime:（最后修改时间）
+
+    表的定义文件 (表名.tdf)
+    格式：
+      ColumnName: 
+      ColumnType: 
+      ColumnSize: 
+      DefaultValue: 
+
+    表的完整性文件 (表名.tic)
+    表的数据文件 (表名.trd)
+    格式：
+	列名1   列名2    列名3
+	数据1   数据2    数据3
+    数据4   数据5    数据6
+	表的索引文件 (表名.tid)
     */
 	vector<Column> m_columns; // 列信息
 
