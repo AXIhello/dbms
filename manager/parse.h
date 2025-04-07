@@ -32,8 +32,10 @@ private:
 
     void handleCreateDatabase(const std::smatch& m);
     void handleDropDatabase(const std::smatch& m);
+    void handleUseDatabase(const std::smatch& m);
     void handleInsertInto(const std::smatch& m);
     void handleSelect(const std::smatch& m);
+	void handleCreateTable(const std::smatch& m);
 
     void handleAddColumn(const std::smatch& m);
     void handleDeleteColumn(const std::smatch& m);
