@@ -29,6 +29,15 @@ public:
 	//获取表名
 	string getTableName() const { return m_tableName; }
 
+    //获取列名
+	vector<string> getColNames() const {
+		vector<string> colNames;
+		for (const auto& col : m_columns) {
+			colNames.push_back(col.name);
+		}
+		return colNames;
+	}
+
     // 获取表的元数据
     void getTableMetadata();
 
