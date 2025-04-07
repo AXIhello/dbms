@@ -2,12 +2,16 @@
 #include "dbManager.h"
 #include "Record.h"
 #include "output.h"
-#include"user.h"
+#include "user.h"
+#include "database.h"
 
 #include <QRegularExpression>
 #include <QStringList>
+#include <iostream>
 #include <sstream>
 #include <regex>
+#include <vector>
+#include <algorithm>
 
 Parse::Parse(QTextEdit * outputEdit) {
     this->outputEdit = outputEdit;
@@ -36,8 +40,18 @@ void Parse::registerPatterns() {
         });
 
     patterns.push_back({
-    std::regex(R"(^ALTER\s+TABLE\s+(\w+)\s+ADD\s+(\w+)\s+(\w+);$)", std::regex::icase),
-    [this](const std::smatch& m) { handleAlterTable(m); }
+        std::regex(R"(ALTER\s+TABLE\s+(\w+)\s+ADD\s+COLUMN\s+(\w+)\s+(\w+)(\(\d+\))?;)", std::regex::icase),
+        [this](const std::smatch& m) { handleAddColumn(m); }
+        });
+
+    patterns.push_back({
+        std::regex(R"(ALTER\s+TABLE\s+(\w+)\s+DROP\s+COLUMN\s+(\w+);)", std::regex::icase),
+        [this](const std::smatch& m) { handleDeleteColumn(m); }
+        });
+
+    patterns.push_back({
+        std::regex(R"(ALTER\s+TABLE\s+(\w+)\s+UPDATE\s+COLUMN\s+(\w+)\s+SET\s+(\w+)(\(\d+\))?;)", std::regex::icase),
+        [this](const std::smatch& m) { handleUpdateColumn(m); }
         });
 
     patterns.push_back({
@@ -108,18 +122,64 @@ void Parse::handleSelect(const std::smatch& m) {
     catch (const std::exception& e) {
         Output::printError(outputEdit, "查询失败: " + QString::fromStdString(e.what()));
     }
+
 }
 
-void Parse::handleAlterTable(const std::smatch& m) {
-    Record r;
-    // 假设 m[1] 是表名，m[2] 是 ALTER 命令的具体内容
-   // r.alterTable(m[1], m[2]);
+Parse::Parse(Database* database)
+    : db(database) {  // 初始化 db 指针
     
 }
 
+void Parse::handleAddColumn(const std::smatch& match) {
+    std::string tableName = match[1];  // 获取表名
+    std::string columnName = match[2];  // 获取列名
+    std::string columnType = match[3];  // 获取列类型
 
-    
-    
+    Table* table = db->getTable(tableName);  // 获取表对象
+    if (table) {
+        // 创建新列
+        Table::Column newColumn = { columnName, columnType, 0, "" };  // 默认 size 为 0，defaultValue 为空字符串
+        table->addCol(newColumn);  // 调用 Table 的 addCol 方法
+    }
+    else {
+        std::cerr << "表 " << tableName << " 不存在！" << std::endl;
+    }
+}
+
+void Parse::handleDeleteColumn(const std::smatch& match) {
+    std::string tableName = match[1];  // 获取表名
+    std::string columnName = match[2];  // 获取列名
+
+    Table* table = db->getTable(tableName);  // 获取表对象
+    if (table) {
+        table->deleteCol(columnName);  // 调用 Table 的 deleteCol 方法
+    }
+    else {
+        std::cerr << "表 " << tableName << " 不存在！" << std::endl;
+    }
+}
+
+void Parse::handleUpdateColumn(const std::smatch& match) {
+    std::string tableName = match[1];  // 获取表名
+    std::string oldColumnName = match[2];  // 获取旧列名
+    std::string newColumnName = match[3];  // 获取新列名
+    std::string newColumnType = match[4];  // 获取新列类型
+
+    Table* table = db->getTable(tableName);  // 获取表对象
+    if (table) {
+        // 创建旧列和新列
+        Table::Column oldCol = { oldColumnName, "", 0, "" };  // 旧列只需要名字，其他信息保持默认
+        Table::Column newCol = { newColumnName, newColumnType, 0, "" };  // 新列的名字和类型从命令中获取
+
+        table->updateCol(oldCol, newCol);  // 调用 Table 的 updateCol 方法
+    }
+    else {
+        std::cerr << "表 " << tableName << " 不存在！" << std::endl;
+    }
+}
+
+
+
 
 void Parse::handleShowDatabases(const std::smatch& m) {
     auto dbs = dbManager().getDatabaseList();
