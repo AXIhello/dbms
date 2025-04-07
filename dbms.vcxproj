@@ -92,31 +92,31 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClCompile Include="dbManager.cpp" />
-    <ClCompile Include="login.cpp" />
-    <ClCompile Include="database.cpp" />
-    <ClCompile Include="mainWindow.cpp" />
-    <ClCompile Include="output.cpp" />
-    <ClCompile Include="parse.cpp" />
-    <ClCompile Include="table.cpp" />
-    <ClCompile Include="Record.cpp" />
-    <ClCompile Include="user.cpp" />
+    <ClCompile Include="manager\dbManager.cpp" />
+    <ClCompile Include="ui\login.cpp" />
+    <ClCompile Include="base\database.cpp" />
+    <ClCompile Include="ui\mainWindow.cpp" />
+    <ClCompile Include="ui\output.cpp" />
+    <ClCompile Include="manager\parse.cpp" />
+    <ClCompile Include="base\table.cpp" />
+    <ClCompile Include="base\Record.cpp" />
+    <ClCompile Include="base\user.cpp" />
     <QtRcc Include="dbms.qrc" />
-    <QtUic Include="dbms.ui" />
+    <QtUic Include="ui\dbms.ui" />
     <ClCompile Include="main.cpp" />
-    <QtUic Include="login.ui" />
-    <QtUic Include="MainWindow.ui" />
+    <QtUic Include="ui\login.ui" />
+    <QtUic Include="ui\MainWindow.ui" />
   </ItemGroup>
   <ItemGroup>
-    <QtMoc Include="login.h" />
-    <ClInclude Include="database.h" />
-    <QtMoc Include="mainWindow.h" />
-    <ClInclude Include="dbManager.h" />
-    <ClInclude Include="output.h" />
-    <ClInclude Include="parse.h" />
-    <ClInclude Include="Record.h" />
-    <ClInclude Include="table.h" />
-    <ClInclude Include="user.h" />
+    <QtMoc Include="ui\login.h" />
+    <ClInclude Include="base\database.h" />
+    <QtMoc Include="ui\mainWindow.h" />
+    <ClInclude Include="manager\dbManager.h" />
+    <ClInclude Include="ui\output.h" />
+    <ClInclude Include="manager\parse.h" />
+    <ClInclude Include="base\Record.h" />
+    <ClInclude Include="base\table.h" />
+    <ClInclude Include="base\user.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Condition="Exists('$(QtMsBuild)\qt.targets')">

@@ -3,7 +3,7 @@
 #ifndef DATABASE_H
 #define DATABASE_H
 
-#include <table.h>
+#include <base/table.h>
 #include <string>
 #include <map>
 #include <fstream>

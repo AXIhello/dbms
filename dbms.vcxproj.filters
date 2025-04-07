@@ -26,7 +26,7 @@
     <QtRcc Include="dbms.qrc">
       <Filter>Resource Files</Filter>
     </QtRcc>
-    <QtUic Include="dbms.ui">
+    <QtUic Include="ui\dbms.ui">
       <Filter>Form Files</Filter>
     </QtUic>
   </ItemGroup>
@@ -34,70 +34,70 @@
     <ClCompile Include="main.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="user.cpp">
+    <ClCompile Include="base\user.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="login.cpp">
+    <ClCompile Include="ui\login.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="database.cpp">
+    <ClCompile Include="base\database.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="table.cpp">
+    <ClCompile Include="base\table.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="dbManager.cpp">
+    <ClCompile Include="manager\dbManager.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="Record.cpp">
+    <ClCompile Include="base\Record.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="mainWindow.cpp">
+    <ClCompile Include="ui\mainWindow.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="parse.cpp">
+    <ClCompile Include="manager\parse.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="output.cpp">
+    <ClCompile Include="ui\output.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="user.h">
+    <ClInclude Include="base\user.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="database.h">
+    <ClInclude Include="base\database.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="dbManager.h">
+    <ClInclude Include="manager\dbManager.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="Record.h">
+    <ClInclude Include="base\Record.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="parse.h">
+    <ClInclude Include="manager\parse.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="output.h">
+    <ClInclude Include="ui\output.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="table.h">
+    <ClInclude Include="base\table.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
-    <QtMoc Include="login.h">
+    <QtMoc Include="ui\login.h">
       <Filter>Header Files</Filter>
     </QtMoc>
-    <QtMoc Include="mainWindow.h">
+    <QtMoc Include="ui\mainWindow.h">
       <Filter>Header Files</Filter>
     </QtMoc>
   </ItemGroup>
   <ItemGroup>
-    <QtUic Include="login.ui">
+    <QtUic Include="ui\login.ui">
       <Filter>Form Files</Filter>
     </QtUic>
-    <QtUic Include="MainWindow.ui">
+    <QtUic Include="ui\MainWindow.ui">
       <Filter>Form Files</Filter>
     </QtUic>
   </ItemGroup>

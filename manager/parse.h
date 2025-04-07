@@ -5,9 +5,9 @@
 #include <regex>
 #include <functional>
 #include <vector>
-#include"Record.h"
-#include "table.h"
-#include "database.h"
+#include"base/Record.h"
+#include "base/table.h"
+#include "base/database.h"
 #include <string>
 class Parse {
 public:

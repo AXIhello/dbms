@@ -1,6 +1,6 @@
 #include "Record.h"
-#include "parse.h"
-#include "output.h"
+#include "manager/parse.h"
+#include "ui/output.h"
 
 #include <regex>
 #include <iostream>

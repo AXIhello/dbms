@@ -5,8 +5,8 @@
 #include <QTextEdit>
 #include <QPushButton>
 #include <QMessageBox>
-#include<output.h>
-#include "parse.h" 
+#include"ui/output.h"
+#include "manager/parse.h" 
 
 MainWindow::MainWindow(QWidget* parent)
     : QMainWindow(parent)

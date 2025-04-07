@@ -1,6 +1,6 @@
 #include "login.h"
 #include <QMessageBox>
-#include "user.h"
+#include "base/user.h"
 
 login::login(QWidget *parent)
 	: QWidget(parent)

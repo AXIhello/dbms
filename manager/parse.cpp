@@ -1,9 +1,9 @@
 #include "parse.h"
 #include "dbManager.h"
-#include "Record.h"
-#include "output.h"
-#include "user.h"
-#include "database.h"
+#include "base/Record.h"
+#include "ui/output.h"
+#include "base/user.h"
+#include "base/database.h"
 
 #include <QRegularExpression>
 #include <QStringList>

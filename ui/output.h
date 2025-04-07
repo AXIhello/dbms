@@ -3,7 +3,7 @@
 
 #include <QTextEdit>
 #include <vector>
-#include "record.h"  // 假设 Record 类定义在这个头文件里
+#include "base/Record.h"  // 假设 Record 类定义在这个头文件里
 
 class Output {
 public:

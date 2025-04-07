@@ -1,8 +1,8 @@
 #include <QtWidgets/QApplication>
-#include"user.h"
-#include"login.h"
-#include"dbManager.h"
-#include "mainWindow.h"
+#include"base/user.h"
+#include"ui/login.h"
+#include"manager/dbManager.h"
+#include "ui/mainWindow.h"
 using namespace std;
 int main(int argc, char *argv[])
 {
