@@ -7,10 +7,11 @@
 #include <QMessageBox>
 #include<output.h>
 #include "parse.h" 
+#include "dbManager.h"
 
 MainWindow::MainWindow(QWidget* parent)
     : QMainWindow(parent)
-    , ui(new Ui::MainWindow)  // 初始化 UI
+    , ui(new Ui::MainWindow)// 初始化 UI
 {
     ui->setupUi(this);  // 让 UI 组件和窗口关联
     setWindowTitle("My Database Client"); // 设置窗口标题

@@ -22,10 +22,21 @@ void Database::createTable(const std::string& table_name) {
         std::cerr << "表 " << table_name << " 已存在" << std::endl;
         return;
     }
-    Table* new_table = new Table(m_db_name,table_name);
+    Table* new_table = new Table(m_db_name, table_name);
     m_tables[table_name] = new_table;
+
+    // 保存表的元数据和定义文件
+    if (!new_table->saveMetadata()) {
+        std::cerr << "保存元数据失败" << std::endl;
+    }
+
+    if (!new_table->saveDefine()) {
+        std::cerr << "保存表定义失败" << std::endl;
+    }
+
     std::cout << "表 " << table_name << " 已成功创建" << std::endl;
 }
+
 
 // 删除表√
 void Database::dropTable(const std::string& table_name) {

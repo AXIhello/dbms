@@ -135,24 +135,15 @@ void dbManager::loadSystemDBInfo() {
 
 // 创建数据库
 void dbManager::createUserDatabase(const std::string& db_name) {
-	if (db_name.length() > 128) { // 数据库名过长
+    if (db_name.length() > 128 || databaseExists(db_name)) {
+        std::cerr << "数据库 " << db_name << " 已存在！" << std::endl;
         return;
     }
-    
+
     std::string dbDir = basePath + "/data/" + db_name;
-
-    if (fs::exists(dbDir)) {
-        std::cerr << "数据库 " << db_name << " 已存在！" << std::endl;
-        return;//待修改：从.db文件中读取数据，而非直接根据文件路径判断
-    }
-
-
     createDatabaseFolder(db_name);
-
     createDatabaseFiles(db_name);
-    
-	saveDatabaseInfo(db_name, dbDir);
-    
+    saveDatabaseInfo(db_name, dbDir);
 }
 
 
@@ -185,20 +176,7 @@ void dbManager::dropDatabase(const std::string& db_name) {
 }
 
 
-/*void dbManager::listDatabases() {
-    bool found = false;
-    for (const auto& entry : fs::directory_iterator(basePath + "/data")) {
-        if (fs::is_directory(entry.path())) {
-            std::cout << "数据库: " << entry.path().filename().string() << std::endl;
-            found = true;
-        }
-    }
 
-    if (!found) {
-        std::cout << "没有任何数据库存在。" << std::endl;
-    }
-}*/
-/*改*/
 std::vector<std::string> dbManager::getDatabaseList() {
     std::vector<std::string> databases;
 
@@ -211,7 +189,7 @@ std::vector<std::string> dbManager::getDatabaseList() {
     return databases;
 }
 
-/*改*/
+
 
 
 // 创建数据库文件夹
@@ -246,4 +224,35 @@ void dbManager::deleteDatabaseFolder(const std::string& db_name) {
 
     // 删除数据库文件夹
     fs::remove_all(dbDir);
+}
+
+dbManager& dbManager::getInstance() {
+    static dbManager instance;
+    return instance;
+}
+
+void dbManager::useDatabase(const std::string& db_name) {
+    if (!databaseExists(db_name)) {
+        std::cerr << "数据库 " << db_name << " 不存在！" << std::endl;
+        return;  // 如果数据库不存在，直接返回
+    }
+
+    if (currentDB) {
+        delete currentDB;  // 清理旧数据库实例
+    }
+
+    std::string dbPath = basePath + "/data/" + db_name + "/" + db_name;
+    currentDB = new Database(dbPath);  // 传入路径前缀
+    currentDBName = db_name;
+
+    std::cout << "当前数据库已切换为: " << db_name << std::endl;
+}
+
+Database* dbManager::getCurrentDatabase() {
+    return currentDB;
+}
+
+bool dbManager::databaseExists(const std::string& dbName) {
+    std::string dbPath = basePath + "/data/" + dbName;
+    return std::filesystem::exists(dbPath);  // C++17 的方式
 }

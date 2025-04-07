@@ -5,6 +5,7 @@
 #include <QMainWindow>
 #include <QTextEdit>
 #include <QPushButton>
+#include"dbManager.h"
 #include <QWidget> 
 
 QT_BEGIN_NAMESPACE
@@ -23,6 +24,7 @@ private slots:
 private:
     Ui::MainWindow* ui;  // 声明一个 Ui::MainWindow 指针
     QWidget* buttonWidget;  // 声明 buttonWidget
+  
 };
 
 #endif // MAINWINDOW_H

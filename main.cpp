@@ -9,8 +9,8 @@ int main(int argc, char *argv[])
     QApplication a(argc, argv);
   
     MainWindow w;
-    dbManager db;
-    db.createUserDatabase("test");
+    dbManager& db = dbManager::getInstance();
+    
     user::createSysDBA();
 	login loginWidget;
     loginWidget.show();
