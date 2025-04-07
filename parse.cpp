@@ -89,11 +89,73 @@ void Parse::handleDropDatabase(const std::smatch& m) {
     dbManager().dropDatabase(m[1]);
 }
 
+
 void Parse::handleInsertInto(const std::smatch& m) {
+    // 提取表名
+    std::string tableName = m[1];
+
+    // 提取字段部分并拆分成一个字段名列表
+    std::string columnsStr = m[2];
+    std::vector<std::string> columns = splitString(columnsStr, ',');
+
+    // 提取值部分并拆分成一个值列表
+    std::string valuesStr = m[3];
+    std::vector<std::string> values = splitString(valuesStr, ',');
+
+    // 确保字段和值的数量匹配
+    if (columns.size() != values.size()) {
+        std::cerr << "字段数量与值的数量不匹配!" << std::endl;
+        return;
+    }
+
     Record r;
-    r.insert_record(m[1], m[2], m[3]);
-   
+
+    // 将 columns 和 values 转换为逗号分隔的字符串格式
+    std::string columnsStrFormatted = joinStrings(columns, ',');
+    std::string valuesStrFormatted = joinStrings(values, ',');
+
+    try {
+        // 调用 Record 类的 insert_record 方法，传递表名、字段和值
+        r.insert_record(tableName, columnsStrFormatted, valuesStrFormatted);
+    }
+    catch (const std::exception& e) {
+        std::cerr << "插入操作失败: " << e.what() << std::endl;
+    }
 }
+
+// 用于拆分字符串的函数
+std::vector<std::string> Parse::splitString(const std::string& str, char delimiter) {
+    std::vector<std::string> result;
+    std::string token;
+    std::istringstream tokenStream(str);
+
+    while (std::getline(tokenStream, token, delimiter)) {
+        token = trim(token);  // 调用 trim 去掉前后空白
+        result.push_back(token);
+    }
+    return result;
+}
+
+// 用于连接字符串的函数
+std::string Parse::joinStrings(const std::vector<std::string>& strings, char delimiter) {
+    std::ostringstream oss;
+    for (size_t i = 0; i < strings.size(); ++i) {
+        oss << strings[i];
+        if (i != strings.size() - 1) {
+            oss << delimiter; // 在每个元素后面添加分隔符
+        }
+    }
+    return oss.str();
+}
+
+// 去掉前后空白的函数
+std::string Parse::trim(const std::string& str) {
+    size_t first = str.find_first_not_of(" \t");
+    size_t last = str.find_last_not_of(" \t");
+    return (first == std::string::npos || last == std::string::npos) ? "" : str.substr(first, last - first + 1);
+}
+
+
 
 void Parse::handleSelect(const std::smatch& m) {
     std::string table_name = m[1];
@@ -177,8 +239,6 @@ void Parse::handleUpdateColumn(const std::smatch& match) {
         std::cerr << "表 " << tableName << " 不存在！" << std::endl;
     }
 }
-
-
 
 
 void Parse::handleShowDatabases(const std::smatch& m) {
