@@ -9,21 +9,59 @@ Table::Table(const string& m_db_name,const string& tableName)
     : m_db_name(m_db_name),m_tableName(tableName), m_fieldCount(0), m_recordCount(0) {
     m_createTime = time(0);  // 获取当前时间戳
     m_lastModifyTime = m_createTime; // 初始时创建时间和最后修改时间相同
+    vector<string> filesToCreate = {
+    m_tableName + ".tic", // 表的完整性文件
+    m_tableName + ".trd", // 表的数据文件
+    m_tableName + ".tdf", // 表的定义文件
+    m_tableName + ".tid"  // 表的索引文件
+    };
 
-    // 初始化文件路径
-    // 文件路径使用表名加上相应的扩展名
-    string baseFilePath = tableName;
-    // tdf, tic, trd, tid 文件路径
-    // tdfFilePath = baseFilePath + ".tdf";
-    // ticFilePath = baseFilePath + ".tic";
-    // trdFilePath = baseFilePath + ".trd";
-    // tidFilePath = baseFilePath + ".tid";
+    for (const auto& file : filesToCreate) {
+        ofstream outFile(file);
+        if (!outFile.is_open()) {
+            cerr << "无法创建文件: " << file << endl;
+        }
+        outFile.close();
+        cout << "文件创建成功: " << file << endl;
+    }
     loadMetadata();
+	loadDefine();
+	loadRecord();
+	loadIntegrality();
+	loadIndex();
 }
 
 // 析构函数（待改）
 Table::~Table() {
+    // 删除列的动态分配内存  
+    for (auto& column : m_columns) {
+        // 将 string 类型的成员改为直接清空，而不是 delete[]  
+        column.name.clear();
+        column.type.clear();
+        column.defaultValue.clear();
+    }
+
+    // 删除表的相关文件  
+
+	deleteTableMetadata(); // 删除表的元数据文件
+
+    vector<string> filesToDelete = {
+        m_tableName + ".tic", // 表的完整性文件  
+        m_tableName + ".trd", // 表的数据文件  
+        m_tableName + ".tdf", // 表的定义文件  
+        m_tableName + ".tid"  // 表的索引文件  
+    };
+
+    for (const auto& file : filesToDelete) {
+        if (std::remove(file.c_str()) == 0) {
+            cout << "文件删除成功: " << file << endl;
+        }
+        else {
+            cerr << "文件删除失败: " << file << endl;
+        }
+    }
 }
+
 
 // 获取表的元数据（作用未知）
 /*
@@ -188,6 +226,53 @@ bool Table::loadMetadata() {
         return false;  // 如果未找到表数据，返回false
     }
 
+    return true;
+}
+
+bool Table::deleteTableMetadata() const {
+    // 打开文件进行读取
+    string filename = m_db_name + ".tb";
+    ifstream tbFileIn(filename);
+
+    if (!tbFileIn.is_open()) {
+        cerr << "无法打开元数据文件: " << filename << endl;
+        return false;
+    }
+
+    // 将文件内容读取到字符串流
+    stringstream buffer;
+    buffer << tbFileIn.rdbuf();
+    tbFileIn.close();
+
+    // 将文件内容存储到字符串中进行分析
+    string fileContent = buffer.str();
+
+    // 查找表的元数据部分
+    size_t startPos = fileContent.find("TableName: " + m_tableName);
+    if (startPos == string::npos) {
+        cerr << "未找到表的元数据: " << m_tableName << endl;
+        return false;
+    }
+
+    size_t endPos = fileContent.find("TableName: ", startPos + 1); // 查找下一个表的开始
+    if (endPos == string::npos) {
+        endPos = fileContent.length(); // 如果没有下一个表，则到文件末尾
+    }
+
+    // 删除表的元数据部分
+    fileContent.erase(startPos, endPos - startPos);
+
+    // 将修改后的内容写回文件
+    ofstream tbFileOut(filename, ios::trunc); // 使用截断模式重新写入文件
+    if (!tbFileOut.is_open()) {
+        cerr << "无法写入元数据文件: " << filename << endl;
+        return false;
+    }
+
+    tbFileOut << fileContent;
+    tbFileOut.close();
+
+    cout << "表的元数据已成功删除: " << m_tableName << endl;
     return true;
 }
 
