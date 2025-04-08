@@ -5,7 +5,7 @@
 #include <QMainWindow>
 #include <QTextEdit>
 #include <QPushButton>
-#include"dbManager.h"
+#include"manager/dbManager.h"
 #include <QWidget> 
 
 QT_BEGIN_NAMESPACE

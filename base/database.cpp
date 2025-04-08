@@ -1,3 +1,4 @@
+//建表语句待完善；
 #include "database.h"
 #include <iostream>
 #include <fstream>

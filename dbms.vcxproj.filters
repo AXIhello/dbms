@@ -1,104 +1,96 @@
-﻿<?xml version="1.0" encoding="utf-8"?>
+<?xml version="1.0" encoding="utf-8"?>
 <Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ItemGroup>
-    <Filter Include="Source Files">
-      <UniqueIdentifier>{4FC737F1-C7A5-4376-A066-2A32D752A2FF}</UniqueIdentifier>
-      <Extensions>qml;cpp;c;cc;cxx;def;odl;idl;hpj;bat;asm;asmx</Extensions>
+    <Filter Include="base">
+      <UniqueIdentifier>{F0010000-0000-0000-0000-000000000001}</UniqueIdentifier>
     </Filter>
-    <Filter Include="Header Files">
-      <UniqueIdentifier>{93995380-89BD-4b04-88EB-625FBE52EBFB}</UniqueIdentifier>
-      <Extensions>h;hh;hpp;hxx;hm;inl;inc;xsd</Extensions>
+    <Filter Include="manager">
+      <UniqueIdentifier>{F0010000-0000-0000-0000-000000000002}</UniqueIdentifier>
     </Filter>
-    <Filter Include="Resource Files">
-      <UniqueIdentifier>{67DA6AB6-F800-4c08-8B7A-83BB121AAD01}</UniqueIdentifier>
-      <Extensions>qrc;rc;ico;cur;bmp;dlg;rc2;rct;bin;rgs;gif;jpg;jpeg;jpe;resx;tiff;tif;png;wav;mfcribbon-ms</Extensions>
+    <Filter Include="ui">
+      <UniqueIdentifier>{F0010000-0000-0000-0000-000000000003}</UniqueIdentifier>
     </Filter>
-    <Filter Include="Form Files">
-      <UniqueIdentifier>{99349809-55BA-4b9d-BF79-8FDBB0286EB3}</UniqueIdentifier>
-      <Extensions>ui</Extensions>
-    </Filter>
-    <Filter Include="Translation Files">
-      <UniqueIdentifier>{639EADAA-A684-42e4-A9AD-28FC9BCB8F7C}</UniqueIdentifier>
-      <Extensions>ts</Extensions>
+    <Filter Include="root">
+      <UniqueIdentifier>{F0010000-0000-0000-0000-000000000004}</UniqueIdentifier>
     </Filter>
   </ItemGroup>
+
   <ItemGroup>
-    <QtRcc Include="dbms.qrc">
-      <Filter>Resource Files</Filter>
-    </QtRcc>
-    <QtUic Include="ui\dbms.ui">
-      <Filter>Form Files</Filter>
-    </QtUic>
-  </ItemGroup>
-  <ItemGroup>
-    <ClCompile Include="main.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="base\user.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="ui\login.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
+    <!-- base -->
     <ClCompile Include="base\database.cpp">
-      <Filter>Source Files</Filter>
+      <Filter>base</Filter>
     </ClCompile>
     <ClCompile Include="base\table.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="manager\dbManager.cpp">
-      <Filter>Source Files</Filter>
+      <Filter>base</Filter>
     </ClCompile>
     <ClCompile Include="base\Record.cpp">
-      <Filter>Source Files</Filter>
+      <Filter>base</Filter>
     </ClCompile>
-    <ClCompile Include="ui\mainWindow.cpp">
-      <Filter>Source Files</Filter>
+    <ClCompile Include="base\user.cpp">
+      <Filter>base</Filter>
     </ClCompile>
-    <ClCompile Include="manager\parse.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="ui\output.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-  </ItemGroup>
-  <ItemGroup>
-    <ClInclude Include="base\user.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
     <ClInclude Include="base\database.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="manager\dbManager.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="base\Record.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="manager\parse.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="ui\output.h">
-      <Filter>Header Files</Filter>
+      <Filter>base</Filter>
     </ClInclude>
     <ClInclude Include="base\table.h">
-      <Filter>Header Files</Filter>
+      <Filter>base</Filter>
     </ClInclude>
-  </ItemGroup>
-  <ItemGroup>
-    <QtMoc Include="ui\login.h">
-      <Filter>Header Files</Filter>
-    </QtMoc>
+    <ClInclude Include="base\Record.h">
+      <Filter>base</Filter>
+    </ClInclude>
+    <ClInclude Include="base\user.h">
+      <Filter>base</Filter>
+    </ClInclude>
+
+    <!-- manager -->
+    <ClCompile Include="manager\dbManager.cpp">
+      <Filter>manager</Filter>
+    </ClCompile>
+    <ClCompile Include="manager\parse.cpp">
+      <Filter>manager</Filter>
+    </ClCompile>
+    <ClInclude Include="manager\dbManager.h">
+      <Filter>manager</Filter>
+    </ClInclude>
+    <ClInclude Include="manager\parse.h">
+      <Filter>manager</Filter>
+    </ClInclude>
+
+    <!-- ui -->
+    <ClCompile Include="ui\login.cpp">
+      <Filter>ui</Filter>
+    </ClCompile>
+    <ClCompile Include="ui\mainWindow.cpp">
+      <Filter>ui</Filter>
+    </ClCompile>
+    <ClCompile Include="ui\output.cpp">
+      <Filter>ui</Filter>
+    </ClCompile>
+    <ClInclude Include="ui\output.h">
+      <Filter>ui</Filter>
+    </ClInclude>
     <QtMoc Include="ui\mainWindow.h">
-      <Filter>Header Files</Filter>
+      <Filter>ui</Filter>
     </QtMoc>
-  </ItemGroup>
-  <ItemGroup>
-    <QtUic Include="ui\login.ui">
-      <Filter>Form Files</Filter>
-    </QtUic>
+    <QtMoc Include="ui\login.h">
+      <Filter>ui</Filter>
+    </QtMoc>
     <QtUic Include="ui\MainWindow.ui">
-      <Filter>Form Files</Filter>
+      <Filter>ui</Filter>
     </QtUic>
+    <QtUic Include="ui\login.ui">
+      <Filter>ui</Filter>
+    </QtUic>
+    <QtUic Include="ui\dbms.ui">
+      <Filter>ui</Filter>
+    </QtUic>
+
+    <!-- root -->
+    <ClCompile Include="main.cpp">
+      <Filter>root</Filter>
+    </ClCompile>
+    <QtRcc Include="dbms.qrc">
+      <Filter>root</Filter>
+    </QtRcc>
   </ItemGroup>
 </Project>

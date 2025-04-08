@@ -43,8 +43,9 @@ void Parse::registerPatterns() {
         [this](const std::smatch& m) { handleShowDatabases(m); }
         });
 
+    //待修改：建表的同时规定表结构
     patterns.push_back({
-    std::regex(R"(^CREATE\s+TABLE\s+(\w+)\s*\(.*\)\s*;?$)", std::regex::icase),
+    std::regex(R"(^CREATE\s+TABLE\s+(\w+)\s*\((.*)\)\s*;?$)", std::regex::icase),
     [this](const std::smatch& m) { handleCreateTable(m); }
         });
 
@@ -52,6 +53,7 @@ void Parse::registerPatterns() {
     std::regex(R"(DROP\s+TABLE\s+(\w+);)", std::regex::icase),
     [this](const std::smatch& m) { handleDropTable(m); }
         });
+
 
     patterns.push_back({
         std::regex(R"(^SHOW\s+TABLES\s*;$)", std::regex::icase),
