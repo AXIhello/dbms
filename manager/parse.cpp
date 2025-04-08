@@ -139,6 +139,7 @@ void Parse::handleShowDatabases(const std::smatch& m) {
 
 void Parse::handleCreateTable(const std::smatch& match) {
     std::string tableName = match[1];
+    std::string rawDefinition = match[2]; // 字段部分，如 id INT, name CHAR(20)
 
     // 获取当前数据库
     Database* db = dbManager::getInstance().getCurrentDatabase();
