@@ -43,6 +43,11 @@ void Parse::registerPatterns() {
         [this](const std::smatch& m) { handleShowDatabases(m); }
         });
 
+    patterns.push_back({
+    std::regex(R"(^SELECT\s+DATABASE\s*\(\s*\)\s*;?$)", std::regex::icase),
+    [this](const std::smatch& m) { handleSelectDatabase(); }
+        });
+
     //待修改：建表的同时规定表结构
     patterns.push_back({
     std::regex(R"(^CREATE\s+TABLE\s+(\w+)\s*\((.*)\)\s*;?$)", std::regex::icase),
@@ -129,15 +134,20 @@ void Parse::handleUseDatabase(const std::smatch& m) {
 void Parse::handleShowDatabases(const std::smatch& m) {
     auto dbs = dbManager::getInstance().getDatabaseList();
 
-    if (dbs.empty()) {
-        std::cout << "没有任何数据库存在。" << std::endl;
+    Output::printDatabaseList(outputEdit, dbs);
+}
+
+void Parse::handleSelectDatabase() {
+    try {
+        std::string dbName = dbManager::getInstance().getCurrentDatabase()->getDBName();
+        Output::printMessage(outputEdit, "当前数据库为： " + QString::fromStdString(dbName));
     }
-    else {
-        for (const auto& name : dbs) {
-            std::cout << "数据库: " << name << std::endl;
-        }
+    catch (const std::exception& e) {
+        Output::printError(outputEdit, e.what());
     }
 }
+
+
 
 void Parse::handleCreateTable(const std::smatch& match) {
     std::string tableName = match[1];

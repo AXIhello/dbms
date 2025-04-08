@@ -15,15 +15,6 @@ public:
     Database(const std::string& db_name);
     ~Database();
 
-	//获取所有表名
-	std::vector<std::string> getAllTableNames() const {
-		std::vector<std::string> tableNames;
-        for (const auto& pair : m_tables) {
-            tableNames.push_back(pair.first);
-        }
-		return tableNames;
-	}
-
     // 创建表
     void createTable(const std::string& table_name);
 
@@ -39,6 +30,10 @@ public:
     // 加载和保存数据库
     void loadTable(const std::string& table_name);
     void saveTable(const std::string& table_name);
+
+	std::string getDBName() {
+		return m_db_name;
+	}
 
 private:
     std::string m_db_name;   // 数据库名称

@@ -27,8 +27,8 @@ Table::Table(const string& m_db_name,const string& tableName)
     loadMetadata();
 	loadDefine();
 	loadRecord();
-	loadIntegrality();
-	loadIndex();
+	//loadIntegrality();
+	//loadIndex(); 未实现
 }
 
 // 析构函数（待改）

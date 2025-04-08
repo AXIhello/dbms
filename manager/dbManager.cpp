@@ -249,8 +249,12 @@ void dbManager::useDatabase(const std::string& db_name) {
 }
 
 Database* dbManager::getCurrentDatabase() {
+    if (!currentDB) {
+        throw std::runtime_error("当前未选择数据库");
+    }
     return currentDB;
 }
+
 
 bool dbManager::databaseExists(const std::string& dbName) {
     std::string dbPath = basePath + "/data/" + dbName;

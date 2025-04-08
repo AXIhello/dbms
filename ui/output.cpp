@@ -37,3 +37,21 @@ void Output::printError(QTextEdit* outputEdit, const QString& error) {
     if (!outputEdit) return;
     outputEdit->append("[错误] " + error);
 }
+
+void Output::printDatabaseList(QTextEdit* outputEdit, const std::vector<std::string>& dbs) {
+    if (!outputEdit) return;
+
+    if (dbs.empty()) {
+        outputEdit->append("无数据库可用。");
+        return;
+    }
+
+    outputEdit->append("数据库列表：");
+    outputEdit->append("------------------");
+
+    for (const auto& name : dbs) {
+        outputEdit->append(QString::fromStdString(name));
+    }
+
+    outputEdit->append("------------------");
+}
