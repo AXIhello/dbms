@@ -64,7 +64,9 @@ Table* Database::getTable(const std::string& table_name) {
 
 //返回调用的数据库的所有表名
 std::vector<std::string> Database::getAllTableNames() const {
-
+    std::vector<std::string> tableNames;
+    
+    return tableNames;
 }
 // 从文件加载数据库数据
 void Database::loadTable(const std::string& table_name) {
