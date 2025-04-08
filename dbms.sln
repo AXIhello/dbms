@@ -1,7 +1,7 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio Version 17
-VisualStudioVersion = 17.13.35828.75 d17.13
+VisualStudioVersion = 17.13.35913.81 d17.13
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "dbms", "dbms.vcxproj", "{644417FB-2F0B-45B6-8792-751047E630DD}"
 EndProject
@@ -20,6 +20,6 @@ Global
 		HideSolutionNode = FALSE
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
-		SolutionGuid = {A604795B-A34F-436E-86A9-DD71D94FFBE3}
+		SolutionGuid = {0A7231E8-DBA2-429F-9759-435E9DD37E6A}
 	EndGlobalSection
 EndGlobal
