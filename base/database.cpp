@@ -50,6 +50,7 @@ void Database::dropTable(const std::string& table_name) {
     std::cout << "表 " << table_name << " 已成功删除" << std::endl;
 }
 
+
 // 查找表√
 Table* Database::getTable(const std::string& table_name) {
     auto it = m_tables.find(table_name);
@@ -60,6 +61,10 @@ Table* Database::getTable(const std::string& table_name) {
     return nullptr;
 }
 
+//返回调用的数据库的所有表名
+std::vector<std::string> Database::getAllTableNames() const {
+
+}
 // 从文件加载数据库数据
 void Database::loadTable(const std::string& table_name) {
 

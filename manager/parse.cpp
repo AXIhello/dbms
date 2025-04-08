@@ -29,12 +29,18 @@ void Parse::registerPatterns() {
         });
 
     patterns.push_back({
+    std::regex(R"(^USE\s+(?:DATABASE\s+)?(\w+);$)", std::regex::icase),
+    [this](const std::smatch& m) { handleUseDatabase(m); }
+        });
+
+    patterns.push_back({
         std::regex(R"(^DROP\s+DATABASE\s+(\w+);$)", std::regex::icase),
         [this](const std::smatch& m) { handleDropDatabase(m); }
         });
+
     patterns.push_back({
-    std::regex(R"(^USE\s+(?:DATABASE\s+)?(\w+);$)", std::regex::icase),
-    [this](const std::smatch& m) { handleUseDatabase(m); }
+        std::regex(R"(^SHOW\s+DATABASES\s*;$)", std::regex::icase),
+        [this](const std::smatch& m) { handleShowDatabases(m); }
         });
 
     patterns.push_back({
@@ -42,6 +48,15 @@ void Parse::registerPatterns() {
     [this](const std::smatch& m) { handleCreateTable(m); }
         });
 
+    patterns.push_back({
+    std::regex(R"(DROP\s+TABLE\s+(\w+);)", std::regex::icase),
+    [this](const std::smatch& m) { handleDropTable(m); }
+        });
+
+    patterns.push_back({
+        std::regex(R"(^SHOW\s+TABLES\s*;$)", std::regex::icase),
+        [this](const std::smatch& m) { handleShowTables(m); }
+        });
 
     patterns.push_back({
         std::regex(R"(^INSERT\s+INTO\s+(\w+)\s*\(([^)]+)\)\s*VALUES\s*\(([^)]+)\);$)", std::regex::icase),
@@ -68,17 +83,6 @@ void Parse::registerPatterns() {
         [this](const std::smatch& m) { handleUpdateColumn(m); }
         });
 
-    patterns.push_back({
-        std::regex(R"(^SHOW\s+DATABASES\s*;$)", std::regex::icase),
-        [this](const std::smatch& m) { handleShowDatabases(m); }
-        });
-
-    patterns.push_back({
-        std::regex(R"(^SHOW\s+TABLES\s*;$)", std::regex::icase),
-        [this](const std::smatch& m) { handleShowTables(m); }
-        });
-
-
 }
 
 void Parse::execute(const QString& sql_qt) {
@@ -104,7 +108,6 @@ void Parse::handleDropDatabase(const std::smatch& m) {
     Output::printMessage(outputEdit, "数据库 '" + QString::fromStdString(m[1]) + "' 删除成功！");
 }
 
-
 void Parse::handleUseDatabase(const std::smatch& m) {
     std::string dbName = m[1];
 
@@ -121,6 +124,87 @@ void Parse::handleUseDatabase(const std::smatch& m) {
     }
 }
 
+void Parse::handleShowDatabases(const std::smatch& m) {
+    auto dbs = dbManager::getInstance().getDatabaseList();
+
+    if (dbs.empty()) {
+        std::cout << "没有任何数据库存在。" << std::endl;
+    }
+    else {
+        for (const auto& name : dbs) {
+            std::cout << "数据库: " << name << std::endl;
+        }
+    }
+}
+
+void Parse::handleCreateTable(const std::smatch& match) {
+    std::string tableName = match[1];
+
+    // 获取当前数据库
+    Database* db = dbManager::getInstance().getCurrentDatabase();
+    if (!db) {
+        // 如果没有选择数据库，给用户提示
+        Output::printError(outputEdit, "请先使用 USE 语句选择数据库");
+        return;
+    }
+
+    // 创建表
+    db->createTable(tableName);
+
+    // 输出创建成功信息
+    QString message = "表 " + QString::fromStdString(tableName) + " 创建成功";
+    Output::printMessage(outputEdit, message);
+}
+
+void Parse::handleDropTable(const std::smatch& match) {
+    std::string tableName = match[1];
+
+    // 获取当前数据库
+    Database* db = dbManager::getInstance().getCurrentDatabase();
+    if (!db) {
+        Output::printError(outputEdit, "请先使用 USE 语句选择数据库");
+        return;
+    }
+
+    // 检查表是否存在
+    if (!db->getTable(tableName)) {
+        QString error = "表 " + QString::fromStdString(tableName) + " 不存在";
+        Output::printError(outputEdit, error);
+        return;
+    }
+
+    // 删除表
+    db->dropTable(tableName);
+
+    // 输出删除成功信息
+    QString message = "表 " + QString::fromStdString(tableName) + " 删除成功";
+    Output::printMessage(outputEdit, message);
+}
+
+void Parse::handleShowTables(const std::smatch& m) {
+    // 获取当前数据库
+    Database* db = dbManager::getInstance().getCurrentDatabase();
+    if (!db) {
+        Output::printError(outputEdit, "请先使用 USE 语句选择数据库");
+        return;
+    }
+
+    // 获取表名列表
+    std::vector<std::string> tableNames = db->getAllTableNames();
+
+    if (tableNames.empty()) {
+        Output::printMessage(outputEdit, "当前数据库中没有表");
+        return;
+    }
+
+    // 构造输出内容
+    QString message = "当前数据库中的表：\n";
+    for (const auto& name : tableNames) {
+        message += QString::fromStdString(name) + "\n";
+    }
+
+    Output::printMessage(outputEdit, message);
+}
 
 
 void Parse::handleInsertInto(const std::smatch& m) {
@@ -268,45 +352,6 @@ void Parse::handleUpdateColumn(const std::smatch& match) {
     else {
         std::cerr << "表 " << tableName << " 不存在！" << std::endl;
     }
-}
-
-
-void Parse::handleShowDatabases(const std::smatch& m) {
-   auto dbs = dbManager::getInstance().getDatabaseList();
-
-    if (dbs.empty()) {
-        std::cout << "没有任何数据库存在。" << std::endl;
-    }
-    else {
-        for (const auto& name : dbs) {
-            std::cout << "数据库: " << name << std::endl;
-        }
-    }
-}
-void Parse:: handleShowTables(const std::smatch& m) {
-
-}
-void Parse::handleShowColumns(const std::smatch& m) {
-
-}
-
-void Parse::handleCreateTable(const std::smatch& match) {
-    std::string tableName = match[1];
-
-    // 获取当前数据库
-    Database* db = dbManager::getInstance().getCurrentDatabase();
-    if (!db) {
-        // 如果没有选择数据库，给用户提示
-        Output::printError(outputEdit, "请先使用 USE 语句选择数据库");
-        return;
-    }
-
-    // 创建表
-    db->createTable(tableName);
-
-    // 输出创建成功信息
-    QString message = "表 " + QString::fromStdString(tableName) + " 创建成功";
-    Output::printMessage(outputEdit, message);
 }
 
 

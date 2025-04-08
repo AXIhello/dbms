@@ -45,6 +45,8 @@ private:
     void handleShowTables(const std::smatch& m);
     void handleShowColumns(const std::smatch& m);
 
+    void handleDropTable(const std::smatch& m);
+
     Database* db;
 };
 

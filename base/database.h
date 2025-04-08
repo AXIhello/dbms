@@ -23,6 +23,9 @@ public:
     // 查找表
     Table* getTable(const std::string& table_name);
 
+    //返回指定数据库的所有表名
+    std::vector<std::string> getAllTableNames() const;
+
     // 加载和保存数据库
     void loadTable(const std::string& table_name);
     void saveTable(const std::string& table_name);
