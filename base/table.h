@@ -54,6 +54,7 @@ public:
     // 表相关文件的方法（例如保存表的元数据等）
     bool saveMetadata()const;
     bool loadMetadata();
+	bool deleteTableMetadata()const;
 
     bool saveDefine()const;
     bool loadDefine();
