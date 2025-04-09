@@ -330,12 +330,255 @@ const std::vector<std::string>& Record::get_values() const {
     return values;
 }
 
-void Record::update(const std::string& tableName, const std::string& alterCommand) {
-   
-    
-}
-void Record::delete_(const std::string& tableName, const std::string& condition) {
+void Record::update(const std::string& tableName, const std::string& setClause, const std::string& condition) {
+    this->table_name = tableName;
 
+    // 检查表是否存在
+    if (!table_exists(this->table_name)) {
+        throw std::runtime_error("表 '" + this->table_name + "' 不存在。");
+    }
+
+    // 读取表结构
+    read_table_structure();
+
+    // 解析SET子句
+    std::unordered_map<std::string, std::string> update_values;
+    std::istringstream set_stream(setClause);
+    std::string pair;
+
+    while (std::getline(set_stream, pair, ',')) {
+        // 去除前后空格
+        pair.erase(0, pair.find_first_not_of(" \t"));
+        pair.erase(pair.find_last_not_of(" \t") + 1);
+
+        // 查找等号位置
+        size_t eq_pos = pair.find('=');
+        if (eq_pos == std::string::npos) {
+            throw std::runtime_error("无效的SET子句格式: " + pair);
+        }
+
+        // 提取字段名和新值
+        std::string field = pair.substr(0, eq_pos);
+        std::string value = pair.substr(eq_pos + 1);
+
+        // 去除字段和值的前后空格
+        field.erase(0, field.find_first_not_of(" \t"));
+        field.erase(field.find_last_not_of(" \t") + 1);
+        value.erase(0, value.find_first_not_of(" \t"));
+        value.erase(value.find_last_not_of(" \t") + 1);
+
+        // 检查字段是否存在
+        if (table_structure.find(field) == table_structure.end()) {
+            throw std::runtime_error("字段 '" + field + "' 不存在于表 '" + this->table_name + "' 中。");
+        }
+
+        // 验证值的类型
+        if (!is_valid_type(value, table_structure[field])) {
+            throw std::runtime_error("值 '" + value + "' 的类型与字段 '" + field + "' 的类型不匹配。");
+        }
+
+        update_values[field] = value;
+    }
+
+    // 如果没有要更新的字段，则退出
+    if (update_values.empty()) {
+        throw std::runtime_error("没有提供要更新的字段。");
+    }
+
+    // 解析条件
+    if (!condition.empty()) {
+        parse_condition(condition);
+    }
+
+    // 执行更新操作
+    // 1. 读取现有记录
+    std::string trd_filename = this->table_name + ".trd";
+    std::string temp_filename = this->table_name + ".tmp";
+    std::ifstream infile(trd_filename);
+    std::ofstream outfile(temp_filename);
+
+    if (!infile) {
+        throw std::runtime_error("无法打开表数据文件: " + trd_filename);
+    }
+
+    if (!outfile) {
+        throw std::runtime_error("无法创建临时文件: " + temp_filename);
+    }
+
+    std::string line;
+    int updated_count = 0;
+
+    // 读取并处理每一行记录
+    while (std::getline(infile, line)) {
+        // 解析记录行
+        std::unordered_map<std::string, std::string> record_data;
+        std::string field_value_pair;
+        std::stringstream ss(line);
+        bool is_valid_record = true;
+
+        // 处理每个字段值对
+        while (std::getline(ss, field_value_pair, ',')) {
+            // 如果遇到END标记，结束当前记录的解析
+            if (field_value_pair == "END") {
+                break;
+            }
+
+            // 分割字段名和值
+            size_t dot_pos = field_value_pair.find('.');
+            if (dot_pos != std::string::npos) {
+                std::string field = field_value_pair.substr(0, dot_pos);
+                std::string value = field_value_pair.substr(dot_pos + 1);
+
+                // 存储字段和值
+                record_data[field] = value;
+            }
+            else {
+                is_valid_record = false;
+                break;
+            }
+        }
+
+        if (!is_valid_record) {
+            // 如果记录格式不正确，保持原样写入
+            outfile << line << std::endl;
+            continue;
+        }
+
+        // 检查记录是否满足条件
+        if (condition.empty() || matches_condition(record_data)) {
+            // 更新满足条件的记录
+            for (const auto& [field, new_value] : update_values) {
+                record_data[field] = new_value;
+            }
+            updated_count++;
+        }
+
+        // 将更新后的记录写回文件
+        bool first = true;
+        for (const auto& [field, value] : record_data) {
+            if (!first) outfile << ",";
+            outfile << field << "." << value;
+            first = false;
+        }
+        outfile << ",END" << std::endl;
+    }
+
+    infile.close();
+    outfile.close();
+
+    // 替换原文件
+    if (std::remove(trd_filename.c_str()) != 0) {
+        std::remove(temp_filename.c_str());
+        throw std::runtime_error("无法删除原表数据文件。");
+    }
+
+    if (std::rename(temp_filename.c_str(), trd_filename.c_str()) != 0) {
+        throw std::runtime_error("无法重命名临时文件。");
+    }
+
+    std::cout << "成功更新了 " << updated_count << " 条记录。" << std::endl;
+}
+
+void Record::delete_(const std::string& tableName, const std::string& condition) {
+    this->table_name = tableName;
+
+    // 检查表是否存在
+    if (!table_exists(this->table_name)) {
+        throw std::runtime_error("表 '" + this->table_name + "' 不存在。");
+    }
+
+    // 读取表结构
+    read_table_structure();
+
+    // 解析条件
+    if (!condition.empty()) {
+        try {
+            parse_condition(condition);
+        }
+        catch (const std::exception& e) {
+            throw std::runtime_error("条件解析错误: " + std::string(e.what()));
+        }
+    }
+
+    // 执行删除操作
+    // 1. 读取现有记录
+    std::string trd_filename = this->table_name + ".trd";
+    std::string temp_filename = this->table_name + ".tmp";
+    std::ifstream infile(trd_filename);
+    std::ofstream outfile(temp_filename);
+
+    if (!infile) {
+        throw std::runtime_error("无法打开表数据文件: " + trd_filename);
+    }
+
+    if (!outfile) {
+        throw std::runtime_error("无法创建临时文件: " + temp_filename);
+    }
+
+    std::string line;
+    int deleted_count = 0;
+
+    // 读取并处理每一行记录
+    while (std::getline(infile, line)) {
+        // 解析记录行
+        std::unordered_map<std::string, std::string> record_data;
+        std::string field_value_pair;
+        std::stringstream ss(line);
+        bool is_valid_record = true;
+
+        // 处理每个字段值对
+        while (std::getline(ss, field_value_pair, ',')) {
+            // 如果遇到END标记，结束当前记录的解析
+            if (field_value_pair == "END") {
+                break;
+            }
+
+            // 分割字段名和值
+            size_t dot_pos = field_value_pair.find('.');
+            if (dot_pos != std::string::npos) {
+                std::string field = field_value_pair.substr(0, dot_pos);
+                std::string value = field_value_pair.substr(dot_pos + 1);
+
+                // 存储字段和值
+                record_data[field] = value;
+            }
+            else {
+                is_valid_record = false;
+                break;
+            }
+        }
+
+        if (!is_valid_record) {
+            // 如果记录格式不正确，保持原样写入
+            outfile << line << std::endl;
+            continue;
+        }
+
+        // 检查记录是否满足条件
+        if (!condition.empty() && !matches_condition(record_data)) {
+            // 不满足删除条件，保留记录
+            outfile << line << std::endl;
+        }
+        else {
+            // 满足删除条件，不写入（即删除）
+            deleted_count++;
+        }
+    }
+
+    infile.close();
+    outfile.close();
+
+    // 替换原文件
+    if (std::remove(trd_filename.c_str()) != 0) {
+        std::remove(temp_filename.c_str());
+        throw std::runtime_error("无法删除原表数据文件。");
+    }
+
+    if (std::rename(temp_filename.c_str(), trd_filename.c_str()) != 0) {
+        throw std::runtime_error("无法重命名临时文件。");
+    }
+
+    std::cout << "成功删除了 " << deleted_count << " 条记录。" << std::endl;
 }
 // 实现条件解析方法
 void Record::parse_condition(const std::string& condition) {
