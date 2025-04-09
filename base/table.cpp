@@ -3,33 +3,15 @@
 #include <ctime>
 #include <cstring>
 #include <iomanip>
+#include"manager/dbManager.h"
 
 // 构造函数，初始化表的相关信息√
-Table::Table(const string& m_db_name,const string& tableName)
-    : m_db_name(m_db_name),m_tableName(tableName), m_fieldCount(0), m_recordCount(0) {
-    m_createTime = time(0);  // 获取当前时间戳
-    m_lastModifyTime = m_createTime; // 初始时创建时间和最后修改时间相同
-    vector<string> filesToCreate = {
-    m_tableName + ".tic", // 表的完整性文件
-    m_tableName + ".trd", // 表的数据文件
-    m_tableName + ".tdf", // 表的定义文件
-    m_tableName + ".tid"  // 表的索引文件
-    };
-
-    for (const auto& file : filesToCreate) {
-        ofstream outFile(file);
-        if (!outFile.is_open()) {
-            cerr << "无法创建文件: " << file << endl;
-        }
-        outFile.close();
-        cout << "文件创建成功: " << file << endl;
-    }
-    loadMetadata();
-	loadDefine();
-	loadRecord();
-	//loadIntegrality();
-	//loadIndex(); 未实现
+Table::Table(const std::string& dbName, const std::string& tableName)
+    : m_db_name(dbName), m_tableName(tableName), m_fieldCount(0), m_recordCount(0) {
+    m_createTime = time(0);
+    m_lastModifyTime = m_createTime;
 }
+
 
 // 析构函数（待改）
 Table::~Table() {
@@ -62,6 +44,32 @@ Table::~Table() {
     }
 }
 
+void Table::load()
+{
+    loadMetadata();
+    loadDefine();
+    loadRecord();
+    // loadIntegrality(); // 未实现
+    // loadIndex();       // 未实现
+}
+
+void Table::initializeNew() {
+    std::string fullPath = dbManager::basePath + "/data/" + m_db_name + "/" + m_tableName;
+    std::vector<std::string> filesToCreate = {
+        fullPath + ".tic",
+        fullPath + ".trd",
+        fullPath + ".tdf",
+        fullPath + ".tid"
+    };
+
+    for (const auto& file : filesToCreate) {
+        std::ofstream outFile(file);
+        if (!outFile.is_open()) {
+            throw std::runtime_error("无法创建文件: " + file);
+        }
+        outFile.close();
+    }
+}
 
 // 获取表的元数据（作用未知）
 /*
@@ -121,8 +129,8 @@ string Table::timeToString(time_t time) const {
 // 保存表的元数据（待验证）
 bool Table::saveMetadata()  const {
     // 打开文件进行读取和写入
-    string filename = m_db_name + ".tb";
-    ifstream tbFileIn(filename); // 打开文件读取
+    std::string fullPath = dbManager::basePath + "/data/" + m_db_name + "/" + m_db_name + ".tb";
+    ifstream tbFileIn(fullPath); // 打开文件读取
 
     // 如果文件存在且可读，则检查表是否已经存在
     bool tableExists = false;
@@ -142,10 +150,10 @@ bool Table::saveMetadata()  const {
     }
 
     // 打开文件进行写入（如果文件不存在则创建）
-    ofstream tbFileOut(filename, ios::trunc); // 使用截断模式，重新写入文件
+    ofstream tbFileOut(fullPath, ios::trunc); // 使用截断模式，重新写入文件
 
     if (!tbFileOut.is_open()) {
-        cerr << "无法保存元数据文件: " << filename << endl;
+        cerr << "无法保存元数据文件: " << m_db_name+".tb" << endl;
         return false;
     }
 
@@ -279,11 +287,12 @@ bool Table::deleteTableMetadata() const {
 //表定义文件操作
 // 保存表的定义（待验证）
 bool Table::saveDefine() const {
-    string filename = m_db_name + ".tdf";
-    ofstream tbFileOut(filename, ios::trunc);  // 使用截断模式，重新写入文件
+    std::string fullPath = dbManager::basePath + "/data/" + m_db_name + "/" + m_tableName + ".tdf";
+
+    ofstream tbFileOut(fullPath, ios::trunc);  // 使用截断模式，重新写入文件
 
     if (!tbFileOut.is_open()) {
-        cerr << "无法保存表的定义文件: " << filename << endl;
+        cerr << "无法保存表的定义文件: " << m_tableName + ".tdf" << endl;
         return false;
     }
 

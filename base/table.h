@@ -26,6 +26,9 @@ public:
 
     ~Table();
 
+    void load();
+    void initializeNew();
+
 	//获取表名
 	string getTableName() const { return m_tableName; }
 

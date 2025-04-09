@@ -16,7 +16,10 @@ public:
     ~Database();
 
     // 创建表
-    void createTable(const std::string& table_name);
+   // void createTable(const std::string& table_name);
+	// 创建表（带字段定义）
+    void createTable(const std::string& table_name, const std::vector<Table::Column>& columns);
+
 
     // 删除表
     void dropTable(const std::string& table_name);
@@ -26,8 +29,9 @@ public:
 
     //返回指定数据库的所有表名
     std::vector<std::string> getAllTableNames() const;
+    std::string getDBPath() const;
 
-    // 加载和保存数据库
+    // 加载和保存数据库 
     void loadTable(const std::string& table_name);
     void saveTable(const std::string& table_name);
 
@@ -36,6 +40,7 @@ public:
 	}
 
 private:
+    std::string m_db_path; //数据库路径
     std::string m_db_name;   // 数据库名称
     //std::string m_db_file = m_db_name + ".tb";
     std::map<std::string, Table*> m_tables;  // 存储所有表

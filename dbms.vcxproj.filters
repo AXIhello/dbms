@@ -14,7 +14,6 @@
       <UniqueIdentifier>{F0010000-0000-0000-0000-000000000004}</UniqueIdentifier>
     </Filter>
   </ItemGroup>
-
   <ItemGroup>
     <!-- base -->
     <ClCompile Include="base\database.cpp">
@@ -41,7 +40,6 @@
     <ClInclude Include="base\user.h">
       <Filter>base</Filter>
     </ClInclude>
-
     <!-- manager -->
     <ClCompile Include="manager\dbManager.cpp">
       <Filter>manager</Filter>
@@ -55,7 +53,6 @@
     <ClInclude Include="manager\parse.h">
       <Filter>manager</Filter>
     </ClInclude>
-
     <!-- ui -->
     <ClCompile Include="ui\login.cpp">
       <Filter>ui</Filter>
@@ -84,7 +81,6 @@
     <QtUic Include="ui\dbms.ui">
       <Filter>ui</Filter>
     </QtUic>
-
     <!-- root -->
     <ClCompile Include="main.cpp">
       <Filter>root</Filter>
@@ -92,5 +88,16 @@
     <QtRcc Include="dbms.qrc">
       <Filter>root</Filter>
     </QtRcc>
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="tableBlock.h">
+      <Filter>base</Filter>
+    </ClInclude>
+    <ClInclude Include="databaseBlock.h">
+      <Filter>base</Filter>
+    </ClInclude>
+    <ClInclude Include="fieldBlock.h">
+      <Filter>base</Filter>
+    </ClInclude>
   </ItemGroup>
 </Project>

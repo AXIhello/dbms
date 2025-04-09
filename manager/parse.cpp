@@ -161,17 +161,8 @@ void Parse::handleCreateTable(const std::smatch& match) {
         return;
     }
 
-    // 创建空表
-    db->createTable(tableName);
-
-    // 获取创建的表指针
-    Table* table = db->getTable(tableName);
-    if (!table) {
-        Output::printError(outputEdit, "表创建失败");
-        return;
-    }
-
-    // 解析字段结构并添加
+    // 解析字段定义
+    std::vector<Table::Column> columns;
     std::regex colPattern(R"((\w+)\s+(\w+)(?:\((\d+)\))?)");  // 支持 name CHAR(10)
     auto begin = std::sregex_iterator(rawDefinition.begin(), rawDefinition.end(), colPattern);
     auto end = std::sregex_iterator();
@@ -183,12 +174,17 @@ void Parse::handleCreateTable(const std::smatch& match) {
         col.type = m[2];
         col.size = m[3].matched ? std::stoi(m[3]) : 4; // 默认大小 4
         col.defaultValue = ""; // 可后续扩展 default
-        table->addCol(col);
+        columns.push_back(col);
     }
 
-    // 保存字段定义到磁盘
-    if (!table->saveDefine()) {
-        Output::printError(outputEdit, "保存表结构失败");
+    // 异常捕获部分
+    try {
+        // 传递 tableName 和 columns 参数到 createTable 方法
+        db->createTable(tableName, columns);
+    }
+    catch (const std::exception& e) {
+        // 将 std::string 转换为 QString
+        Output::printError(outputEdit, "表创建失败: " + QString::fromStdString(e.what()));
         return;
     }
 
@@ -196,6 +192,8 @@ void Parse::handleCreateTable(const std::smatch& match) {
     QString message = "表 " + QString::fromStdString(tableName) + " 创建成功";
     Output::printMessage(outputEdit, message);
 }
+
+
 
 void Parse::handleDropTable(const std::smatch& match) {
     std::string tableName = match[1];

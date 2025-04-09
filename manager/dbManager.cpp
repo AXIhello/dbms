@@ -5,11 +5,11 @@
 #include <filesystem>
 
 namespace fs = std::filesystem;
+std::string dbManager::basePath = std::filesystem::current_path().string() + "/DBMS_ROOT";
 
 // 构造函数
 dbManager::dbManager() {
-    // 默认将 DBMS_ROOT 设置在当前工程文件夹下（便于测试）
-    basePath = std::filesystem::current_path().string() + "/DBMS_ROOT";
+
 
     if (!fs::exists(basePath)) {
         fs::create_directory(basePath);
@@ -164,6 +164,7 @@ void dbManager::dropDatabase(const std::string& db_name) {
         std::cerr << "数据库" << db_name << "正在使用！" << std::endl;
         return;
     }
+ 
 
     //从.db文件中删除
 	removeDatabaseInfo(db_name);
@@ -241,8 +242,7 @@ void dbManager::useDatabase(const std::string& db_name) {
         delete currentDB;  // 清理旧数据库实例
     }
 
-    std::string dbPath = basePath + "/data/" + db_name + "/" + db_name;
-    currentDB = new Database(dbPath);  // 传入路径前缀
+    currentDB = new Database(db_name);  // 传入数据库名；路径构造在Database中完成
     currentDBName = db_name;
 
     std::cout << "当前数据库已切换为: " << db_name << std::endl;

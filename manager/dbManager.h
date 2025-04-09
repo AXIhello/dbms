@@ -8,20 +8,17 @@
 #include"base/database.h"
 #include <unordered_map>
 #include <chrono>  // 添加此行以包含 std::chrono
+#include"databaseBlock.h"
 
 namespace fs = std::filesystem;
 
-struct DatabaseBlock {
-    char dbName[128];  // 修正数组声明
-    bool type;  // 0: 系统数据库；1: 用户数据库
-    char filename[259];  // 修正数组声明
-    time_t crtime;  // 创建时间
-};
+
 
 class dbManager {
 public:
     static dbManager& getInstance(); // 获取全局唯一实例
     Database* getCurrentDatabase();
+	static std::string basePath;  // 根目录
 
     void createDatabaseFolder(const std::string& db_name);  // 创建数据库文件夹
     void createDatabaseFiles(const std::string& db_name);  // 创建数据库文件（tb, log）
@@ -55,7 +52,7 @@ private:
    
 	
 private:
-    std::string basePath;  // 根目录
+    //std::string basePath;  // 根目录
     const std::string systemDBFile = "ruanko.db";  // 系统数据库文件名(后期可更改）
     Database* currentDB = nullptr;
     std::string currentDBName;
