@@ -5,9 +5,10 @@
 #include <fstream>
 #include <string>
 #include <vector>
+#include"fieldBlock.h"
 #include <ctime>
 #include <sstream>
-
+#include"tableBlock.h"
 using namespace std;
 
 
@@ -56,11 +57,15 @@ public:
 
     // 表相关文件的方法（例如保存表的元数据等）
     bool saveMetadata()const;
+    void saveMetadataBinary();
     bool loadMetadata();
+	void loadMetadataBinary();
 	bool deleteTableMetadata()const;
 
     bool saveDefine()const;
+    void saveDefineBinary();
     bool loadDefine();
+    void loadDefineBinary();
     void addCol(const Column& col);
     void deleteCol(const string& colName);
     void updateCol(const Column& oldCol, const Column& newCol);

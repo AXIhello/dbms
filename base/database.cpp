@@ -34,8 +34,8 @@ void Database::createTable(const std::string& table_name, const std::vector<Tabl
         new_table->addCol(col);
     }
 
-    new_table->saveDefine();
-    new_table->saveMetadata();
+    new_table->saveDefineBinary();
+    new_table->saveMetadataBinary();
 
     m_tables[table_name] = new_table;
 
@@ -56,15 +56,24 @@ void Database::dropTable(const std::string& table_name) {
 }
 
 
-// 查找表√
-Table* Database::getTable(const std::string& table_name) {
-    auto it = m_tables.find(table_name);
-    if (it != m_tables.end()) {
-        return it->second;
+// 获取并加载表
+Table* Database::getTable(const std::string& tableName) {
+    // 如果表已经加载，则直接返回
+    if (m_tables.find(tableName) != m_tables.end()) {
+        return m_tables[tableName];
     }
-    std::cerr << "表 " << table_name << " 未找到" << std::endl;
-    return nullptr;
+
+    // 否则，加载表并缓存
+    Table* table = new Table(m_db_name, tableName);
+    table->loadMetadataBinary();  // 加载表元数据
+    table->loadDefineBinary();    // 加载表定义
+
+    // 将加载的表缓存到 m_tables 中
+    m_tables[tableName] = table;
+
+    return table;
 }
+
 
 //返回调用的数据库的所有表名
 std::vector<std::string> Database::getAllTableNames() const {

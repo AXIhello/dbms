@@ -46,7 +46,7 @@ Table::~Table() {
 
 void Table::load()
 {
-    loadMetadata();
+    loadMetadataBinary();
     loadDefine();
     loadRecord();
     // loadIntegrality(); // 未实现
@@ -181,6 +181,144 @@ bool Table::saveMetadata()  const {
 
     tbFileOut.close();
     return true;
+}
+
+void Table::saveDefineBinary() {
+    std::string filename = dbManager::basePath+"/data/"+ m_db_name + "/" + m_tableName + ".tdf";
+    std::ofstream out(filename, std::ios::binary);
+    if (!out.is_open()) {
+        throw std::runtime_error("无法保存定义文件: " + filename);
+    }
+
+    for (int i = 0; i < m_columns.size(); ++i) {
+        const Column& col = m_columns[i];
+        FieldBlock field{};
+
+        field.order = i;
+
+        strncpy_s(field.name, col.name.c_str(), sizeof(field.name));
+        field.name[sizeof(field.name) - 1] = '\0';
+
+        if (col.type == "INT") field.type = 0;
+        else if (col.type == "FLOAT") field.type = 1;
+        else if (col.type == "CHAR") field.type = 2;
+        else if (col.type == "VARCHAR") field.type = 3;
+        else field.type = -1;
+
+        field.param = col.size;
+        field.mtime = std::time(nullptr);
+        field.integrities = 0; // TODO: 扩展支持约束信息
+
+        out.write(reinterpret_cast<const char*>(&field), sizeof(FieldBlock));
+    }
+
+    out.close();
+}
+
+
+void Table::loadMetadataBinary() {
+    std::string filepath = dbManager::basePath + "/data/" + m_db_name + "/" + m_db_name + ".tb";
+    ifstream tbFile(filepath, ios::binary);
+
+    if (!tbFile.is_open()) {
+        throw std::runtime_error("无法读取元数据文件: " + m_db_name + ".tb");
+    }
+
+    TableBlock tableBlock;
+    bool tableFound = false;  // 标记是否找到表
+
+    while (tbFile.read(reinterpret_cast<char*>(&tableBlock), sizeof(TableBlock))) {
+        // 检查表名是否匹配
+        if (string(tableBlock.name) == m_tableName) {
+            tableFound = true;
+
+            // 提取表的相关信息
+            m_fieldCount = tableBlock.field_num;
+            m_recordCount = tableBlock.record_num;
+            m_createTime = tableBlock.crtime;
+            m_lastModifyTime = tableBlock.mtime;
+
+            // 设置表结构文件路径等
+           /* m_tdfPath = tableBlock.tdf;
+            m_ticPath = tableBlock.tic;
+            m_trdPath = tableBlock.trd;
+            m_tidPath = tableBlock.tid;*/
+
+            break;
+        }
+    }
+
+    tbFile.close();
+
+    if (!tableFound) {
+        throw std::runtime_error("没有找到对应的表元数据: " + m_tableName);
+    }
+}
+
+void Table::saveMetadataBinary() {
+    std::string filepath = dbManager::basePath+"/data/"+m_db_name+"/"+ m_db_name + ".tb";
+    std::fstream tbFile(filepath, std::ios::in | std::ios::out | std::ios::binary);
+
+    if (!tbFile.is_open()) {
+        // 如果文件不存在，则创建
+        tbFile.open(filepath, std::ios::out | std::ios::binary);
+        tbFile.close();
+        tbFile.open(filepath, std::ios::in | std::ios::out | std::ios::binary);
+    }
+
+    if (!tbFile.is_open()) {
+        throw std::runtime_error("无法打开或创建元数据文件: " + filepath);
+    }
+
+    TableBlock tableBlock;
+    bool tableFound = false;
+
+    // 尝试更新已有记录
+    while (tbFile.read(reinterpret_cast<char*>(&tableBlock), sizeof(TableBlock))) {
+        if (std::string(tableBlock.name) == m_tableName) {
+            tableFound = true;
+
+            // 更新已有记录
+            tbFile.seekp(-static_cast<int>(sizeof(TableBlock)), std::ios::cur);
+
+            // 构造当前表信息
+            memset(&tableBlock, 0, sizeof(TableBlock));
+            strncpy_s(tableBlock.name, m_tableName.c_str(), sizeof(tableBlock.name) - 1);
+            tableBlock.record_num = m_recordCount;
+            tableBlock.field_num = m_fieldCount;
+            tableBlock.crtime = m_createTime;
+            tableBlock.mtime = m_lastModifyTime;
+
+            strncpy_s(tableBlock.tdf, (m_tableName + ".tdf").c_str(), sizeof(tableBlock.tdf) - 1);
+            strncpy_s(tableBlock.tic, (m_tableName + ".tic").c_str(), sizeof(tableBlock.tic) - 1);
+            strncpy_s(tableBlock.trd, (m_tableName + ".trd").c_str(), sizeof(tableBlock.trd) - 1);
+            strncpy_s(tableBlock.tid, (m_tableName + ".tid").c_str(), sizeof(tableBlock.tid) - 1);
+
+            tbFile.write(reinterpret_cast<char*>(&tableBlock), sizeof(TableBlock));
+            break;
+        }
+    }
+
+    // 如果未找到旧记录则追加新表记录
+    if (!tableFound) {
+        memset(&tableBlock, 0, sizeof(TableBlock));
+        strncpy_s(tableBlock.name, m_tableName.c_str(), sizeof(tableBlock.name) - 1);
+        tableBlock.record_num = m_recordCount;
+        tableBlock.field_num = m_fieldCount;
+        tableBlock.crtime = m_createTime;
+        tableBlock.mtime = m_lastModifyTime;
+
+        strncpy_s(tableBlock.tdf, (m_tableName + ".tdf").c_str(), sizeof(tableBlock.tdf) - 1);
+        strncpy_s(tableBlock.tic, (m_tableName + ".tic").c_str(), sizeof(tableBlock.tic) - 1);
+        strncpy_s(tableBlock.trd, (m_tableName + ".trd").c_str(), sizeof(tableBlock.trd) - 1);
+        strncpy_s(tableBlock.tid, (m_tableName + ".tid").c_str(), sizeof(tableBlock.tid) - 1);
+
+        tbFile.clear(); // 清除 EOF 状态以便写入
+        tbFile.seekp(0, std::ios::end);
+        tbFile.write(reinterpret_cast<char*>(&tableBlock), sizeof(TableBlock));
+    }
+
+    tbFile.close();
 }
 
 //元数据操作
@@ -357,6 +495,44 @@ bool Table::loadDefine() {
     tbFileIn.close();
     return true;
 }
+
+void Table::loadDefineBinary() {
+    std::string filename = dbManager::basePath+"/data/" +m_db_name + "/" + m_tableName + ".tdf";
+    std::ifstream in(filename, std::ios::binary);
+    if (!in.is_open()) {
+        throw std::runtime_error("无法打开定义文件: " + filename);
+    }
+
+    m_columns.clear();
+
+    while (in.peek() != EOF) {
+        FieldBlock field;
+        in.read(reinterpret_cast<char*>(&field), sizeof(FieldBlock));
+        if (in.gcount() < sizeof(FieldBlock)) break;
+
+        Column col;
+        col.name = std::string(field.name);
+        col.size = field.param;
+
+        // 映射类型整数为字符串
+        switch (field.type) {
+            case 0: col.type = "INT"; break;
+            case 1: col.type = "FLOAT"; break;
+            case 2: col.type = "CHAR"; break;
+            case 3: col.type = "VARCHAR"; break;
+            default: col.type = "UNKNOWN"; break;
+        }
+
+        // 暂时忽略 integrities 和 mtime
+        col.defaultValue = "";  // 可以后期扩展读取默认值字段
+
+        m_columns.push_back(col);
+    }
+
+    in.close();
+}
+
+
 
 // 添加列√
 void Table::addCol(const Column& col) {
