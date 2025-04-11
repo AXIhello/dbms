@@ -61,28 +61,40 @@ bool Record::table_exists(const std::string& table_name) {
 }
 
 void Record::read_table_structure() {
-    std::string tdf_filename = table_name + ".tdf";
-    std::ifstream file(tdf_filename);
+    std::vector<FieldBlock> fields = read_field_blocks(table_name);
 
-    if (!file) {
-        throw std::runtime_error("Failed to open table definition file: " + tdf_filename);
-    }
-
-    std::string line;
     table_structure.clear(); // 确保清空之前的结构信息
     columns.clear(); // 清空列名
 
-    // 假设.tdf文件格式为: column_name column_type
-    while (std::getline(file, line)) {
-        std::stringstream ss(line);
-        std::string column_name, column_type;
+    for (const auto& field : fields) {
+        std::string column_name = field.name;
+        std::string column_type;
 
-        if (ss >> column_name >> column_type) {
-            // 将列名和类型添加到表结构中
-            table_structure[column_name] = column_type;
-            // 同时保持原始的列顺序
-            columns.push_back(column_name);
+        // 根据FieldBlock中的type字段转换为字符串类型
+        switch (field.type) {
+        case 1:
+            column_type = "INTEGER";
+            break;
+        case 2:
+            column_type = "FLOAT";
+            break;
+        case 3:
+            column_type = "VARCHAR";
+            break;
+        case 4:
+            column_type = "CHAR";
+            break;
+        case 5:
+            column_type = "DATETIME";
+            break;
+        default:
+            column_type = "UNKNOWN";
         }
+
+        // 将列名和类型添加到表结构中
+        table_structure[column_name] = column_type;
+        // 同时保持原始的列顺序
+        columns.push_back(column_name);
     }
 }
 
@@ -180,21 +192,156 @@ bool Record::is_valid_type(const std::string& value, const std::string& type) {
     return true;
 }
 
+// 修改validate_types方法使用FieldBlock进行验证
 void Record::validate_types() {
-    // 验证每个值的类型是否与对应的列类型匹配
+    std::vector<FieldBlock> fields = read_field_blocks(table_name);
+    std::unordered_map<std::string, FieldBlock> field_map;
+
+    // 构建字段名到FieldBlock的映射
+    for (const auto& field : fields) {
+        field_map[field.name] = field;
+    }
+
+    // 验证每个值的类型是否与对应的字段类型匹配
     for (size_t i = 0; i < columns.size(); ++i) {
         std::string column = columns[i];
         std::string value = values[i];
-        std::string expected_type = table_structure[column];
 
-        if (!is_valid_type(value, expected_type)) {
-            throw std::runtime_error("Type mismatch for column '" + column +
-                "'. Expected " + expected_type +
-                ", got value: " + value);
+        if (field_map.find(column) == field_map.end()) {
+            throw std::runtime_error("字段 '" + column + "' 不存在于表中");
+        }
+
+        FieldBlock field = field_map[column];
+
+        if (!validate_field_block(value, field)) {
+            throw std::runtime_error("字段 '" + column + "' 的值类型不匹配");
         }
     }
 }
 
+// 创建表结构的.tdf文件
+void Record::write_to_tdf_format(const std::string& table_name,
+    const std::vector<std::string>& columns,
+    const std::vector<std::string>& types,
+    const std::vector<int>& params) {
+
+    if (columns.size() != types.size() || columns.size() != params.size()) {
+        throw std::runtime_error("字段名、类型和参数数量不匹配");
+    }
+
+    std::string tdf_filename = table_name + ".tdf";
+    std::ofstream file(tdf_filename, std::ios::binary);
+
+    if (!file) {
+        throw std::runtime_error("无法创建表定义文件: " + tdf_filename);
+    }
+
+    // 写入文件头信息（如果需要的话）
+
+    // 写入每个字段的FieldBlock结构
+    for (size_t i = 0; i < columns.size(); ++i) {
+        FieldBlock field;
+        field.order = static_cast<int>(i + 1);  // 字段顺序从1开始
+
+        // 复制字段名，确保不超过128个字符
+        std::strncpy(field.name, columns[i].c_str(), 127);
+        field.name[127] = '\0';  // 确保字符串结束
+
+        // 设置字段类型
+        if (types[i] == "INTEGER") {
+            field.type = 1;
+        }
+        else if (types[i] == "FLOAT") {
+            field.type = 2;
+        }
+        else if (types[i] == "VARCHAR") {
+            field.type = 3;
+        }
+        else if (types[i] == "CHAR") {
+            field.type = 4;
+        }
+        else if (types[i] == "DATETIME") {
+            field.type = 5;
+        }
+        else {
+            field.type = 0;  // 未知类型
+        }
+
+        // 设置参数（如VARCHAR的长度）
+        field.param = params[i];
+
+        // 设置最后修改时间为当前时间
+        field.mtime = std::time(nullptr);
+
+        // 设置完整性约束（暂时不考虑）
+        field.integrities = 0;
+
+        // 写入FieldBlock结构
+        file.write(reinterpret_cast<const char*>(&field), sizeof(FieldBlock));
+    }
+
+    file.close();
+    std::cout << "成功创建表定义文件: " << tdf_filename << std::endl;
+}
+// 从.tdf文件读取FieldBlock结构
+std::vector<FieldBlock> Record::read_field_blocks(const std::string& table_name) {
+    std::vector<FieldBlock> fields;
+    std::string tdf_filename = table_name + ".tdf";
+    std::ifstream file(tdf_filename, std::ios::binary);
+
+    if (!file) {
+        throw std::runtime_error("无法打开表定义文件: " + tdf_filename);
+    }
+
+    // 读取文件头信息（如果有的话）
+
+    // 开始读取FieldBlock结构
+    FieldBlock field;
+    while (file.read(reinterpret_cast<char*>(&field), sizeof(FieldBlock))) {
+        fields.push_back(field);
+    }
+
+    return fields;
+}
+
+// 根据FieldBlock验证值类型
+bool Record::validate_field_block(const std::string& value, const FieldBlock& field) {
+    switch (field.type) {
+    case 1: // INTEGER
+        try {
+            std::stoi(value);
+            return true;
+        }
+        catch (...) {
+            return false;
+        }
+
+    case 2: // FLOAT
+        try {
+            std::stof(value);
+            return true;
+        }
+        catch (...) {
+            return false;
+        }
+
+    case 3: // VARCHAR
+    case 4: // CHAR
+        // 检查字符串长度是否符合参数要求
+        if (value.length() <= static_cast<size_t>(field.param)) {
+            return true;
+        }
+        return false;
+
+    case 5: // DATETIME
+        // 简单检查日期格式，更复杂的验证可以使用正则表达式
+        std::regex date_regex(R"('(\d{4}-\d{2}-\d{2})')");
+        return std::regex_match(value, date_regex);
+
+    default:
+        return false;
+    }
+}
 void Record::validate_types_without_columns() {
     // 按表结构中的列顺序验证值的类型
     size_t i = 0;
@@ -213,22 +360,93 @@ void Record::validate_types_without_columns() {
     }
 }
 
+// 修改insert_into方法，使用符合.trd格式的方式写入数据
 void Record::insert_into() {
     std::string file_name = this->table_name + ".trd";
-    std::ofstream file(file_name, std::ios::app);
+    std::ofstream file(file_name, std::ios::app | std::ios::binary);
 
     if (!file) {
         throw std::runtime_error("打开文件" + file_name + "失败。");
     }
 
-    // 使用新的格式：字段.值,字段.值,...,END
-    for (size_t i = 0; i < columns.size() && i < values.size(); ++i) {
-        file << columns[i] << "." << values[i];
-        if (i + 1 < columns.size() && i + 1 < values.size()) {
-            file << ",";
+    // 读取字段结构
+    std::vector<FieldBlock> fields = read_field_blocks(table_name);
+    std::unordered_map<std::string, size_t> field_indices;
+
+    // 构建字段名到索引的映射
+    for (size_t i = 0; i < fields.size(); ++i) {
+        field_indices[fields[i].name] = i;
+    }
+
+    // 准备一条完整记录的数据
+    std::vector<std::string> record_values(fields.size());
+
+    // 填充数据
+    for (size_t i = 0; i < columns.size(); ++i) {
+        if (field_indices.find(columns[i]) != field_indices.end()) {
+            size_t idx = field_indices[columns[i]];
+            record_values[idx] = values[i];
         }
     }
-    file << ",END" << std::endl;  // 使用END标记结束一条记录
+
+    // 按照.trd格式写入记录
+    // 这里假设.trd文件格式为每个字段值直接连续存储，可能需要根据实际格式调整
+    for (size_t i = 0; i < record_values.size(); ++i) {
+        const FieldBlock& field = fields[i];
+        const std::string& value = record_values[i];
+
+        // 根据字段类型写入值
+        switch (field.type) {
+        case 1: { // INTEGER
+            int int_val = std::stoi(value);
+            file.write(reinterpret_cast<const char*>(&int_val), sizeof(int));
+            break;
+        }
+        case 2: { // FLOAT
+            float float_val = std::stof(value);
+            file.write(reinterpret_cast<const char*>(&float_val), sizeof(float));
+            break;
+        }
+        case 3: // VARCHAR
+        case 4: { // CHAR
+            // 写入固定长度的字符串
+            char* buffer = new char[field.param];
+            std::memset(buffer, 0, field.param);
+            std::strncpy(buffer, value.c_str(), field.param - 1);
+            file.write(buffer, field.param);
+            delete[] buffer;
+            break;
+        }
+        case 5: { // DATETIME
+            // 简化处理，实际应转换为时间戳
+            std::time_t now = std::time(nullptr);
+            file.write(reinterpret_cast<const char*>(&now), sizeof(std::time_t));
+            break;
+        }
+        default:
+            throw std::runtime_error("未知的字段类型");
+        }
+
+        // 如果需要，可以添加填充以确保每个字段是4字节的倍数
+        // 计算需要填充的字节数
+        size_t bytes_written = 0;
+        switch (field.type) {
+        case 1: bytes_written = sizeof(int); break;
+        case 2: bytes_written = sizeof(float); break;
+        case 3:
+        case 4: bytes_written = field.param; break;
+        case 5: bytes_written = sizeof(std::time_t); break;
+        default: bytes_written = 0;
+        }
+
+        // 计算需要填充的字节数，以使总字节数是4的倍数
+        size_t padding = (4 - (bytes_written % 4)) % 4;
+        if (padding > 0) {
+            char* pad = new char[padding]();  // 初始化为0
+            file.write(pad, padding);
+            delete[] pad;
+        }
+    }
 
     file.close();
     std::cout << "记录插入表 " << this->table_name << " 成功。" << std::endl;
