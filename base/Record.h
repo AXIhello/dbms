@@ -9,7 +9,7 @@ private:
     std::vector<std::string> columns;
     std::vector<std::string> values;
     std::unordered_map<std::string, std::string> table_structure; // 列名 -> 数据类型
-
+    std::vector<FieldBlock> read_field_blocks(const std::string& table_name);
     // 条件解析相关
     std::string condition_field;   // 条件中的字段名
     std::string condition_operator; // 条件中的操作符
@@ -31,6 +31,9 @@ private:
 public:
     // 构造函数
     Record();
+    void write_to_tdf_format(const std::string& table_name, const std::vector<std::string>& columns,
+        const std::vector<std::string>& types, const std::vector<int>& params);
+    bool validate_field_block(const std::string& value, const FieldBlock& field);
     // 表操作相关函数
     void insert_record(const std::string& table_name, const std::string& cols, const std::string& vals);
     void insert_into();
