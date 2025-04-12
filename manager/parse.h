@@ -15,10 +15,7 @@ public:
     void execute(const QString& sql);
    
     Parse(Database* database);
-    std::vector<std::string> splitString(const std::string& str, char delimiter);
-    std::string joinStrings(const std::vector<std::string>& strings, char delimiter);
-    std::string trim(const std::string& str);
-
+    
 private:
 	QTextEdit* outputEdit;  // 输出编辑器指针
     struct SqlPattern {
