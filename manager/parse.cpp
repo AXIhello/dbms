@@ -22,6 +22,8 @@ Parse::Parse(Database* database)
 
 }
 
+
+
 void Parse::registerPatterns() {
     patterns.push_back({
         std::regex(R"(^CREATE\s+DATABASE\s+(\w+);$)", std::regex::icase),
@@ -93,15 +95,19 @@ void Parse::registerPatterns() {
 }
 
 void Parse::execute(const QString& sql_qt) {
-    std::string sql = sql_qt.toStdString();
+    QString cleanedSQL = cleanSQL(sql_qt);  // 使用 cleanSQL 来处理输入
+
+    std::string sql = cleanedSQL.toStdString();  // 转为 std::string 类型
+
     for (const auto& p : patterns) {
         std::smatch match;
         if (std::regex_match(sql, match, p.pattern)) {
-            p.action(match);
+            p.action(match);  // 执行匹配后的动作
             return;
         }
     }
 }
+
     // 如果没有匹配，输出错误
   
 
@@ -177,13 +183,14 @@ void Parse::handleCreateTable(const std::smatch& match) {
         strncpy_s(field.name, name.c_str(), sizeof(field.name));
         field.name[sizeof(field.name) - 1] = '\0';
 
-        // 类型映射：字符串 → int（0: INT, 1: FLOAT, 2: CHAR, 3: VARCHAR）
-        std::string type = m[2];
-        if (type == "INT") field.type = 0;
-        else if (type == "FLOAT") field.type = 1;
-        else if (type == "CHAR") field.type = 2;
+        // 类型映射：字符串 → int（1: INT, 2: FLOAT, 3: VARCHAR, 4: CHAR 5:DATETIME）
+        std::string type = toUpper(m[2]);
+        if (type == "INT") field.type = 1;
+        else if (type == "FLOAT") field.type = 2;
+        else if (type == "CHAR") field.type = 4;
         else if (type == "VARCHAR") field.type = 3;
-        else {
+        else if (type == "DATETIME") field.type = 5;
+        else{
             Output::printError(outputEdit, "不支持的字段类型: " + QString::fromStdString(type));
             return;
         }
@@ -263,12 +270,10 @@ void Parse::handleShowTables(const std::smatch& m) {
 
 
 void Parse::handleInsertInto(const std::smatch& m) {
-    // 获取表名、列名和值
     std::string table_name = m[1];
     std::string cols = m[2];
     std::string vals = m[3];
 
-    // 去除列名和值中的括号
     if (cols.front() == '(' && cols.back() == ')') {
         cols = cols.substr(1, cols.length() - 2);
     }
@@ -276,15 +281,16 @@ void Parse::handleInsertInto(const std::smatch& m) {
         vals = vals.substr(1, vals.length() - 2);
     }
 
-    // 调用record.h中定义的insert_record函数
     try {
-        insert_record(table_name, cols, vals);
-        std::cout << "INSERT INTO 命令执行成功。" << std::endl;
+        std::string table_path = dbManager::getInstance().getCurrentDatabase()->getDBPath() + "/" + table_name;
+        insert_record(table_path, cols, vals);
+        Output::printMessage(outputEdit, QString::fromStdString("INSERT INTO 执行成功。"));
     }
     catch (const std::exception& e) {
-        std::cerr << "错误: " << e.what() << std::endl;
+        Output::printError(outputEdit, QString::fromStdString(e.what()));
     }
 }
+
 
 
 void Parse::handleSelect(const std::smatch& m) {
@@ -367,4 +373,20 @@ void Parse::handleUpdateColumn(const std::smatch& match) {
 //    }
 }
 
+// parse.cpp
+QString Parse::cleanSQL(const QString& sql) {
+    QString cleaned = sql;
+
+    // 去除前后空白符
+    cleaned = cleaned.trimmed();
+
+    // 将多个空格或 Tab 替换为单个空格
+    cleaned.replace(QRegularExpression("[ \\t]+"), " ");
+
+    // 将所有换行符和回车换行符统一替换为空格
+    cleaned.replace(QRegularExpression("[\\r\\n]+"), " ");
+
+    // 最后再做一次前后 trim
+    return cleaned.trimmed();
+}
 

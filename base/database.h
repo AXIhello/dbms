@@ -43,7 +43,7 @@ public:
 
 private:
     std::string m_db_name;   // 数据库名称
-    std::string m_db_path;//数据库路径
+    std::string m_db_path;//数据库路径;应该到数据库文件夹为止
     int m_db_type;//数据库类型：0 系统 ；1 用户
     //std::string m_db_file = m_db_name + ".tb";
     std::map<std::string, Table*> m_tables;  // 存储所有表
