@@ -58,6 +58,13 @@ void Record::insert_record(const std::string& table_name, const std::string& col
     insert_into();
 }
 
+// insert_record 全局接口实现
+void insert_record(const std::string& table_name, const std::string& cols, const std::string& vals) {
+    Record r;
+    r.insert_record(table_name, cols, vals);
+}
+
+
 bool Record::table_exists(const std::string& table_name) {
     std::string tdf_filename = table_name + ".tdf";
     std::ifstream file(tdf_filename);

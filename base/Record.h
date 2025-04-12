@@ -54,4 +54,8 @@ public:
     const std::vector<std::string>& get_columns() const;
     const std::vector<std::string>& get_values() const;
 };
+
+// 插入记录的外部接口函数（类外全局函数）
+void insert_record(const std::string& table_name, const std::string& cols, const std::string& vals);
+
 #endif // RECORD_H
