@@ -37,7 +37,7 @@ public:
     //获取列名
 	vector<string> getColNames() const {
 		vector<string> colNames;
-		for (const auto& col : m_columns) {
+		for (const auto& col : m_fields) {
 			colNames.push_back(col.name);
 		}
 		return colNames;
@@ -67,6 +67,8 @@ public:
     void deleteCol(const string& colName);
     void updateCol(const Column& oldCol, const Column& newCol);*/
 
+    void addField(const FieldBlock& field);
+
     //表完整性文件
     bool saveIntegrality()const;
     bool loadIntegrality();
@@ -86,6 +88,9 @@ public:
 	// 判断表是否存在
 	bool isTableExist() const;
 
+    //工具用
+	void setFieldCount(int n) { m_fieldCount = n; }
+
 private:
 
     string m_db_name;       // 数据库名
@@ -100,7 +105,7 @@ private:
     time_t m_createTime;    // 表的创建时间
     time_t m_lastModifyTime; // 表的最后修改时间
 
-	vector<FieldBlock> m_columns; // 存储表的字段信息
+	vector<FieldBlock> m_fields; // 存储表的字段信息
 
     // 辅助方法：将时间戳转为字符串格式
     string timeToString(time_t time) const;

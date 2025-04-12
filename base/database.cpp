@@ -8,10 +8,28 @@
 
 // 构造函数：加载数据库√
 Database::Database(const std::string& db_name) {
-    m_db_name = db_name;
-    m_db_path = dbManager::basePath + "/data/" + db_name + "/" + db_name;
-    std::cout << "加载数据库：" << m_db_path << std::endl;
-    loadTable(m_db_path + ".db");
+    loadDatabase(db_name);
+}
+
+void Database::loadDatabase(const std::string& db_name)
+{
+    std::ifstream file(dbManager::basePath + "/ruanko.db", std::ios::binary);
+    if (!file) {
+        throw std::runtime_error("无法打开 ruanko.db 文件");
+    }
+
+    DatabaseBlock info;
+    while (file.read(reinterpret_cast<char*>(&info), sizeof(DatabaseBlock))) {
+        if (std::string(info.dbName) == db_name) {
+			m_db_name = db_name;
+            m_db_type = info.type;
+            m_db_path = std::string(info.filepath);
+            m_create_time = info.crtime;
+            return;
+        }
+    }
+
+    throw std::runtime_error("数据库 " + db_name + " 未在 ruanko.db 中找到");
 }
 
 
@@ -29,9 +47,10 @@ void Database::createTable(const std::string& table_name, const std::vector<Fiel
 
     Table* new_table = new Table(m_db_name, table_name);
     new_table->initializeNew();
+    new_table->setFieldCount(fields.size()); //字段数即为传过来的fields个数
 
-    for (const auto& col : fields) {
-        //new_table->addCol(col);
+    for (const auto& field : fields) {
+        new_table->addField(field);
     }
 
     new_table->saveDefineBinary();
@@ -102,7 +121,7 @@ void Database::loadTable(const std::string& table_name) {
         file.read(&tableName[0], len);
 
         Table* table = new Table(m_db_name, tableName);
-        table->loadDefine(); // 假设你有这个方法
+        table->loadDefineBinary(); // 假设你有这个方法
         m_tables[tableName] = table;
     }
 

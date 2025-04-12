@@ -153,44 +153,60 @@ void Parse::handleCreateTable(const std::smatch& match) {
     std::string tableName = match[1];
     std::string rawDefinition = match[2]; // 字段部分，如 id INT, name CHAR(20)
 
-    // 获取当前数据库
     Database* db = dbManager::getInstance().getCurrentDatabase();
     if (!db) {
-        // 如果没有选择数据库，给用户提示
         Output::printError(outputEdit, "请先使用 USE 语句选择数据库");
         return;
     }
 
-    // 解析字段定义
-    std::vector<Table::FieldBlock> columns;
-    std::regex colPattern(R"((\w+)\s+(\w+)(?:\((\d+)\))?)");  // 支持 name CHAR(10)
+    std::vector<FieldBlock> fields;
+    std::regex colPattern(R"((\w+)\s+(\w+)(?:\((\d+)\))?)");  // 例如 id INT, name CHAR(20)
     auto begin = std::sregex_iterator(rawDefinition.begin(), rawDefinition.end(), colPattern);
     auto end = std::sregex_iterator();
+    int fieldIndex = 0;
 
-    for (auto it = begin; it != end; ++it) {
+    for (auto it = begin; it != end; ++it, ++fieldIndex) {
         std::smatch m = *it;
-        Table::FieldBlock col;
-        col.name = m[1];
-        col.type = m[2];
-        col.size = m[3].matched ? std::stoi(m[3]) : 4; // 默认大小 4
-        col.defaultValue = ""; // 可后续扩展 default
-        columns.push_back(col);
+        FieldBlock field{};
+
+        // 设置字段顺序
+        field.order = fieldIndex;
+
+        // 设置字段名称
+        std::string name = m[1];
+        strncpy_s(field.name, name.c_str(), sizeof(field.name));
+        field.name[sizeof(field.name) - 1] = '\0';
+
+        // 类型映射：字符串 → int（0: INT, 1: FLOAT, 2: CHAR, 3: VARCHAR）
+        std::string type = m[2];
+        if (type == "INT") field.type = 0;
+        else if (type == "FLOAT") field.type = 1;
+        else if (type == "CHAR") field.type = 2;
+        else if (type == "VARCHAR") field.type = 3;
+        else {
+            Output::printError(outputEdit, "不支持的字段类型: " + QString::fromStdString(type));
+            return;
+        }
+
+        // 参数：如 CHAR(10) → 10，若未指定则默认 4
+        field.param = m[3].matched ? std::stoi(m[3]) : 4;
+
+        field.mtime = std::time(nullptr);
+        field.integrities = 0; // 先不支持完整性约束
+
+        fields.push_back(field);
     }
 
-    // 异常捕获部分
     try {
-        // 传递 tableName 和 columns 参数到 createTable 方法
-        db->createTable(tableName, columns);
+       // std::vector<tableIntegrityBlock> constraints; // 目前为空
+        db->createTable(tableName, fields);
     }
     catch (const std::exception& e) {
-        // 将 std::string 转换为 QString
         Output::printError(outputEdit, "表创建失败: " + QString::fromStdString(e.what()));
         return;
     }
 
-    // 成功提示
-    QString message = "表 " + QString::fromStdString(tableName) + " 创建成功";
-    Output::printMessage(outputEdit, message);
+    Output::printMessage(outputEdit, "表 " + QString::fromStdString(tableName) + " 创建成功");
 }
 
 
@@ -304,51 +320,51 @@ void Parse::handleSelect(const std::smatch& m) {
 
 
 void Parse::handleAddColumn(const std::smatch& match) {
-    std::string tableName = match[1];  // 获取表名
-    std::string columnName = match[2];  // 获取列名
-    std::string columnType = match[3];  // 获取列类型
-
-    Table* table = db->getTable(tableName);  // 获取表对象
-    if (table) {
-        // 创建新列
-        Table::FieldBlock newColumn = { columnName, columnType, 0, "" };  // 默认 size 为 0，defaultValue 为空字符串
-        table->addCol(newColumn);  // 调用 Table 的 addCol 方法
-    }
-    else {
-        std::cerr << "表 " << tableName << " 不存在！" << std::endl;
-    }
+//    std::string tableName = match[1];  // 获取表名
+//    std::string columnName = match[2];  // 获取列名
+//    std::string columnType = match[3];  // 获取列类型
+//
+//    Table* table = db->getTable(tableName);  // 获取表对象
+//    if (table) {
+//        // 创建新列
+//        FieldBlock newColumn = { columnName, columnType, 0, "" };  // 默认 size 为 0，defaultValue 为空字符串
+//        table->addCol(newColumn);  // 调用 Table 的 addCol 方法
+//    }
+//    else {
+//        std::cerr << "表 " << tableName << " 不存在！" << std::endl;
+//    }
 }
 
 void Parse::handleDeleteColumn(const std::smatch& match) {
-    std::string tableName = match[1];  // 获取表名
-    std::string columnName = match[2];  // 获取列名
-
-    Table* table = db->getTable(tableName);  // 获取表对象
-    if (table) {
-        table->deleteCol(columnName);  // 调用 Table 的 deleteCol 方法
-    }
-    else {
-        std::cerr << "表 " << tableName << " 不存在！" << std::endl;
-    }
+//    std::string tableName = match[1];  // 获取表名
+//    std::string columnName = match[2];  // 获取列名
+//
+//    Table* table = db->getTable(tableName);  // 获取表对象
+//    if (table) {
+//        table->deleteCol(columnName);  // 调用 Table 的 deleteCol 方法
+//    }
+//    else {
+//        std::cerr << "表 " << tableName << " 不存在！" << std::endl;
+//    }
 }
 
 void Parse::handleUpdateColumn(const std::smatch& match) {
-    std::string tableName = match[1];  // 获取表名
-    std::string oldColumnName = match[2];  // 获取旧列名
-    std::string newColumnName = match[3];  // 获取新列名
-    std::string newColumnType = match[4];  // 获取新列类型
-
-    Table* table = db->getTable(tableName);  // 获取表对象
-    if (table) {
-        // 创建旧列和新列
-        Table::FieldBlock oldCol = { oldColumnName, "", 0, "" };  // 旧列只需要名字，其他信息保持默认
-        Table::FieldBlock newCol = { newColumnName, newColumnType, 0, "" };  // 新列的名字和类型从命令中获取
-
-        table->updateCol(oldCol, newCol);  // 调用 Table 的 updateCol 方法
-    }
-    else {
-        std::cerr << "表 " << tableName << " 不存在！" << std::endl;
-    }
+//    std::string tableName = match[1];  // 获取表名
+//    std::string oldColumnName = match[2];  // 获取旧列名
+//    std::string newColumnName = match[3];  // 获取新列名
+//    std::string newColumnType = match[4];  // 获取新列类型
+//
+//    Table* table = db->getTable(tableName);  // 获取表对象
+//    if (table) {
+//        // 创建旧列和新列
+//        Table::FieldBlock oldCol = { oldColumnName, "", 0, "" };  // 旧列只需要名字，其他信息保持默认
+//        Table::FieldBlock newCol = { newColumnName, newColumnType, 0, "" };  // 新列的名字和类型从命令中获取
+//
+//        table->updateCol(oldCol, newCol);  // 调用 Table 的 updateCol 方法
+//    }
+//    else {
+//        std::cerr << "表 " << tableName << " 不存在！" << std::endl;
+//    }
 }
 
 

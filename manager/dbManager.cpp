@@ -54,8 +54,8 @@ void dbManager::createSystemDB() {
 
     systemDB.type = false;  // false 代表系统数据库
 
-    memset(systemDB.filename, 0, sizeof(systemDB.filename));
-    strcpy_s(systemDB.filename, sysDBPath.c_str());  // 赋值文件路径
+    memset(systemDB.filepath, 0, sizeof(systemDB.filepath));
+    strcpy_s(systemDB.filepath, sysDBPath.c_str());  // 赋值文件路径
 
     systemDB.crtime = std::chrono::system_clock::to_time_t(std::chrono::system_clock::now());  // 获取当前时间
 
@@ -76,7 +76,7 @@ void dbManager::saveDatabaseInfo(const std::string& dbName, const std::string& d
 
     strncpy_s(dbInfo.dbName, dbName.c_str(), sizeof(dbInfo.dbName) - 1);
     dbInfo.type = true;  // 默认为用户数据库
-    strncpy_s(dbInfo.filename, dbPath.c_str(), sizeof(dbInfo.filename) - 1);
+    strncpy_s(dbInfo.filepath, dbPath.c_str(), sizeof(dbInfo.filepath) - 1);
     dbInfo.crtime = std::time(nullptr);  // 记录当前时间
 
     sysDBFile.write(reinterpret_cast<const char*>(&dbInfo), sizeof(DatabaseBlock));
@@ -140,10 +140,10 @@ void dbManager::createUserDatabase(const std::string& db_name) {
         return;
     }
 
-    std::string dbDir = basePath + "/data/" + db_name;
+    std::string db_path = basePath + "/data/" + db_name;//到数据库文件夹为止
     createDatabaseFolder(db_name);
     createDatabaseFiles(db_name);
-    saveDatabaseInfo(db_name, dbDir);
+    saveDatabaseInfo(db_name, db_path);
 }
 
 
@@ -205,12 +205,10 @@ void dbManager::createDatabaseFiles(const std::string& db_name) {
 
     // 创建表描述文件 (.tb)
     std::ofstream tbFile(dbDir + "/" + db_name + ".tb");
-    tbFile << "Table Descriptions for " << db_name << std::endl;
     tbFile.close();
 
     // 创建日志文件 (.log)
     std::ofstream logFile(dbDir + "/" + db_name + ".log");
-    logFile << "Log File for " << db_name << std::endl;
     logFile.close();
 }
 

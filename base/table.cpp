@@ -120,8 +120,8 @@ void Table::saveDefineBinary() {
         throw std::runtime_error("无法保存定义文件: " + filename);
     }
 
-    for (int i = 0; i < m_columns.size(); ++i) {
-        const FieldBlock& col = m_columns[i];
+    for (int i = 0; i < m_fields.size(); ++i) {
+        const FieldBlock& col = m_fields[i];
         FieldBlock field{};
 
         field.order = i;
@@ -175,6 +175,7 @@ void Table::loadMetadataBinary() {
     cerr << "表" << m_tableName << "未找到" << endl;
 }
 
+//保存至.tb文件
 void Table::saveMetadataBinary() {
     std::fstream tbFile(m_tb, std::ios::in | std::ios::out | std::ios::binary);
 
@@ -300,7 +301,7 @@ void Table::loadDefineBinary() {
         throw std::runtime_error("无法打开定义文件: " + filename);
     }
 
-    m_columns.clear();
+    m_fields.clear();
 
     while (in.peek() != EOF) {
         FieldBlock field;
@@ -323,10 +324,34 @@ void Table::loadDefineBinary() {
         // 暂时忽略 integrities 和 mtime
         //col.defaultValue = "";  // 可以后期扩展读取默认值字段
 
-        m_columns.push_back(col);
+        m_fields.push_back(col);
     }
 
     in.close();
+}
+
+
+void Table::addField(const FieldBlock& field) {
+    FieldBlock newField = field;
+
+    // 设置字段顺序为当前字段数
+    newField.order = m_fields.size();
+
+    // 设置最后修改时间
+    newField.mtime = std::time(nullptr);
+
+    // 添加到字段列表
+    m_fields.push_back(newField);
+
+    // 更新字段数
+    m_fieldCount = m_fields.size();
+
+    // 更新时间戳
+    m_lastModifyTime = std::time(nullptr);
+
+    // 保存到定义文件和元数据文件
+    saveDefineBinary();
+    saveMetadataBinary();
 }
 
 
@@ -392,8 +417,8 @@ bool Table::loadRecord() {
 
     for (size_t i = 0; i < fileColumns.size(); ++i) {
         bool found = false;
-        for (size_t j = 0; j < m_columns.size(); ++j) {
-            if (fileColumns[i] == m_columns[j].name) {
+        for (size_t j = 0; j < m_fields.size(); ++j) {
+            if (fileColumns[i] == m_fields[j].name) {
                 found = true;
                 break;
             }
@@ -404,16 +429,16 @@ bool Table::loadRecord() {
     }
 
     // 查找哪些列需要增加（m_columns 中有，但文件中没有）
-    for (size_t i = 0; i < m_columns.size(); ++i) {
+    for (size_t i = 0; i < m_fields.size(); ++i) {
         bool found = false;
         for (size_t j = 0; j < fileColumns.size(); ++j) {
-            if (m_columns[i].name == fileColumns[j]) {
+            if (m_fields[i].name == fileColumns[j]) {
                 found = true;
                 break;
             }
         }
         if (!found) {
-            columnsToAdd.push_back(m_columns[i].name); // 记录需要添加的列名
+            columnsToAdd.push_back(m_fields[i].name); // 记录需要添加的列名
         }
     }
 
@@ -441,7 +466,7 @@ bool Table::loadRecord() {
         // 增加缺失的列，根据默认值补充
         for (const string& colNameToAdd : columnsToAdd) {
             // 找到对应的列的默认值，并添加到当前记录
-            for (const auto& col : m_columns) {
+            for (const auto& col : m_fields) {
                 if (col.name == colNameToAdd) {
                     //records[i].push_back(col.defaultValue);
                     break;

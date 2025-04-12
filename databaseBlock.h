@@ -8,7 +8,7 @@
 struct DatabaseBlock {
     char dbName[128];     // 数据库名称
     bool type;            // 0: 系统数据库；1: 用户数据库
-    char filename[256];   // 数据库数据文件夹全路径（保存记录文件与日志文件）
+    char filepath[256];   // 数据库数据文件夹全路径（保存记录文件与日志文件）
     time_t crtime;        // 创建时间
 };
 
