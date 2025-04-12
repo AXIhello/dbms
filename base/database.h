@@ -18,7 +18,7 @@ public:
     // 创建表
    // void createTable(const std::string& table_name);
 	// 创建表（带字段定义）
-    void createTable(const std::string& table_name, const std::vector<Table::Column>& columns);
+    void createTable(const std::string& table_name, const std::vector<FieldBlock>& columns);
 
 
     // 删除表
@@ -40,8 +40,8 @@ public:
 	}
 
 private:
-    std::string m_db_path; //数据库路径
     std::string m_db_name;   // 数据库名称
+    std::string m_db_path;//数据库路径
     //std::string m_db_file = m_db_name + ".tb";
     std::map<std::string, Table*> m_tables;  // 存储所有表
     //TransactionManager m_transaction_manager;  // 事务管理器

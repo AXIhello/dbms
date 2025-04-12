@@ -162,14 +162,14 @@ void Parse::handleCreateTable(const std::smatch& match) {
     }
 
     // 解析字段定义
-    std::vector<Table::Column> columns;
+    std::vector<Table::FieldBlock> columns;
     std::regex colPattern(R"((\w+)\s+(\w+)(?:\((\d+)\))?)");  // 支持 name CHAR(10)
     auto begin = std::sregex_iterator(rawDefinition.begin(), rawDefinition.end(), colPattern);
     auto end = std::sregex_iterator();
 
     for (auto it = begin; it != end; ++it) {
         std::smatch m = *it;
-        Table::Column col;
+        Table::FieldBlock col;
         col.name = m[1];
         col.type = m[2];
         col.size = m[3].matched ? std::stoi(m[3]) : 4; // 默认大小 4
@@ -353,7 +353,7 @@ void Parse::handleAddColumn(const std::smatch& match) {
     Table* table = db->getTable(tableName);  // 获取表对象
     if (table) {
         // 创建新列
-        Table::Column newColumn = { columnName, columnType, 0, "" };  // 默认 size 为 0，defaultValue 为空字符串
+        Table::FieldBlock newColumn = { columnName, columnType, 0, "" };  // 默认 size 为 0，defaultValue 为空字符串
         table->addCol(newColumn);  // 调用 Table 的 addCol 方法
     }
     else {
@@ -383,8 +383,8 @@ void Parse::handleUpdateColumn(const std::smatch& match) {
     Table* table = db->getTable(tableName);  // 获取表对象
     if (table) {
         // 创建旧列和新列
-        Table::Column oldCol = { oldColumnName, "", 0, "" };  // 旧列只需要名字，其他信息保持默认
-        Table::Column newCol = { newColumnName, newColumnType, 0, "" };  // 新列的名字和类型从命令中获取
+        Table::FieldBlock oldCol = { oldColumnName, "", 0, "" };  // 旧列只需要名字，其他信息保持默认
+        Table::FieldBlock newCol = { newColumnName, newColumnType, 0, "" };  // 新列的名字和类型从命令中获取
 
         table->updateCol(oldCol, newCol);  // 调用 Table 的 updateCol 方法
     }

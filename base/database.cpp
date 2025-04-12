@@ -22,7 +22,7 @@ Database::~Database() {
 }
 
 // 创建新表√
-void Database::createTable(const std::string& table_name, const std::vector<Table::Column>& columns) {
+void Database::createTable(const std::string& table_name, const std::vector<FieldBlock>& fields) {
     if (m_tables.find(table_name) != m_tables.end()) {
         throw std::runtime_error("表 " + table_name + " 已存在");
     }
@@ -30,8 +30,8 @@ void Database::createTable(const std::string& table_name, const std::vector<Tabl
     Table* new_table = new Table(m_db_name, table_name);
     new_table->initializeNew();
 
-    for (const auto& col : columns) {
-        new_table->addCol(col);
+    for (const auto& col : fields) {
+        //new_table->addCol(col);
     }
 
     new_table->saveDefineBinary();
