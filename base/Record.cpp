@@ -1,3 +1,7 @@
+#ifdef _MSC_VER
+#define _CRT_SECURE_NO_WARNINGS
+#endif
+
 #include "Record.h"
 #include "manager/parse.h"
 #include "ui/output.h"
@@ -306,6 +310,9 @@ std::vector<FieldBlock> Record::read_field_blocks(const std::string& table_name)
 
 // 根据FieldBlock验证值类型
 bool Record::validate_field_block(const std::string& value, const FieldBlock& field) {
+    // 在函数开始处定义正则表达式，而不是在case中
+    std::regex date_regex(R"('(\d{4}-\d{2}-\d{2})')");
+
     switch (field.type) {
     case 1: // INTEGER
         try {
@@ -334,14 +341,14 @@ bool Record::validate_field_block(const std::string& value, const FieldBlock& fi
         return false;
 
     case 5: // DATETIME
-        // 简单检查日期格式，更复杂的验证可以使用正则表达式
-        std::regex date_regex(R"('(\d{4}-\d{2}-\d{2})')");
+        // 使用前面定义的正则表达式
         return std::regex_match(value, date_regex);
 
     default:
         return false;
     }
 }
+
 void Record::validate_types_without_columns() {
     // 按表结构中的列顺序验证值的类型
     size_t i = 0;

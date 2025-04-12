@@ -3,6 +3,7 @@
 #include <string>
 #include <vector>
 #include <unordered_map>
+#include"fieldBlock.h"
 class Record {
 private:
     std::string table_name;
