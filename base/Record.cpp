@@ -284,7 +284,7 @@ void Record::write_to_tdf_format(const std::string& table_name,
 // 从.tdf文件读取FieldBlock结构
 std::vector<FieldBlock> Record::read_field_blocks(const std::string& table_name) {
     std::vector<FieldBlock> fields;
-    std::string tdf_filename = table_name;
+    std::string tdf_filename = table_name + ".tdf";
     std::ifstream file(tdf_filename, std::ios::binary);
 
     if (!file) {
@@ -709,16 +709,16 @@ void Record::update(const std::string& tableName, const std::string& setClause, 
             }
 
             size_t field_bytes = 0;
-            switch (field.type) {
-            case 1: field_bytes = sizeof(int); break;
-            case 2: field_bytes = sizeof(float); break;
-            case 3:
-            case 4: field_bytes = field.param; break;
-            case 5: field_bytes = sizeof(std::time_t); break;
-            default: field_bytes = 0; break;
-            }
-            size_t padding = (4 - (field_bytes % 4)) % 4;
-            buffer_ptr += padding;
+switch (field.type) {
+    case 1: field_bytes = sizeof(int); break;
+    case 2: field_bytes = sizeof(float); break;
+    case 3:
+    case 4: field_bytes = field.param; break;
+    case 5: field_bytes = sizeof(std::time_t); break;
+    default: field_bytes = 0; break;
+}
+size_t padding = (4 - (field_bytes % 4)) % 4;
+buffer_ptr += padding;
 
         }
 
