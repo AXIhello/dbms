@@ -112,38 +112,27 @@ string Table::timeToString(time_t time) const {
     return string(buffer);
 }
 
-// 保存表的元数据（待验证）
 void Table::saveDefineBinary() {
-    std::string filename = dbManager::basePath+"/data/"+ m_db_name + "/" + m_tableName + ".tdf";
-    std::ofstream out(filename, std::ios::binary);
+    std::ofstream out(m_tdf, std::ios::binary);
     if (!out.is_open()) {
-        throw std::runtime_error("无法保存定义文件: " + filename);
+        throw std::runtime_error("无法保存定义文件: " + m_tableName + " .tdf ");
     }
 
     for (int i = 0; i < m_fields.size(); ++i) {
-        const FieldBlock& col = m_fields[i];
-        FieldBlock field{};
+        FieldBlock& field = m_fields[i];
 
-        field.order = i;
+        // 填充必要的字段信息
+        field.order = i; // 设置字段的顺序
+        field.mtime = std::time(nullptr); // 设置最后修改时间为当前时间
+        field.integrities = 0; // TODO: 如果有完整性约束，需要在此处理
 
-        //strncpy_s(field.name, col.name.c_str(), sizeof(field.name));
-        //field.name[sizeof(field.name) - 1] = '\0';
-
-        //if (col.type == "INT") field.type = 0;
-        //else if (col.type == "FLOAT") field.type = 1;
-        //else if (col.type == "CHAR") field.type = 2;
-        //else if (col.type == "VARCHAR") field.type = 3;
-        //else field.type = -1;
-
-        //field.param = col.size;
-        field.mtime = std::time(nullptr);
-        field.integrities = 0; // TODO: 扩展支持约束信息
-
+        // 将当前字段块写入文件
         out.write(reinterpret_cast<const char*>(&field), sizeof(FieldBlock));
     }
 
     out.close();
 }
+
 
 
 void Table::loadMetadataBinary() {
