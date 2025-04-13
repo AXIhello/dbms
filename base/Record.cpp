@@ -284,7 +284,7 @@ void Record::write_to_tdf_format(const std::string& table_name,
 // 从.tdf文件读取FieldBlock结构
 std::vector<FieldBlock> Record::read_field_blocks(const std::string& table_name) {
     std::vector<FieldBlock> fields;
-    std::string tdf_filename = table_name + ".tdf";
+    std::string tdf_filename = table_name;
     std::ifstream file(tdf_filename, std::ios::binary);
 
     if (!file) {
