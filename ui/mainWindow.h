@@ -18,9 +18,10 @@ class MainWindow : public QMainWindow {
 public:
     explicit MainWindow(QWidget* parent = nullptr);
     ~MainWindow();
+    void refreshTree();
+    void refreshDatabaseList();
 private slots:
     void onRunButtonClicked();  // 声明槽函数
-    void refreshTree();
     void onTreeItemClicked(QTreeWidgetItem* item, int column);
 
 

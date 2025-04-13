@@ -12,9 +12,9 @@
 #include <regex>
 #include <vector>
 #include <algorithm>
+//#include <main.cpp>
 
-Parse::Parse(QTextEdit * outputEdit) {
-    this->outputEdit = outputEdit;
+Parse::Parse(QTextEdit * outputEdit, MainWindow* mainWindow) : outputEdit(outputEdit), mainWindow(mainWindow) {
     registerPatterns();
 }
 Parse::Parse(Database* database)
@@ -114,11 +114,13 @@ void Parse::execute(const QString& sql_qt) {
 void Parse::handleCreateDatabase(const std::smatch& m) {
     dbManager::getInstance().createUserDatabase(m[1]);
     Output::printMessage(outputEdit, "数据库 '" + QString::fromStdString(m[1]) + "' 创建成功！");
+    mainWindow->refreshDatabaseList();
 }
 
 void Parse::handleDropDatabase(const std::smatch& m) {
     dbManager::getInstance().dropDatabase(m[1]);
     Output::printMessage(outputEdit, "数据库 '" + QString::fromStdString(m[1]) + "' 删除成功！");
+
 }
 
 void Parse::handleUseDatabase(const std::smatch& m) {
@@ -134,6 +136,7 @@ void Parse::handleUseDatabase(const std::smatch& m) {
     } else {
         // 如果切换成功，输出成功信息
         Output::printMessage(outputEdit, "已成功切换到数据库 '" + QString::fromStdString(dbName) + "'.");
+
     }
 }
 
@@ -152,7 +155,6 @@ void Parse::handleSelectDatabase() {
         Output::printError(outputEdit, e.what());
     }
 }
-
 
 
 void Parse::handleCreateTable(const std::smatch& match) {
@@ -202,6 +204,10 @@ void Parse::handleCreateTable(const std::smatch& match) {
         field.integrities = 0; // 先不支持完整性约束
 
         fields.push_back(field);
+
+        if (mainWindow) {
+            mainWindow->refreshTree(); // 在这里刷新
+        }
     }
 
     try {

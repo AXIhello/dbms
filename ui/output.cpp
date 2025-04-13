@@ -49,6 +49,12 @@ void Output::printError(QTextEdit* outputEdit, const QString& error) {
     outputEdit->append("[错误] " + error);
 }
 
+void Output::printInfo(QTextEdit* outputEdit, const QString& message) {
+    if (outputEdit) {
+        outputEdit->append("[信息] :" + message);
+    }
+}
+
 void Output::printDatabaseList(QTextEdit* outputEdit, const std::vector<std::string>& dbs) {
     if (!outputEdit) return;
     outputEdit->clear();

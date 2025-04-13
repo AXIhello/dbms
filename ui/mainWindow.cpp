@@ -21,8 +21,7 @@ MainWindow::MainWindow(QWidget* parent)
     // 连接按钮点击事件到槽函数
     connect(ui->runButton, &QPushButton::clicked, this,&MainWindow::onRunButtonClicked);
     connect(ui->treeWidget, &QTreeWidget::itemClicked, this, &MainWindow::onTreeItemClicked);
-
-    refreshTree();
+    //refreshTree();
     setWindowTitle("My Database Client"); // 设置窗口标题
     setGeometry(100, 100, 1000, 600);  // 设置窗口大小
 
@@ -82,10 +81,9 @@ void MainWindow::onRunButtonClicked() {
         QMessageBox::warning(this, "警告", "SQL 语句不能为空！");
         return;
     }
-    
-    Parse parser(ui->outputEdit);
+
+    Parse parser(ui->outputEdit,this);
     parser.execute(sql);
-    refreshTree(); // 每次执行完语句后刷新树
 
    /* QString message;
     if (sql.startsWith("SELECT", Qt::CaseInsensitive))
@@ -109,29 +107,42 @@ void MainWindow::onRunButtonClicked() {
 }
 
 void MainWindow::refreshTree() {
-    ui->treeWidget->clear(); // 清空旧数据
-    
-    //获取当前数据库和库名
-    Database* db = dbManager::getInstance().getCurrentDatabase();
-    if (!db) {
-        Output::printError(ui->outputEdit, "请先选择数据库！");
-        return;
+    try
+    {
+        ui->treeWidget->clear(); // 清空旧数据
+
+        //获取当前数据库和库名
+        Database* db = dbManager::getInstance().getCurrentDatabase();
+        if (!db) {
+            Output::printInfo(ui->outputEdit, "当前没有选中的数据库。");
+            return;
+        }
+        std::string dbName = db->getDBName();
+
+        //添加顶层节点（当前数据库），挂到treeWidget上
+        QTreeWidgetItem* dbItem = new QTreeWidgetItem(ui->treeWidget);
+        dbItem->setText(0, QString::fromStdString(dbName));
+
+        //添加库下的所有表名为子节点
+        std::vector<std::string> tableNames = db->getAllTableNames();
+        for (const std::string& tableName : tableNames) {
+            if (!tableName.empty()) {
+                QTreeWidgetItem* tableItem = new QTreeWidgetItem();
+                tableItem->setText(0, QString::fromStdString(tableName));
+                dbItem->addChild(tableItem);
+            } // 将表名节点添加为数据库节点的子项
+        }
+
+        ui->treeWidget->expandAll(); // 展开所有
     }
-    std::string dbName = db->getDBName();
-
-    //添加顶层节点（当前数据库），挂到treeWidget上
-    QTreeWidgetItem* dbItem = new QTreeWidgetItem(ui->treeWidget);
-    dbItem->setText(0, QString::fromStdString(dbName));
-
-    //添加库下的所有表名为子节点
-    std::vector<std::string> tableNames = db->getAllTableNames();
-    for (const std::string& tableName : tableNames) {
-        QTreeWidgetItem* tableItem = new QTreeWidgetItem();
-        tableItem->setText(0, QString::fromStdString(tableName));
-        dbItem->addChild(tableItem);  // 将表名节点添加为数据库节点的子项
+    catch (const std::runtime_error& e) {
+        Output::printError(ui->outputEdit, QString("运行时错误: ") + e.what());
+        qDebug() << "运行时错误:" << e.what();
     }
-
-    ui->treeWidget->expandAll(); // 展开所有
+    catch (const std::exception& e) {
+        Output::printError(ui->outputEdit, QString("其他异常: ") + e.what());
+        qDebug() << "其他异常:" << e.what();
+    }
 }
 
 void MainWindow::onTreeItemClicked(QTreeWidgetItem* item, int column) {
@@ -145,4 +156,15 @@ void MainWindow::onTreeItemClicked(QTreeWidgetItem* item, int column) {
         return;
     }
 
+}
+
+//针对建数据库，只把数据库挂上去
+void MainWindow::refreshDatabaseList() {
+    ui->treeWidget->clear();
+
+    const auto& dbList = dbManager::getInstance().getDatabaseList();
+    for (const auto& name : dbList) {
+        QTreeWidgetItem* dbItem = new QTreeWidgetItem(ui->treeWidget);
+        dbItem->setText(0, QString::fromStdString(name));
+    }
 }

@@ -14,6 +14,8 @@ public:
     // 其他通用输出方法（可选）
     static void printMessage(QTextEdit* outputEdit, const QString& message);
     static void printError(QTextEdit* outputEdit, const QString& error);
+    static void printInfo(QTextEdit* outputEdit, const QString& message);
+
 };
 
 #endif // OUTPUT_H
