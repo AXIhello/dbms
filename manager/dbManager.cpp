@@ -135,12 +135,15 @@ void dbManager::loadSystemDBInfo() {
 
 // 创建数据库
 void dbManager::createUserDatabase(const std::string& db_name) {
-    if (db_name.length() > 128 || databaseExists(db_name)) {
-        std::cerr << "数据库 " << db_name << " 已存在！" << std::endl;
-        return;
+    if (db_name.length() > 128) {
+        throw std::runtime_error("数据库名过长（不能超过128个字符）: " + db_name);
     }
 
-    std::string db_path = basePath + "/data/" + db_name;//到数据库文件夹为止
+    if (databaseExists(db_name)) {
+        throw std::runtime_error("数据库 '" + db_name + "' 已存在！");
+    }
+
+    std::string db_path = basePath + "/data/" + db_name; // 到数据库文件夹为止
     createDatabaseFolder(db_name);
     createDatabaseFiles(db_name);
     saveDatabaseInfo(db_name, db_path);
@@ -232,19 +235,17 @@ dbManager& dbManager::getInstance() {
 
 void dbManager::useDatabase(const std::string& db_name) {
     if (!databaseExists(db_name)) {
-        std::cerr << "数据库 " << db_name << " 不存在！" << std::endl;
-        return;  // 如果数据库不存在，直接返回
+        throw std::runtime_error("数据库 '" + db_name + "' 不存在！");
     }
 
     if (currentDB) {
-        delete currentDB;  // 清理旧数据库实例
+        delete currentDB;
     }
 
-    currentDB = new Database(db_name);  // 传入数据库名；路径构造在Database中完成
+    currentDB = new Database(db_name);  // Database 构造时自动加载
     currentDBName = db_name;
-
-    std::cout << "当前数据库已切换为: " << db_name << std::endl;
 }
+
 
 Database* dbManager::getCurrentDatabase() {
     if (!currentDB) {

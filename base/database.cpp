@@ -42,9 +42,12 @@ Database::~Database() {
 
 // 创建新表√
 void Database::createTable(const std::string& table_name, const std::vector<FieldBlock>& fields) {
-    if (m_tables.find(table_name) != m_tables.end()) {
+    /*if (m_tables.find(table_name) != m_tables.end()) {
         throw std::runtime_error("表 " + table_name + " 已存在");
-    }
+    }*/
+	if (tableExistsOnDisk(table_name)) {
+        throw std::runtime_error("表 '" + table_name + "' 已存在。");
+	}
 
     Table* new_table = new Table(m_db_name, table_name);
     new_table->initializeNew();
@@ -159,6 +162,11 @@ void Database::saveTable(const std::string& table_name) {
 std::string Database::getDBPath() const
 {
 	return m_db_path;
+}
+
+bool Database::tableExistsOnDisk(const std::string& table_name) const {
+	std::string file_path = m_db_path + "/" + table_name + ".tdf";
+	return std::filesystem::exists(file_path);
 }
 /*
 void Database::beginTransaction() {

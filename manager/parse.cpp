@@ -112,9 +112,17 @@ void Parse::execute(const QString& sql_qt) {
   
 
 void Parse::handleCreateDatabase(const std::smatch& m) {
-    dbManager::getInstance().createUserDatabase(m[1]);
-    Output::printMessage(outputEdit, "数据库 '" + QString::fromStdString(m[1]) + "' 创建成功！");
+    std::string dbName = m[1];
+
+    try {
+        dbManager::getInstance().createUserDatabase(dbName);
+        Output::printMessage(outputEdit, "数据库 '" + QString::fromStdString(dbName) + "' 创建成功。");
+    }
+    catch (const std::exception& e) {
+        Output::printError(outputEdit, e.what());
+    }
 }
+
 
 void Parse::handleDropDatabase(const std::smatch& m) {
     dbManager::getInstance().dropDatabase(m[1]);
@@ -124,18 +132,19 @@ void Parse::handleDropDatabase(const std::smatch& m) {
 void Parse::handleUseDatabase(const std::smatch& m) {
     std::string dbName = m[1];
 
-    // 调用 dbManager 的 useDatabase 方法来切换数据库
-    dbManager::getInstance().useDatabase(dbName);
+    try {
+        // 尝试切换数据库
+        dbManager::getInstance().useDatabase(dbName);
 
-    // 判断是否切换成功
-    if (dbManager::getInstance().getCurrentDatabase() == nullptr) {
-        // 如果没有切换成功，输出错误信息
-        Output::printError(outputEdit, "无法切换到数据库 '" + QString::fromStdString(dbName) + "'。");
-    } else {
-        // 如果切换成功，输出成功信息
+        // 成功后输出信息
         Output::printMessage(outputEdit, "已成功切换到数据库 '" + QString::fromStdString(dbName) + "'.");
     }
+    catch (const std::exception& e) {
+        // 捕获异常并输出错误信息
+        Output::printError(outputEdit, e.what());
+    }
 }
+
 
 void Parse::handleShowDatabases(const std::smatch& m) {
     auto dbs = dbManager::getInstance().getDatabaseList();
@@ -159,9 +168,12 @@ void Parse::handleCreateTable(const std::smatch& match) {
     std::string tableName = match[1];
     std::string rawDefinition = match[2]; // 字段部分，如 id INT, name CHAR(20)
 
-    Database* db = dbManager::getInstance().getCurrentDatabase();
-    if (!db) {
-        Output::printError(outputEdit, "请先使用 USE 语句选择数据库");
+    Database* db = nullptr;
+    try {
+        db = dbManager::getInstance().getCurrentDatabase();
+    }
+    catch (const std::exception& e) {
+        Output::printError(outputEdit, QString::fromStdString(e.what()));
         return;
     }
 
