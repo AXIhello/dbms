@@ -296,12 +296,13 @@ void Parse::handleInsertInto(const std::smatch& m) {
 
 void Parse::handleSelect(const std::smatch& m) {
     std::string table_name = m[1];
+	std::string table_path = dbManager::getInstance().getCurrentDatabase()->getDBPath() + "/" + table_name;
 
     // 权限检查
-    if (!user::hasPermission("select|" + table_name)) {
+   /* if (!user::hasPermission("select|" + table_name)) {
         Output::printError(outputEdit, "无权限访问表 '" + QString::fromStdString(table_name) + "'。");
         return;
-    }
+    }*/
 
     try {
         std::string columns = "*"; // 目前仅支持 SELECT *
@@ -313,7 +314,7 @@ void Parse::handleSelect(const std::smatch& m) {
         }
 
         // 直接调用封装了 where 逻辑的 Record::select
-        auto records = Record::select(columns, table_name, condition);
+        auto records = Record::select(columns, table_path, condition);
 
         // 显示查询结果
         Output::printSelectResult(outputEdit, records);

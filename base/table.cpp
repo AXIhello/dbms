@@ -11,6 +11,7 @@ Table::Table(const std::string& dbName, const std::string& tableName)
     m_createTime = time(0);
     m_lastModifyTime = m_createTime;
 	m_tb = dbManager::basePath + "/data/" + m_db_name + "/" + m_db_name + ".tb";
+	m_tdf = dbManager::basePath + "/data/" + m_db_name + "/" + m_tableName + ".tdf";
 
 	if (isTableExist()) {
 		load(); // 加载表的元数据
