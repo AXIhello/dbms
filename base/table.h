@@ -62,7 +62,8 @@ public:
     bool saveDefine()const;
     void saveDefineBinary();
     bool loadDefine();
-    void loadDefineBinary();/*
+    void loadDefineBinary();
+    /*
     void addCol(const Column& col);
     void deleteCol(const string& colName);
     void updateCol(const Column& oldCol, const Column& newCol);*/
