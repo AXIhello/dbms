@@ -35,6 +35,7 @@ void Record::insert_record(const std::string& table_name, const std::string& col
         // 验证值的类型是否匹配
         validate_types();
     }
+    /*暂时无法存储cols，待修改
     else if (cols.empty()) {
         // 从.tdf文件中读取字段信息
         read_table_structure_static(table_name);
@@ -51,19 +52,12 @@ void Record::insert_record(const std::string& table_name, const std::string& col
 
         // 验证值的类型是否匹配
         validate_types_without_columns();
-    }
+    }*/
     else {
         throw std::invalid_argument("Invalid SQL insert statement.");
     }
     insert_into();
 }
-
-// insert_record 全局接口实现
-void insert_record(const std::string& table_name, const std::string& cols, const std::string& vals) {
-    Record r;
-    r.insert_record(table_name, cols, vals);
-}
-
 
 bool Record::table_exists(const std::string& table_name) {
     std::string tdf_filename = table_name + ".tdf";
