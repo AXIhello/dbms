@@ -13,6 +13,9 @@
     <Filter Include="root">
       <UniqueIdentifier>{F0010000-0000-0000-0000-000000000004}</UniqueIdentifier>
     </Filter>
+    <Filter Include="debug">
+      <UniqueIdentifier>{12c09639-2926-4507-bebe-2c08f0d88ec1}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <!-- base -->
@@ -88,6 +91,9 @@
     <QtRcc Include="dbms.qrc">
       <Filter>root</Filter>
     </QtRcc>
+    <ClCompile Include="debug.cpp">
+      <Filter>debug</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="tableBlock.h">
@@ -98,6 +104,9 @@
     </ClInclude>
     <ClInclude Include="fieldBlock.h">
       <Filter>base</Filter>
+    </ClInclude>
+    <ClInclude Include="debug.h">
+      <Filter>debug</Filter>
     </ClInclude>
   </ItemGroup>
 </Project>

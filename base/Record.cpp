@@ -35,24 +35,6 @@ void Record::insert_record(const std::string& table_name, const std::string& col
         // 验证值的类型是否匹配
         validate_types();
     }
-    /*暂时无法存储cols，待修改
-    else if (cols.empty()) {
-        // 从.tdf文件中读取字段信息
-        read_table_structure_static(table_name);
-
-        // 解析值
-        parse_values(vals);
-
-        // 检查值的数量是否与表中字段数量匹配
-        if (values.size() != table_structure.size()) {
-            throw std::runtime_error("Value count (" + std::to_string(values.size()) +
-                ") does not match column count (" +
-                std::to_string(table_structure.size()) + ").");
-        }
-
-        // 验证值的类型是否匹配
-        validate_types_without_columns();
-    }*/
     else {
         throw std::invalid_argument("Invalid SQL insert statement.");
     }
@@ -138,7 +120,7 @@ void Record::parse_values(const std::string& vals) {
 void Record::validate_columns() {
     // 首先从.tdf文件读取表结构
     if (table_structure.empty()) {
-        read_table_structure_static(table_name);
+        table_structure=read_table_structure_static(table_name);
     }
 
     // 验证所有提供的列名是否在表结构中

@@ -102,6 +102,7 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="debug.cpp" />
     <ClCompile Include="manager\dbManager.cpp" />
     <ClCompile Include="ui\login.cpp" />
     <ClCompile Include="base\database.cpp" />
@@ -122,6 +123,7 @@
     <ClInclude Include="base\database.h" />
     <QtMoc Include="ui\mainWindow.h" />
     <ClInclude Include="databaseBlock.h" />
+    <ClInclude Include="debug.h" />
     <ClInclude Include="fieldBlock.h" />
     <ClInclude Include="manager\dbManager.h" />
     <ClInclude Include="tableBlock.h" />
