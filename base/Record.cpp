@@ -37,7 +37,7 @@ void Record::insert_record(const std::string& table_name, const std::string& col
     }
     else if (cols.empty()) {
         // 从.tdf文件中读取字段信息
-        read_table_structure();
+        read_table_structure_static(table_name);
 
         // 解析值
         parse_values(vals);
@@ -67,46 +67,33 @@ void insert_record(const std::string& table_name, const std::string& cols, const
 
 bool Record::table_exists(const std::string& table_name) {
     std::string tdf_filename = table_name + ".tdf";
-    std::ifstream file(tdf_filename);
+    std::ifstream file(tdf_filename,std::ios::binary);
     return file.good();
 }
 
-void Record::read_table_structure() {
+std::unordered_map<std::string, std::string> Record::read_table_structure_static(const std::string& table_name) {
+    std::unordered_map<std::string, std::string> result;
+    // 替换为类似 read_field_blocks 的二进制读取
     std::vector<FieldBlock> fields = read_field_blocks(table_name);
-
-    table_structure.clear(); // 确保清空之前的结构信息
-    columns.clear(); // 清空列名
 
     for (const auto& field : fields) {
         std::string column_name = field.name;
         std::string column_type;
 
-        // 根据FieldBlock中的type字段转换为字符串类型
+        // 将类型代码转换为字符串类型
         switch (field.type) {
-        case 1:
-            column_type = "INTEGER";
-            break;
-        case 2:
-            column_type = "FLOAT";
-            break;
-        case 3:
-            column_type = "VARCHAR";
-            break;
-        case 4:
-            column_type = "CHAR";
-            break;
-        case 5:
-            column_type = "DATETIME";
-            break;
-        default:
-            column_type = "UNKNOWN";
+        case 1: column_type = "INTEGER"; break;
+        case 2: column_type = "FLOAT"; break;
+        case 3: column_type = "VARCHAR"; break;
+        case 4: column_type = "CHAR"; break;
+        case 5: column_type = "DATETIME"; break;
+        default: column_type = "UNKNOWN";
         }
 
-        // 将列名和类型添加到表结构中
-        table_structure[column_name] = column_type;
-        // 同时保持原始的列顺序
-        columns.push_back(column_name);
+        result[column_name] = column_type;
     }
+
+    return result;
 }
 
 void Record::parse_columns(const std::string& cols) {
@@ -157,7 +144,7 @@ void Record::parse_values(const std::string& vals) {
 void Record::validate_columns() {
     // 首先从.tdf文件读取表结构
     if (table_structure.empty()) {
-        read_table_structure();
+        read_table_structure_static(table_name);
     }
 
     // 验证所有提供的列名是否在表结构中
@@ -466,56 +453,6 @@ void Record::insert_into() {
     std::cout << "记录插入表 " << this->table_name << " 成功。" << std::endl;
 }
 
-
-
-// 静态版本的表结构读取函数，用于select操作
-std::unordered_map<std::string, std::string> Record::read_table_structure_static(const std::string& table_name) {
-    std::unordered_map<std::string, std::string> result;
-    std::string tdf_filename = table_name + ".tdf";
-    std::ifstream file(tdf_filename);
-
-    if (!file) {
-        throw std::runtime_error("Failed to open table definition file: " + tdf_filename);
-    }
-
-    std::string line;
-    // 假设.tdf文件格式为: column_name column_type
-    while (std::getline(file, line)) {
-        std::stringstream ss(line);
-        std::string column_name, column_type;
-
-        if (ss >> column_name >> column_type) {
-            result[column_name] = column_type;
-        }
-    }
-
-    return result;
-}
-
-// 获取列的顺序
-std::vector<std::string> Record::get_column_order(const std::string& table_name) {
-    std::vector<std::string> result;
-    std::string tdf_filename = table_name + ".tdf";
-    std::ifstream file(tdf_filename);
-
-    if (!file) {
-        throw std::runtime_error("Failed to open table definition file: " + tdf_filename);
-    }
-
-    std::string line;
-    // 假设.tdf文件格式为: column_name column_type
-    while (std::getline(file, line)) {
-        std::stringstream ss(line);
-        std::string column_name;
-
-        if (ss >> column_name) {
-            result.push_back(column_name);
-        }
-    }
-
-    return result;
-}
-
 // 解析列名列表
 std::vector<std::string> Record::parse_column_list(const std::string& columns) {
     std::vector<std::string> result;
@@ -571,7 +508,7 @@ void Record::update(const std::string& tableName, const std::string& setClause, 
     }
 
     // 读取表结构
-    read_table_structure();
+    std::vector<FieldBlock> fields = read_field_blocks(table_name);
 
     // 解析SET子句
     std::unordered_map<std::string, std::string> update_values;
@@ -624,81 +561,175 @@ void Record::update(const std::string& tableName, const std::string& setClause, 
 
     // 执行更新操作
     // 1. 读取现有记录
+     // 以二进制模式打开文件
     std::string trd_filename = this->table_name + ".trd";
     std::string temp_filename = this->table_name + ".tmp";
-    std::ifstream infile(trd_filename);
-    std::ofstream outfile(temp_filename);
+    std::ifstream infile(trd_filename, std::ios::binary);
+    std::ofstream outfile(temp_filename, std::ios::binary);
 
-    if (!infile) {
-        throw std::runtime_error("无法打开表数据文件: " + trd_filename);
+    if (!infile || !outfile) {
+        throw std::runtime_error("无法打开文件进行更新操作");
     }
 
-    if (!outfile) {
-        throw std::runtime_error("无法创建临时文件: " + temp_filename);
-    }
-
-    std::string line;
     int updated_count = 0;
 
-    // 读取并处理每一行记录
-    while (std::getline(infile, line)) {
-        // 解析记录行
+    // 根据字段定义计算记录大小
+    size_t record_size = 0;
+    for (const auto& field : fields) {
+        size_t field_size = 0;
+        switch (field.type) {
+        case 1: field_size = sizeof(int); break;         // INTEGER
+        case 2: field_size = sizeof(float); break;       // FLOAT
+        case 3: field_size = field.param; break;         // VARCHAR
+        case 4: field_size = field.param; break;         // CHAR
+        case 5: field_size = sizeof(std::time_t); break; // DATETIME
+        }
+
+        // 添加填充以确保4字节对齐
+        field_size = ((field_size + 3) / 4) * 4;
+        record_size += field_size;
+    }
+
+    // 处理记录
+    char* record_buffer = new char[record_size];
+    while (infile.read(record_buffer, record_size)) {
+        // 将记录解析为字段名到值的映射
         std::unordered_map<std::string, std::string> record_data;
-        std::string field_value_pair;
-        std::stringstream ss(line);
-        bool is_valid_record = true;
+        char* buffer_ptr = record_buffer;
 
-        // 处理每个字段值对
-        while (std::getline(ss, field_value_pair, ',')) {
-            // 如果遇到END标记，结束当前记录的解析
-            if (field_value_pair == "END") {
+        for (const auto& field : fields) {
+            std::string value;
+
+            // 根据字段类型提取值
+            switch (field.type) {
+            case 1: {  // INTEGER
+                int int_val;
+                std::memcpy(&int_val, buffer_ptr, sizeof(int));
+                value = std::to_string(int_val);
+                buffer_ptr += sizeof(int);
                 break;
             }
-
-            // 分割字段名和值
-            size_t dot_pos = field_value_pair.find('.');
-            if (dot_pos != std::string::npos) {
-                std::string field = field_value_pair.substr(0, dot_pos);
-                std::string value = field_value_pair.substr(dot_pos + 1);
-
-                // 存储字段和值
-                record_data[field] = value;
-            }
-            else {
-                is_valid_record = false;
+            case 2: {  // FLOAT
+                float float_val;
+                std::memcpy(&float_val, buffer_ptr, sizeof(float));
+                value = std::to_string(float_val);
+                buffer_ptr += sizeof(float);
                 break;
             }
+            case 3:    // VARCHAR
+            case 4: {  // CHAR
+                value = std::string(buffer_ptr);
+                buffer_ptr += field.param;
+                break;
+            }
+            case 5: {  // DATETIME
+                std::time_t time_val;
+                std::memcpy(&time_val, buffer_ptr, sizeof(std::time_t));
+                value = std::to_string(time_val);  // 如果需要，转换为适当的格式
+                buffer_ptr += sizeof(std::time_t);
+                break;
+            }
+            }
+
+            size_t field_bytes = 0;
+            switch (field.type) {
+            case 1: field_bytes = sizeof(int); break;
+            case 2: field_bytes = sizeof(float); break;
+            case 3:
+            case 4: field_bytes = field.param; break;
+            case 5: field_bytes = sizeof(std::time_t); break;
+            default: field_bytes = 0; break;
+            }
+            size_t padding = (4 - (field_bytes % 4)) % 4;
+            buffer_ptr += padding;
+
+            record_data[field.name] = value;
         }
 
-        if (!is_valid_record) {
-            // 如果记录格式不正确，保持原样写入
-            outfile << line << std::endl;
-            continue;
-        }
+        // 检查记录是否符合条件
+        bool matches = condition.empty() || matches_condition(record_data);
 
-        // 检查记录是否满足条件
-        if (condition.empty() || matches_condition(record_data)) {
-            // 更新满足条件的记录
-            for (const auto& [field, new_value] : update_values) {
-                record_data[field] = new_value;
+        // 如果记录匹配，则更新
+        if (matches) {
+            // 应用 setClause 中的更新
+            for (const auto& [field_name, new_value] : update_values) {
+                record_data[field_name] = new_value;
             }
             updated_count++;
         }
 
-        // 将更新后的记录写回文件
-        bool first = true;
-        for (const auto& [field, value] : record_data) {
-            if (!first) outfile << ",";
-            outfile << field << "." << value;
-            first = false;
+        // 将记录（更新后或原始）写回文件
+        buffer_ptr = record_buffer;
+        for (const auto& field : fields) {
+            std::string value = record_data[field.name];
+
+            // 根据字段类型写入值
+            switch (field.type) {
+            case 1: {  // INTEGER
+                int int_val = std::stoi(value);
+                std::memcpy(buffer_ptr, &int_val, sizeof(int));
+                buffer_ptr += sizeof(int);
+                break;
+            }
+            case 2: {  // FLOAT
+                float float_val = std::stof(value);
+                std::memcpy(buffer_ptr, &float_val, sizeof(float));
+                buffer_ptr += sizeof(float);
+                break;
+            }
+            case 3:    // VARCHAR
+            case 4: {  // CHAR
+                // 如果存在引号，则删除
+                if ((value.front() == '\'' && value.back() == '\'') ||
+                    (value.front() == '\"' && value.back() == '\"')) {
+                    value = value.substr(1, value.length() - 2);
+                }
+
+                // 确保以null结尾并且长度适当
+                std::memset(buffer_ptr, 0, field.param);
+                std::strncpy(buffer_ptr, value.c_str(), field.param - 1);
+                buffer_ptr += field.param;
+                break;
+            }
+            case 5: {  // DATETIME
+                std::time_t time_val;
+                // 从字符串转换或使用当前时间
+                if (value.empty() || value == "NULL") {
+                    time_val = std::time(nullptr);
+                }
+                else {
+                    // 如果可能，从字符串解析时间
+                    // 为简单起见，这里使用当前时间
+                    time_val = std::time(nullptr);
+                }
+                std::memcpy(buffer_ptr, &time_val, sizeof(std::time_t));
+                buffer_ptr += sizeof(std::time_t);
+                break;
+            }
+            }
+
+            size_t field_bytes = 0;
+            switch (field.type) {
+            case 1: field_bytes = sizeof(int); break;
+            case 2: field_bytes = sizeof(float); break;
+            case 3:
+            case 4: field_bytes = field.param; break;
+            case 5: field_bytes = sizeof(std::time_t); break;
+            default: field_bytes = 0; break;
+            }
+            size_t padding = (4 - (field_bytes % 4)) % 4;
+            buffer_ptr += padding;
+
         }
-        outfile << ",END" << std::endl;
+
+        outfile.write(record_buffer, record_size);
     }
 
+    delete[] record_buffer;
     infile.close();
     outfile.close();
 
-    // 替换原文件
+    // 用临时文件替换原文件
     if (std::remove(trd_filename.c_str()) != 0) {
         std::remove(temp_filename.c_str());
         throw std::runtime_error("无法删除原表数据文件。");
@@ -710,7 +741,6 @@ void Record::update(const std::string& tableName, const std::string& setClause, 
 
     std::cout << "成功更新了 " << updated_count << " 条记录。" << std::endl;
 }
-
 void Record::delete_(const std::string& tableName, const std::string& condition) {
     this->table_name = tableName;
 
@@ -720,7 +750,7 @@ void Record::delete_(const std::string& tableName, const std::string& condition)
     }
 
     // 读取表结构
-    read_table_structure();
+    std::vector<FieldBlock> fields = read_field_blocks(table_name);
 
     // 解析条件
     if (!condition.empty()) {
@@ -733,63 +763,97 @@ void Record::delete_(const std::string& tableName, const std::string& condition)
     }
 
     // 执行删除操作
-    // 1. 读取现有记录
     std::string trd_filename = this->table_name + ".trd";
     std::string temp_filename = this->table_name + ".tmp";
-    std::ifstream infile(trd_filename);
-    std::ofstream outfile(temp_filename);
+    std::ifstream infile(trd_filename, std::ios::binary);
+    std::ofstream outfile(temp_filename, std::ios::binary);
 
-    if (!infile) {
-        throw std::runtime_error("无法打开表数据文件: " + trd_filename);
+    if (!infile || !outfile) {
+        throw std::runtime_error("无法打开文件进行删除操作");
     }
 
-    if (!outfile) {
-        throw std::runtime_error("无法创建临时文件: " + temp_filename);
-    }
-
-    std::string line;
     int deleted_count = 0;
 
-    // 读取并处理每一行记录
-    while (std::getline(infile, line)) {
-        // 解析记录行
-        std::unordered_map<std::string, std::string> record_data;
-        std::string field_value_pair;
-        std::stringstream ss(line);
-        bool is_valid_record = true;
-
-        // 处理每个字段值对
-        while (std::getline(ss, field_value_pair, ',')) {
-            // 如果遇到END标记，结束当前记录的解析
-            if (field_value_pair == "END") {
-                break;
-            }
-
-            // 分割字段名和值
-            size_t dot_pos = field_value_pair.find('.');
-            if (dot_pos != std::string::npos) {
-                std::string field = field_value_pair.substr(0, dot_pos);
-                std::string value = field_value_pair.substr(dot_pos + 1);
-
-                // 存储字段和值
-                record_data[field] = value;
-            }
-            else {
-                is_valid_record = false;
-                break;
-            }
+    // 计算记录大小
+    size_t record_size = 0;
+    for (const auto& field : fields) {
+        size_t field_size = 0;
+        switch (field.type) {
+        case 1: field_size = sizeof(int); break;         // INTEGER
+        case 2: field_size = sizeof(float); break;       // FLOAT
+        case 3: field_size = field.param; break;         // VARCHAR
+        case 4: field_size = field.param; break;         // CHAR
+        case 5: field_size = sizeof(std::time_t); break; // DATETIME
         }
 
-        if (!is_valid_record) {
-            // 如果记录格式不正确，保持原样写入
-            outfile << line << std::endl;
-            continue;
+        // 添加填充以确保4字节对齐
+        field_size = ((field_size + 3) / 4) * 4;
+        record_size += field_size;
+    }
+
+    // 处理记录
+    char* record_buffer = new char[record_size];
+    while (infile.read(record_buffer, record_size)) {
+        // 将记录解析为字段名到值的映射
+        std::unordered_map<std::string, std::string> record_data;
+        char* buffer_ptr = record_buffer;
+
+        for (const auto& field : fields) {
+            std::string value;
+
+            // 根据字段类型提取值
+            switch (field.type) {
+            case 1: {  // INTEGER
+                int int_val;
+                std::memcpy(&int_val, buffer_ptr, sizeof(int));
+                value = std::to_string(int_val);
+                buffer_ptr += sizeof(int);
+                break;
+            }
+            case 2: {  // FLOAT
+                float float_val;
+                std::memcpy(&float_val, buffer_ptr, sizeof(float));
+                value = std::to_string(float_val);
+                buffer_ptr += sizeof(float);
+                break;
+            }
+            case 3:    // VARCHAR
+            case 4: {  // CHAR
+                value = std::string(buffer_ptr);
+                buffer_ptr += field.param;
+                break;
+            }
+            case 5: {  // DATETIME
+                std::time_t time_val;
+                std::memcpy(&time_val, buffer_ptr, sizeof(std::time_t));
+                value = std::to_string(time_val);
+                buffer_ptr += sizeof(std::time_t);
+                break;
+            }
+            }
+
+            size_t field_bytes = 0;
+            switch (field.type) {
+            case 1: field_bytes = sizeof(int); break;
+            case 2: field_bytes = sizeof(float); break;
+            case 3:
+            case 4: field_bytes = field.param; break;
+            case 5: field_bytes = sizeof(std::time_t); break;
+            default: field_bytes = 0; break;
+            }
+            size_t padding = (4 - (field_bytes % 4)) % 4;
+            buffer_ptr += padding;
+
+
+            record_data[field.name] = value;
         }
 
         // 检查记录是否满足条件
-        if (!condition.empty() && !matches_condition(record_data)) {
+        bool matches = condition.empty() || matches_condition(record_data);
+
+        if (!matches) {
             // 不满足删除条件，保留记录
-            outfile << line << std::endl;
+            outfile.write(record_buffer, record_size);
         }
         else {
             // 满足删除条件，不写入（即删除）
@@ -797,6 +861,7 @@ void Record::delete_(const std::string& tableName, const std::string& condition)
         }
     }
 
+    delete[] record_buffer;
     infile.close();
     outfile.close();
 
@@ -812,6 +877,7 @@ void Record::delete_(const std::string& tableName, const std::string& condition)
 
     std::cout << "成功删除了 " << deleted_count << " 条记录。" << std::endl;
 }
+
 // 实现条件解析方法
 void Record::parse_condition(const std::string& condition) {
     // 清除之前的条件数据
@@ -978,8 +1044,25 @@ std::vector<Record> Record::select(const std::string& columns, const std::string
     }
 
     // 读取表结构以获取所有字段信息
-    std::unordered_map<std::string, std::string> table_structure = read_table_structure_static(table_name);
-    std::vector<std::string> all_columns = get_column_order(table_name);
+    std::vector<FieldBlock> fields = read_field_blocks(table_name);
+    std::unordered_map<std::string, std::string> table_structure;
+    for (const auto& field : fields) {
+        std::string column_type;
+        switch (field.type) {
+        case 1: column_type = "INTEGER"; break;
+        case 2: column_type = "FLOAT"; break;
+        case 3: column_type = "VARCHAR"; break;
+        case 4: column_type = "CHAR"; break;
+        case 5: column_type = "DATETIME"; break;
+        default: column_type = "UNKNOWN";
+        }
+        table_structure[field.name] = column_type;
+    }
+
+    std::vector<std::string> all_columns;
+    for (const auto& field : fields) {
+        all_columns.push_back(field.name);
+    }
 
     // 确定要查询的列
     std::vector<std::string> selected_columns;
@@ -1011,37 +1094,84 @@ std::vector<Record> Record::select(const std::string& columns, const std::string
 
     // 读取记录文件
     std::string trd_filename = table_name + ".trd";
-    std::ifstream file(trd_filename);
+    std::ifstream file(trd_filename, std::ios::binary);
 
     if (!file) {
         // 文件不存在或不可读，返回空结果
         return results;
     }
 
-    std::string line;
-    // 读取每一行记录
-    while (std::getline(file, line)) {
-        // 解析记录行，格式：字段1.值1,字段2.值2,...,END
-        std::unordered_map<std::string, std::string> record_data;
-        std::string field_value_pair;
-        std::stringstream ss(line);
+    // 计算记录大小
+    size_t record_size = 0;
+    for (const auto& field : fields) {
+        size_t field_size = 0;
+        switch (field.type) {
+        case 1: field_size = sizeof(int); break;         // INTEGER
+        case 2: field_size = sizeof(float); break;       // FLOAT
+        case 3: field_size = field.param; break;         // VARCHAR
+        case 4: field_size = field.param; break;         // CHAR
+        case 5: field_size = sizeof(std::time_t); break; // DATETIME
+        }
 
-        // 处理每个字段值对
-        while (std::getline(ss, field_value_pair, ',')) {
-            // 如果遇到END标记，结束当前记录的解析
-            if (field_value_pair == "END") {
+        // 添加填充以确保4字节对齐
+        field_size = ((field_size + 3) / 4) * 4;
+        record_size += field_size;
+    }
+
+    // 处理记录
+    char* record_buffer = new char[record_size];
+    while (file.read(record_buffer, record_size)) {
+        // 将记录解析为字段名到值的映射
+        std::unordered_map<std::string, std::string> record_data;
+        char* buffer_ptr = record_buffer;
+
+        for (const auto& field : fields) {
+            std::string value;
+
+            // 根据字段类型提取值
+            switch (field.type) {
+            case 1: {  // INTEGER
+                int int_val;
+                std::memcpy(&int_val, buffer_ptr, sizeof(int));
+                value = std::to_string(int_val);
+                buffer_ptr += sizeof(int);
                 break;
             }
-
-            // 分割字段名和值
-            size_t dot_pos = field_value_pair.find('.');
-            if (dot_pos != std::string::npos) {
-                std::string field = field_value_pair.substr(0, dot_pos);
-                std::string value = field_value_pair.substr(dot_pos + 1);
-
-                // 存储字段和值
-                record_data[field] = value;
+            case 2: {  // FLOAT
+                float float_val;
+                std::memcpy(&float_val, buffer_ptr, sizeof(float));
+                value = std::to_string(float_val);
+                buffer_ptr += sizeof(float);
+                break;
             }
+            case 3:    // VARCHAR
+            case 4: {  // CHAR
+                value = std::string(buffer_ptr);
+                buffer_ptr += field.param;
+                break;
+            }
+            case 5: {  // DATETIME
+                std::time_t time_val;
+                std::memcpy(&time_val, buffer_ptr, sizeof(std::time_t));
+                value = std::to_string(time_val);
+                buffer_ptr += sizeof(std::time_t);
+                break;
+            }
+            }
+
+            size_t field_bytes = 0;
+            switch (field.type) {
+            case 1: field_bytes = sizeof(int); break;
+            case 2: field_bytes = sizeof(float); break;
+            case 3:
+            case 4: field_bytes = field.param; break;
+            case 5: field_bytes = sizeof(std::time_t); break;
+            default: field_bytes = 0; break;
+            }
+            size_t padding = (4 - (field_bytes % 4)) % 4;
+            buffer_ptr += padding;
+
+            record_data[field.name] = value;
         }
 
         // 检查记录是否满足条件
@@ -1069,5 +1199,6 @@ std::vector<Record> Record::select(const std::string& columns, const std::string
         results.push_back(record);
     }
 
+    delete[] record_buffer;
     return results;
 }

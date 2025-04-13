@@ -10,7 +10,7 @@ private:
     std::vector<std::string> columns;
     std::vector<std::string> values;
     std::unordered_map<std::string, std::string> table_structure; // 列名 -> 数据类型
-    std::vector<FieldBlock> read_field_blocks(const std::string& table_name);
+    static std::vector<FieldBlock> read_field_blocks(const std::string& table_name);
     // 条件解析相关
     std::string condition_field;   // 条件中的字段名
     std::string condition_operator; // 条件中的操作符
@@ -27,13 +27,12 @@ private:
     void validate_types_without_columns();
     // 检查值的类型是否有效
     bool is_valid_type(const std::string& value, const std::string& type);
-    // 读取表结构
-    void read_table_structure();
+
 public:
     // 构造函数
     Record();
     void write_to_tdf_format(const std::string& table_name, const std::vector<std::string>& columns,
-        const std::vector<std::string>& types, const std::vector<int>& params);
+    const std::vector<std::string>& types, const std::vector<int>& params);
     bool validate_field_block(const std::string& value, const FieldBlock& field);
     // 表操作相关函数
     void insert_record(const std::string& table_name, const std::string& cols, const std::string& vals);
