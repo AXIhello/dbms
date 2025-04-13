@@ -283,7 +283,8 @@ void Parse::handleInsertInto(const std::smatch& m) {
 
     try {
         std::string table_path = dbManager::getInstance().getCurrentDatabase()->getDBPath() + "/" + table_name;
-        insert_record(table_path, cols, vals);
+        Record r;
+        r.insert_record(table_path, cols, vals);
         Output::printMessage(outputEdit, QString::fromStdString("INSERT INTO 执行成功。"));
     }
     catch (const std::exception& e) {

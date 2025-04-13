@@ -14,6 +14,15 @@ MainWindow::MainWindow(QWidget* parent)
     , ui(new Ui::MainWindow)// 初始化 UI
 {
     ui->setupUi(this);  // 让 UI 组件和窗口关联
+
+    // 设置 stackedWidget 默认显示第一页（inputEdit页）
+    ui->displayStack->setCurrentIndex(0);
+
+    // 连接按钮点击事件到槽函数
+    connect(ui->runButton, &QPushButton::clicked, this,&MainWindow::onRunButtonClicked);
+    connect(ui->treeWidget, &QTreeWidget::itemClicked, this, &MainWindow::onTreeItemClicked);
+
+    refreshTree();
     setWindowTitle("My Database Client"); // 设置窗口标题
     setGeometry(100, 100, 1000, 600);  // 设置窗口大小
 
@@ -59,9 +68,6 @@ MainWindow::MainWindow(QWidget* parent)
 
     // 将DockWidget添加到主窗口
     addDockWidget(Qt::LeftDockWidgetArea, dockWidget);
-
-    // 连接按钮点击事件到槽函数
-    connect(ui->runButton, &QPushButton::clicked, this, &MainWindow::onRunButtonClicked);
 }
 
 MainWindow::~MainWindow() {
@@ -79,6 +85,8 @@ void MainWindow::onRunButtonClicked() {
     
     Parse parser(ui->outputEdit);
     parser.execute(sql);
+    refreshTree(); // 每次执行完语句后刷新树
+
    /* QString message;
     if (sql.startsWith("SELECT", Qt::CaseInsensitive))
     {
@@ -98,4 +106,43 @@ void MainWindow::onRunButtonClicked() {
     }
 
     QMessageBox::information(this, "SQL 解析", message);*/
+}
+
+void MainWindow::refreshTree() {
+    ui->treeWidget->clear(); // 清空旧数据
+    
+    //获取当前数据库和库名
+    Database* db = dbManager::getInstance().getCurrentDatabase();
+    if (!db) {
+        Output::printError(ui->outputEdit, "请先选择数据库！");
+        return;
+    }
+    std::string dbName = db->getDBName();
+
+    //添加顶层节点（当前数据库），挂到treeWidget上
+    QTreeWidgetItem* dbItem = new QTreeWidgetItem(ui->treeWidget);
+    dbItem->setText(0, QString::fromStdString(dbName));
+
+    //添加库下的所有表名为子节点
+    std::vector<std::string> tableNames = db->getAllTableNames();
+    for (const std::string& tableName : tableNames) {
+        QTreeWidgetItem* tableItem = new QTreeWidgetItem();
+        tableItem->setText(0, QString::fromStdString(tableName));
+        dbItem->addChild(tableItem);  // 将表名节点添加为数据库节点的子项
+    }
+
+    ui->treeWidget->expandAll(); // 展开所有
+}
+
+void MainWindow::onTreeItemClicked(QTreeWidgetItem* item, int column) {
+    QString itemText = item->text(0);
+
+    // 判断是否是数据库名节点
+    if (item->parent() == nullptr) {
+        if (itemText.toLower() == "console") {
+            ui->displayStack->setCurrentIndex(0); // 切回日志输出框
+        }
+        return;
+    }
+
 }
