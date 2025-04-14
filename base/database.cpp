@@ -1,4 +1,5 @@
 //建表语句待完善；
+//删表有bug. 目前database中加载所有table; 似乎删除了metaData后无法获取表文件数据，无法删除。只删除了.tdf?
 #include "database.h"
 #include <iostream>
 #include <fstream>
@@ -10,6 +11,13 @@
 // 构造函数：加载数据库√
 Database::Database(const std::string& db_name) {
     loadDatabase(db_name);
+    loadTables();
+}
+
+// 析构函数：保存数据库√
+Database::~Database() {
+    std::cout << "保存数据库： " << m_db_name << std::endl;
+    saveTable(m_db_name + ".db");
 }
 
 void Database::loadDatabase(const std::string& db_name)
@@ -33,12 +41,39 @@ void Database::loadDatabase(const std::string& db_name)
     throw std::runtime_error("数据库 " + db_name + " 未在 ruanko.db 中找到");
 }
 
+//加载所有表
+void Database::loadTables() {
+    // 清空之前的表缓存（可选）
+    for (auto& pair : m_tables) {
+        delete pair.second;
+    }
+    m_tables.clear();
 
-// 析构函数：保存数据库√
-Database::~Database() {
-    std::cout << "保存数据库： " << m_db_name << std::endl;
-    saveTable(m_db_name + ".db");
+    std::string tbPath = m_db_path + "/" + m_db_name + ".tb";
+    std::ifstream tbFile(tbPath, std::ios::binary);
+    if (!tbFile.is_open()) {
+        throw std::runtime_error("无法打开表元数据文件: " + tbPath );
+    }
+
+    TableBlock block;
+    while (tbFile.read(reinterpret_cast<char*>(&block), sizeof(TableBlock))) {
+        std::string tableName(block.name);
+        Table* table = new Table(m_db_name, tableName);
+
+        try {
+            table->loadDefineBinary(); // 加载字段定义
+            m_tables[tableName] = table;
+        }
+        catch (const std::exception& e) {
+            delete table;
+            throw std::runtime_error("加载表 " + tableName + " 失败: " + std::string(e.what()));
+        }
+    }
+
+    tbFile.close();
 }
+
+
 
 // 创建新表√
 void Database::createTable(const std::string& table_name, const std::vector<FieldBlock>& fields) {
@@ -70,13 +105,36 @@ void Database::createTable(const std::string& table_name, const std::vector<Fiel
 void Database::dropTable(const std::string& table_name) {
     auto it = m_tables.find(table_name);
     if (it == m_tables.end()) {
-        std::cerr << "表 " << table_name << " 未找到" << std::endl;
-        return;
+        throw std::runtime_error("表 " + table_name + " 未找到");
     }
-    delete it->second;//调用Table析构函数
-    m_tables.erase(it);
+
+    Table* table = it->second;
+
+    try {
+        table->deleteTableMetadata();
+        table->deleteFilesDisk();// 显式调用删除文件和元数据的方法
+    }
+    catch (const std::exception& e) {
+        throw std::runtime_error("删除表文件失败: " + std::string(e.what()));
+    }
+
+    delete table;          // 安全地销毁对象
+    m_tables.erase(it);    // 移除表映射
+
     std::cout << "表 " << table_name << " 已成功删除" << std::endl;
 }
+
+
+    //以下为表未加载到数据库中的情况
+	//if (!tableExistsOnDisk(table_name)) {
+	//	throw std::runtime_error("表 '" + table_name + "' 不存在于磁盘中。");
+	//	return;
+	//}
+ //   Table* new_table = new Table(m_db_name, table_name);
+ //   new_table->deleteTableMetadata();
+	//delete new_table; // 调用析构函数删除表对象
+    //以下为直接从磁盘中删除的情况
+
 
 
 // 获取并加载表

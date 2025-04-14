@@ -232,23 +232,17 @@ void Parse::handleCreateTable(const std::smatch& match) {
 
 void Parse::handleDropTable(const std::smatch& match) {
     std::string tableName = match[1];
-
     // 获取当前数据库
-    Database* db = dbManager::getInstance().getCurrentDatabase();
-    if (!db) {
-        Output::printError(outputEdit, "请先使用 USE 语句选择数据库");
+    try { 
+        Database* db = dbManager::getInstance().getCurrentDatabase(); 
+        if(!db->getTable(tableName))
+			throw std::runtime_error("表 '" + tableName + "' 不存在。");
+        db->dropTable(tableName);
+    }
+    catch(const std::exception& e){
+        Output::printError(outputEdit, "表删除失败: " + QString::fromStdString(e.what()));
         return;
     }
-
-    // 检查表是否存在
-    if (!db->getTable(tableName)) {
-        QString error = "表 " + QString::fromStdString(tableName) + " 不存在";
-        Output::printError(outputEdit, error);
-        return;
-    }
-
-    // 删除表
-    db->dropTable(tableName);
 
     // 输出删除成功信息
     QString message = "表 " + QString::fromStdString(tableName) + " 删除成功";

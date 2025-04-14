@@ -56,7 +56,10 @@ public:
     // 表描述文件
     void saveMetadataBinary();
 	void loadMetadataBinary();
-	bool deleteTableMetadata()const;
+
+	bool deleteTableMetadata();
+
+    void deleteFilesDisk();
 
     //表定义文件
     bool saveDefine()const;
