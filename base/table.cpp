@@ -300,23 +300,9 @@ void Table::loadDefineBinary() {
         in.read(reinterpret_cast<char*>(&field), sizeof(FieldBlock));
         if (in.gcount() < sizeof(FieldBlock)) break;
 
-        FieldBlock col;
-        //col.name = std::string(field.name);
-        //col.size = field.param;
+        FieldBlock field;
 
-        //// 映射类型整数为字符串
-        //switch (field.type) {
-        //    case 0: col.type = "INT"; break;
-        //    case 1: col.type = "FLOAT"; break;
-        //    case 2: col.type = "CHAR"; break;
-        //    case 3: col.type = "VARCHAR"; break;
-        //    default: col.type = "UNKNOWN"; break;
-        //}
-
-        // 暂时忽略 integrities 和 mtime
-        //col.defaultValue = "";  // 可以后期扩展读取默认值字段
-
-        m_fields.push_back(col);
+        m_fields.push_back(field);
     }
 
     in.close();
@@ -347,26 +333,14 @@ void Table::addField(const FieldBlock& field) {
 }
 
 
+void Table::dropField(const std::string fieldName) {
 
+}
+
+void Table::updateField(const std::string fieldName, const FieldBlock& updatedField) {
+
+}
 /*
-// 添加列√
-void Table::addCol(const FieldBlock& col) {
-	m_columns.push_back(col); // 添加新列
-    loadRecord();//更改表记录文件内容
-	m_lastModifyTime = time(0); // 更新最后修改时间
-}
-
-// 删除列√
-void Table::deleteCol(const string& colName) {
-	// 删除指定列
-	auto it = std::remove_if(m_columns.begin(), m_columns.end(), [&](const Column& col) {
-		return col.name == colName;
-		});
-	m_columns.erase(it, m_columns.end());
-    loadRecord();//更改表记录文件内容
-	m_lastModifyTime = time(0); // 更新最后修改时间
-}
-
 // 更新列√
 void Table::updateCol(const Column& oldCol, const Column& newCol) {
 	// 更新指定列

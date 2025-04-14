@@ -25,68 +25,79 @@ Parse::Parse(Database* database)
 
 
 void Parse::registerPatterns() {
+    //DONE
     patterns.push_back({
         std::regex(R"(^CREATE\s+DATABASE\s+(\w+);$)", std::regex::icase),
         [this](const std::smatch& m) { handleCreateDatabase(m); }
         });
 
+    //DONE
     patterns.push_back({
     std::regex(R"(^USE\s+(?:DATABASE\s+)?(\w+);$)", std::regex::icase),
     [this](const std::smatch& m) { handleUseDatabase(m); }
         });
 
+    //
     patterns.push_back({
         std::regex(R"(^DROP\s+DATABASE\s+(\w+);$)", std::regex::icase),
         [this](const std::smatch& m) { handleDropDatabase(m); }
         });
 
+    //
     patterns.push_back({
         std::regex(R"(^SHOW\s+DATABASES\s*;$)", std::regex::icase),
         [this](const std::smatch& m) { handleShowDatabases(m); }
         });
 
+	//DONE
     patterns.push_back({
     std::regex(R"(^SELECT\s+DATABASE\s*\(\s*\)\s*;?$)", std::regex::icase),
     [this](const std::smatch& m) { handleSelectDatabase(); }
         });
 
-    //待修改：建表的同时规定表结构
+    //待修改：建表的同时规定表级完整性定义
     patterns.push_back({
     std::regex(R"(^CREATE\s+TABLE\s+(\w+)\s*\((.*)\)\s*;?$)", std::regex::icase),
     [this](const std::smatch& m) { handleCreateTable(m); }
         });
 
+    //DONE
     patterns.push_back({
     std::regex(R"(DROP\s+TABLE\s+(\w+);)", std::regex::icase),
     [this](const std::smatch& m) { handleDropTable(m); }
         });
 
-
+    //
     patterns.push_back({
         std::regex(R"(^SHOW\s+TABLES\s*;$)", std::regex::icase),
         [this](const std::smatch& m) { handleShowTables(m); }
         });
 
+    //DONE 
     patterns.push_back({
         std::regex(R"(^INSERT\s+INTO\s+(\w+)\s*\(([^)]+)\)\s*VALUES\s*\(([^)]+)\);$)", std::regex::icase),
         [this](const std::smatch& m) { handleInsertInto(m); }
         });
 
+    //DONE (匹配 select * )
     patterns.push_back({
         std::regex(R"(^SELECT\s+\*\s+FROM\s+(\w+)(?:\s+WHERE\s+(.+))?;$)", std::regex::icase),
         [this](const std::smatch& m) { handleSelect(m); }
         });
 
+    //
     patterns.push_back({
         std::regex(R"(ALTER\s+TABLE\s+(\w+)\s+ADD\s+COLUMN\s+(\w+)\s+(\w+)(\(\d+\))?;)", std::regex::icase),
         [this](const std::smatch& m) { handleAddColumn(m); }
         });
 
+    //
     patterns.push_back({
         std::regex(R"(ALTER\s+TABLE\s+(\w+)\s+DROP\s+COLUMN\s+(\w+);)", std::regex::icase),
         [this](const std::smatch& m) { handleDeleteColumn(m); }
         });
 
+    //
     patterns.push_back({
         std::regex(R"(ALTER\s+TABLE\s+(\w+)\s+UPDATE\s+COLUMN\s+(\w+)\s+SET\s+(\w+)(\(\d+\))?;)", std::regex::icase),
         [this](const std::smatch& m) { handleUpdateColumn(m); }

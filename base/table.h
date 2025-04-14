@@ -14,15 +14,6 @@ using namespace std;
 
 class Table {
 public:
-
-    //struct FieldBlock {
-    //    string name; // 列名
-    //    string type; // 列类型
-    //    int size;    // 列大小
-    //    string defaultValue; // 列默认值
-    //};
-
-    // 构造函数，初始化表的相关信息
     Table(const string& m_db_name,const string& tableName);
 
     ~Table();
@@ -53,25 +44,24 @@ public:
     // 获取表的最后修改时间
     string getLastModifyTimeString() const;
 
-    // 表描述文件
+    // .tb文件相关
     void saveMetadataBinary();
 	void loadMetadataBinary();
 
+    //删除表相关文件
 	bool deleteTableMetadata();
-
     void deleteFilesDisk();
 
-    //表定义文件
+    //.tdf文件相关
     bool saveDefine()const;
     void saveDefineBinary();
     bool loadDefine();
     void loadDefineBinary();
-    /*
-    void addCol(const Column& col);
-    void deleteCol(const string& colName);
-    void updateCol(const Column& oldCol, const Column& newCol);*/
-
+   
+	//对表操作（添加、删除、更新字段）
     void addField(const FieldBlock& field);
+    void dropField(const std::string fieldName);
+	void updateField(const std::string fieldName, const FieldBlock& updatedField);
 
     //表完整性文件
     bool saveIntegrality()const;
