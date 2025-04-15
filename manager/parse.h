@@ -28,6 +28,10 @@ private:
 
     std::vector<SqlPattern> patterns;
     QString cleanSQL(const QString& sql);//清理sql结构，去除多余空格/制表符等
+    
+    int getTypeFromString(const std::string& columnType);//类型转换函数
+
+
     void registerPatterns();
 
     void handleCreateDatabase(const std::smatch& m);
