@@ -9,15 +9,18 @@
 #include "base/table.h"
 #include "base/database.h"
 #include <string>
+#include "ui/mainWindow.h"
+
 class Parse {
 public:
-    Parse(QTextEdit* outputEdit);  
+    Parse(QTextEdit* outputEdit, MainWindow* mainWindow = nullptr);
     void execute(const QString& sql);
    
     Parse(Database* database);
     
 private:
 	QTextEdit* outputEdit;  // 输出编辑器指针
+    MainWindow* mainWindow;
     struct SqlPattern {
         std::regex pattern;
         std::function<void(const std::smatch&)> action;

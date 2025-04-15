@@ -18,13 +18,17 @@ class MainWindow : public QMainWindow {
 public:
     explicit MainWindow(QWidget* parent = nullptr);
     ~MainWindow();
+    void refreshTree();
+    void refreshDatabaseList();
 private slots:
     void onRunButtonClicked();  // 声明槽函数
+    void onTreeItemClicked(QTreeWidgetItem* item, int column);
+
 
 private:
     Ui::MainWindow* ui;  // 声明一个 Ui::MainWindow 指针
     QWidget* buttonWidget;  // 声明 buttonWidget
-  
+    
 };
 
 #endif // MAINWINDOW_H
