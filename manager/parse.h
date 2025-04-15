@@ -54,6 +54,7 @@ private:
     void handleDropTable(const std::smatch& m);
 
     void handleUpdate(const std::smatch& m);
+    void handleDelete(const std::smatch& m);
 
     Database* db;
 
