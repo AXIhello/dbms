@@ -103,6 +103,11 @@ void Parse::registerPatterns() {
         [this](const std::smatch& m) { handleUpdateColumn(m); }
         });
 
+    patterns.push_back({
+        std::regex(R"(^UPDATE\s+(\w+)\s+SET\s+(.+?)(?:\s+WHERE\s+(.+))?$)", std::regex::icase),
+        [this](const std::smatch& m) { handleUpdate(m); }
+        });
+
 }
 
 void Parse::execute(const QString& sql_qt) {
@@ -349,35 +354,51 @@ void Parse::handleAddColumn(const std::smatch& match) {
     std::string columnType = match[3];  // 获取列类型
     std::string paramStr = match[4];
 
-    Table* table = db->getTable(tableName);  // 获取表对象
-    if (table) {
-       FieldBlock newField;
-       strcpy_s(newField.name, sizeof(newField.name), columnName.c_str());
-       newField.type = getTypeFromString(columnType);
-       newField.param = paramStr.empty() ? 0 : std::stoi(paramStr);
-       //newField.order = 0；
-       newField.mtime = std::time(nullptr);
-       newField.integrities = 0;
+    try {
+        Table* table = db->getTable(tableName);  // 获取表对象
+        if (table) {
+            FieldBlock newField;
+            strcpy_s(newField.name, sizeof(newField.name), columnName.c_str());
+            newField.type = getTypeFromString(columnType);
+            newField.param = paramStr.empty() ? 0 : std::stoi(paramStr);
+            //newField.order = 0;
+            newField.mtime = std::time(nullptr);
+            newField.integrities = 0;
 
-    table->addField(newField);
+            table->addField(newField);
+
+            Output::printMessage(outputEdit, QString::fromStdString("ALTER TABLE " + tableName + " ADD COLUMN 执行成功。"));
+        }
+        else {
+            throw std::runtime_error("表 " + tableName + " 不存在！");
+        }
     }
-    else {
-        std::cerr << "表 " << tableName << " 不存在！" << std::endl;
+    catch (const std::exception& e) {
+        Output::printError(outputEdit, QString::fromStdString(e.what()));
     }
 }
+
 
 void Parse::handleDeleteColumn(const std::smatch& match) {
     std::string tableName = match[1];  // 获取表名
     std::string columnName = match[2];  // 获取列名
 
-    Table* table = db->getTable(tableName);  // 获取表对象
-    if (table) {
-        table->dropField(columnName);  // 调用 Table 的 deleteCol 方法
+    try {
+        Table* table = db->getTable(tableName);  // 获取表对象
+        if (table) {
+            table->dropField(columnName);  // 调用 Table 的 deleteCol 方法
+
+            Output::printMessage(outputEdit, QString::fromStdString("ALTER TABLE " + tableName + " DROP COLUMN 执行成功。"));
+        }
+        else {
+            throw std::runtime_error("表 " + tableName + " 不存在！");
+        }
     }
-    else {
-        std::cerr << "表 " << tableName << " 不存在！" << std::endl;
+    catch (const std::exception& e) {
+        Output::printError(outputEdit, QString::fromStdString(e.what()));
     }
 }
+
 
 void Parse::handleUpdateColumn(const std::smatch& match) {
     std::string tableName = match[1];  // 获取表名
@@ -386,22 +407,56 @@ void Parse::handleUpdateColumn(const std::smatch& match) {
     std::string newColumnType = match[4];  // 获取新列类型
     std::string paramStr = match[5];
 
-    Table* table = db->getTable(tableName);  // 获取表对象
-    if (table) {
-        FieldBlock newField;
-        strcpy_s(newField.name, sizeof(newField.name), newColumnName.c_str());
-        newField.type = getTypeFromString(newColumnType);
-        newField.param = paramStr.empty() ? 0 : std::stoi(paramStr);
-        //newField.order = 0；
-        newField.mtime = std::time(nullptr);
-        newField.integrities = 0;
+    try {
+        Table* table = db->getTable(tableName);  // 获取表对象
+        if (table) {
+            FieldBlock newField;
+            strcpy_s(newField.name, sizeof(newField.name), newColumnName.c_str());
+            newField.type = getTypeFromString(newColumnType);
+            newField.param = paramStr.empty() ? 0 : std::stoi(paramStr);
+            //newField.order = 0;
+            newField.mtime = std::time(nullptr);
+            newField.integrities = 0;
 
-        table->updateField(oldColumnName, newField);  
+            table->updateField(oldColumnName, newField);
+
+            Output::printMessage(outputEdit, QString::fromStdString("ALTER TABLE " + tableName + " RENAME COLUMN 执行成功。"));
+        }
+        else {
+            throw std::runtime_error("表 " + tableName + " 不存在！");
+        }
     }
-    else {
-        std::cerr << "表 " << tableName << " 不存在！" << std::endl;
+    catch (const std::exception& e) {
+        Output::printError(outputEdit, QString::fromStdString(e.what()));
     }
 }
+
+
+void Parse::handleUpdate(const std::smatch& m) {
+    std::string tableName = m[1];  // 表名
+    std::string setClause = m[2];  // SET 子句
+    std::string condition = m.size() > 3 ? m[3].str() : "";
+
+    // 输出调试信息，确认解析是否正确
+    std::cout << "UPDATE 表名: " << tableName << std::endl;
+    std::cout << "SET 子句: " << setClause << std::endl;
+    std::cout << "WHERE 条件: " << condition << std::endl;
+
+    // 创建 Record 对象来执行更新操作
+    Record record;
+    try {
+        // 调用 Record 的 update 方法执行更新
+        record.update(tableName, setClause, condition);
+
+        // 输出执行成功的消息
+        Output::printMessage(outputEdit, QString::fromStdString("UPDATE 执行成功。"));
+    }
+    catch (const std::exception& e) {
+        // 如果出错，输出错误消息
+        Output::printError(outputEdit, QString::fromStdString(e.what()));
+    }
+}
+
 
 int Parse::getTypeFromString(const std::string& columnType) {
     if (columnType == "INT") return 1;

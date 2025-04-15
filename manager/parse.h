@@ -53,6 +53,8 @@ private:
 
     void handleDropTable(const std::smatch& m);
 
+    void handleUpdate(const std::smatch& m);
+
     Database* db;
 
     std::string toUpper(const std::string& str) {
