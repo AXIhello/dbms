@@ -3,6 +3,8 @@
 #include <iostream>
 #include <fstream>
 #include <filesystem>
+#include <unordered_map>
+#include <unordered_set>
 
 namespace fs = std::filesystem;
 std::string dbManager::basePath = std::filesystem::current_path().string() + "/DBMS_ROOT";
@@ -259,3 +261,49 @@ bool dbManager::databaseExists(const std::string& dbName) {
     std::string dbPath = basePath + "/data/" + dbName;
     return std::filesystem::exists(dbPath);  // C++17 的方式
 }
+
+
+//用户管理操作
+void dbManager::createUser(const std::string& username) {
+    // 在用户权限中插入新用户，默认没有权限
+    if (userPermissions.find(username) == userPermissions.end()) {
+        userPermissions[username] = std::unordered_set<std::string>();
+        std::cout << "用户 " << username << " 创建成功！" << std::endl;
+    }
+    else {
+        std::cout << "用户 " << username << " 已存在！" << std::endl;
+    }
+}
+
+bool dbManager::grantPermission(const std::string& username, const std::string& permission) {
+    if (userPermissions.find(username) != userPermissions.end()) {
+        userPermissions[username].insert(permission);
+        std::cout << "授予用户 " << username << " " << permission << " 权限成功！" << std::endl;
+        return true;
+    }
+    else {
+        std::cout << "用户 " << username << " 不存在！" << std::endl;
+        return false;
+    }
+}
+
+bool dbManager::revokePermission(const std::string& username, const std::string& permission) {
+    if (userPermissions.find(username) != userPermissions.end() &&
+        userPermissions[username].find(permission) != userPermissions[username].end()) {
+        userPermissions[username].erase(permission);
+        std::cout << "撤销用户 " << username << " " << permission << " 权限成功！" << std::endl;
+        return true;
+    }
+    else {
+        std::cout << "用户 " << username << " 没有 " << permission << " 权限，或用户不存在！" << std::endl;
+        return false;
+    }
+}
+
+bool dbManager::hasPermission(const std::string& username, const std::string& permission) {
+    if (userPermissions.find(username) != userPermissions.end() &&
+        userPermissions[username].find(permission) != userPermissions[username].end()) {
+        return true;
+    }
+    return false;
+}    

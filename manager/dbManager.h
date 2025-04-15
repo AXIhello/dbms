@@ -9,6 +9,10 @@
 #include <unordered_map>
 #include <chrono>  // 添加此行以包含 std::chrono
 #include"databaseBlock.h"
+#include <unordered_map>
+#include <unordered_set>
+
+
 
 namespace fs = std::filesystem;
 
@@ -43,6 +47,13 @@ public:
     std::vector<std::string> getDatabaseList();
     bool isConnected();//待扩展与实现；
 
+    // 用户管理操作
+    void createUser(const std::string& username);
+    bool grantPermission(const std::string&, const std::string&);
+    bool revokePermission(const std::string&, const std::string&);
+    bool hasPermission(const std::string& username, const std::string& permission);
+
+
 private:
     dbManager();  // DBMS_ROOT根目录
     ~dbManager();
@@ -56,6 +67,9 @@ private:
     const std::string systemDBFile = "ruanko.db";  // 系统数据库文件名(后期可更改）
     Database* currentDB = nullptr;
     std::string currentDBName;
+
+    std::unordered_map<std::string, std::unordered_set<std::string>> userPermissions;
+
 
 };
 
