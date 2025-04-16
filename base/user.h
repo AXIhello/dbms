@@ -21,4 +21,10 @@ public:
     static void setCurrentUser(const User& user);
     static void getCurrentUser();
     static bool hasPermission(const std::string& permission);
+
+    //用户管理操作
+    static bool createUser(const std::string& username, const std::string& password);
+    static bool grantPermission(const std::string& username, const std::string& permission);
+    static bool revokePermission(const std::string& username, const std::string& permission);
+
 };
