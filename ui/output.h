@@ -10,6 +10,7 @@ public:
     // 打印 SELECT 查询结果
     static void printSelectResult(QTextEdit* outputEdit, const std::vector<Record>& results);
     static void printDatabaseList(QTextEdit* outputEdit, const std::vector<std::string>& dbs);
+    static void printTableList(QTextEdit* outputEdit, const std::vector<std::string>& tables);
 
     // 其他通用输出方法（可选）
     static void printMessage(QTextEdit* outputEdit, const QString& message);

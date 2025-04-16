@@ -59,17 +59,52 @@ void Output::printDatabaseList(QTextEdit* outputEdit, const std::vector<std::str
     if (!outputEdit) return;
     outputEdit->clear();
 
+    // 如果没有数据库
     if (dbs.empty()) {
-        outputEdit->append("无数据库可用。");
+        outputEdit->append("<b>无数据库可用。</b>");
         return;
     }
 
-    outputEdit->append("数据库列表：");
-    outputEdit->append("------------------");
+    // 添加标题
+    outputEdit->append("<b>数据库列表</b>");
 
+    // 使用HTML表格展示数据库列表
+    QString html = "<table border='1' cellspacing='0' cellpadding='4' style='width: 100%;'>";
+    html += "<tr><th style='text-align: center;'>数据库名称</th></tr>";  // 表头居中
+
+    // 表体，数据库名称居中
     for (const auto& name : dbs) {
-        outputEdit->append(QString::fromStdString(name));
+        html += "<tr><td style='text-align: center;'>" + QString::fromStdString(name) + "</td></tr>";  // 数据库名称居中
     }
 
-    outputEdit->append("------------------");
+    html += "</table>";
+    outputEdit->append(html);
 }
+
+void Output::printTableList(QTextEdit* outputEdit, const std::vector<std::string>& tables) {
+    if (!outputEdit) return;
+    outputEdit->clear();
+
+    // 如果没有表
+    if (tables.empty()) {
+        outputEdit->append("<b>当前数据库没有表。</b>");
+        return;
+    }
+
+    // 添加标题
+    outputEdit->append("<b>当前数据库中的表：</b>");
+
+    // 使用HTML表格展示表名列表
+    QString html = "<table border='1' cellspacing='0' cellpadding='4' style='width: 100%;'>";
+    html += "<tr><th style='text-align: center;'>表名</th></tr>";  // 表头居中
+
+    // 表体，表名居中
+    for (const auto& name : tables) {
+        html += "<tr><td style='text-align: center;'>" + QString::fromStdString(name) + "</td></tr>";
+    }
+
+    html += "</table>";
+    outputEdit->append(html);
+}
+
+

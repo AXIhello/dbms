@@ -23,7 +23,9 @@ public:
     void initializeNew();
 
 	//获取表名
-	string getTableName() const {}
+    string getTableName() const {
+        return m_tableName;
+    }
 
     //获取列名
 	vector<string> getColNames() const {

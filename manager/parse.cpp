@@ -4,7 +4,7 @@
 #include "ui/output.h"
 #include "base/user.h"
 #include "base/database.h"
-
+#include"fieldBlock.h"
 #include <QRegularExpression>
 #include <QStringList>
 #include <iostream>
@@ -37,13 +37,13 @@ void Parse::registerPatterns() {
     [this](const std::smatch& m) { handleUseDatabase(m); }
         });
 
-    //
+    //DONE
     patterns.push_back({
         std::regex(R"(^DROP\s+DATABASE\s+(\w+);$)", std::regex::icase),
         [this](const std::smatch& m) { handleDropDatabase(m); }
         });
 
-    //
+    //DONE
     patterns.push_back({
         std::regex(R"(^SHOW\s+DATABASES\s*;$)", std::regex::icase),
         [this](const std::smatch& m) { handleShowDatabases(m); }
@@ -67,7 +67,7 @@ void Parse::registerPatterns() {
     [this](const std::smatch& m) { handleDropTable(m); }
         });
 
-    //
+    //DONE
     patterns.push_back({
         std::regex(R"(^SHOW\s+TABLES\s*;$)", std::regex::icase),
         [this](const std::smatch& m) { handleShowTables(m); }
@@ -85,11 +85,12 @@ void Parse::registerPatterns() {
         [this](const std::smatch& m) { handleSelect(m); }
         });
 
-    //
+    //大小写问题未完成
     patterns.push_back({
-        std::regex(R"(ALTER\s+TABLE\s+(\w+)\s+ADD\s+COLUMN\s+(\w+)\s+(\w+)(\(\d+\))?;)", std::regex::icase),
-        [this](const std::smatch& m) { handleAddColumn(m); }
+     std::regex(R"(ALTER\s+TABLE\s+(\w+)\s+ADD\s+COLUMN\s+(\w+)\s+(\w+)(\(\d+\))?(?:\s+(.*?))?\s*;?\s*$)", std::regex::icase),
+     [this](const std::smatch& m) { handleAddColumn(m); }
         });
+
 
     //
     patterns.push_back({
@@ -123,14 +124,22 @@ void Parse::execute(const QString& sql_qt) {
   
 
 void Parse::handleCreateDatabase(const std::smatch& m) {
-    dbManager::getInstance().createUserDatabase(m[1]);
+	try { dbManager::getInstance().createUserDatabase(m[1]); }
+	catch (const std::exception& e) {
+		Output::printError(outputEdit, "数据库创建失败: " + QString::fromStdString(e.what()));
+		return;
+	}
     Output::printMessage(outputEdit, "数据库 '" + QString::fromStdString(m[1]) + "' 创建成功！");
     mainWindow->refreshDatabaseList();
 }
 
 
 void Parse::handleDropDatabase(const std::smatch& m) {
-    dbManager::getInstance().dropDatabase(m[1]);
+    try { dbManager::getInstance().dropDatabase(m[1]); }
+	catch (const std::exception& e) {
+		Output::printError(outputEdit, "数据库删除失败: " + QString::fromStdString(e.what()));
+		return;
+	}
     Output::printMessage(outputEdit, "数据库 '" + QString::fromStdString(m[1]) + "' 删除成功！");
 
 }
@@ -260,29 +269,33 @@ void Parse::handleDropTable(const std::smatch& match) {
 }
 
 void Parse::handleShowTables(const std::smatch& m) {
-    // 获取当前数据库
-    Database* db = dbManager::getInstance().getCurrentDatabase();
-    if (!db) {
-        Output::printError(outputEdit, "请先使用 USE 语句选择数据库");
-        return;
+    try {
+        Database* db = dbManager::getInstance().getCurrentDatabase();
+       /* if (!db) {
+            Output::printError(outputEdit, "请先使用 USE 语句选择数据库");
+            return;
+        }*/
+        // 获取表名列表
+        std::vector<std::string> tableNames = db->getAllTableNames();
+
+      /*  if (tableNames.empty()) {
+            Output::printMessage(outputEdit, "当前数据库中没有表");
+            return;
+        }*/
+
+        // 使用 Output 类的 printTableList 方法来美化输出
+        Output::printTableList(outputEdit, tableNames);
     }
-
-    // 获取表名列表
-    std::vector<std::string> tableNames = db->getAllTableNames();
-
-    if (tableNames.empty()) {
-        Output::printMessage(outputEdit, "当前数据库中没有表");
-        return;
+    catch (const std::exception& e) {
+        // 捕获并输出异常信息
+        Output::printError(outputEdit, "错误: " + QString::fromStdString(e.what()));
     }
-
-    // 构造输出内容
-    QString message = "当前数据库中的表：\n";
-    for (const auto& name : tableNames) {
-        message += QString::fromStdString(name) + "\n";
+    catch (...) {
+        // 捕获未知异常
+        Output::printError(outputEdit, "发生未知错误");
     }
-
-    Output::printMessage(outputEdit, message);
 }
+
 
 
 void Parse::handleInsertInto(const std::smatch& m) {
@@ -343,21 +356,56 @@ void Parse::handleSelect(const std::smatch& m) {
 
 
 
-void Parse::handleAddColumn(const std::smatch& match) {
-//    std::string tableName = match[1];  // 获取表名
-//    std::string columnName = match[2];  // 获取列名
-//    std::string columnType = match[3];  // 获取列类型
-//
-//    Table* table = db->getTable(tableName);  // 获取表对象
-//    if (table) {
-//        // 创建新列
-//        FieldBlock newColumn = { columnName, columnType, 0, "" };  // 默认 size 为 0，defaultValue 为空字符串
-//        table->addCol(newColumn);  // 调用 Table 的 addCol 方法
-//    }
-//    else {
-//        std::cerr << "表 " << tableName << " 不存在！" << std::endl;
-//    }
+void Parse::handleAddColumn(const std::smatch& m) {
+    std::string tableName = m[1].str();
+    std::string fieldName = m[2].str();
+    std::string typeStr = m[3].str();
+    std::string paramStr = m[4].str();
+
+    FieldBlock field = {};
+    strncpy_s(field.name, fieldName.c_str(), sizeof(field.name) - 1);
+
+    if (typeStr == "INT") {
+        field.type = 1; field.param = 4;
+    }
+    else if (typeStr == "FLOAT") {
+        field.type = 2; field.param = 4;
+    }
+    else if (typeStr == "VARCHAR") {
+        field.type = 3;
+    }
+    else if (typeStr == "CHAR") {
+        field.type = 4;
+    }
+    else if (typeStr == "DATETIME") {
+        field.type = 5;
+    }
+    else {
+        Output::printError(outputEdit, QString("不支持的字段类型: %1").arg(QString::fromStdString(typeStr)));
+        return;
+    }
+
+    if (!paramStr.empty()) {
+        field.param = std::stoi(paramStr.substr(1, paramStr.length() - 2));
+    }
+    else if (field.type == 3 || field.type == 4) {
+        field.param = 32;
+    }
+
+    try{
+        Table* table = dbManager::getInstance().getCurrentDatabase()->getTable(tableName);
+        table->addField(field);
+	}
+	catch (const std::exception& e) {
+		Output::printError(outputEdit, QString("添加字段失败: %1").arg(QString::fromStdString(e.what())));
+	}
+    
+
+    Output::printMessage(outputEdit, QString("字段 %1 成功添加到表 %2")
+        .arg(QString::fromStdString(fieldName), QString::fromStdString(tableName)));
 }
+
+
 
 void Parse::handleDeleteColumn(const std::smatch& match) {
 //    std::string tableName = match[1];  // 获取表名

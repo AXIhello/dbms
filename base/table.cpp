@@ -300,8 +300,6 @@ void Table::loadDefineBinary() {
         in.read(reinterpret_cast<char*>(&field), sizeof(FieldBlock));
         if (in.gcount() < sizeof(FieldBlock)) break;
 
-        FieldBlock field;
-
         m_fields.push_back(field);
     }
 
@@ -362,8 +360,7 @@ bool Table::loadRecord() {
     ifstream trdFile(m_tableName + ".trd"); // 打开记录文件
 
     if (!trdFile.is_open()) {
-        cerr << "无法打开数据文件: " << m_tableName + ".trd" << endl;
-        return false;
+        throw std::runtime_error( "无法打开数据文件: " + m_tableName + ".trd" );
     }
 
     // 读取文件的第一行（列名）

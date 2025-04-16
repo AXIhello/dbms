@@ -34,9 +34,6 @@ dbManager::~dbManager() {
     
 }
 
-bool dbManager::isConnected() {
-	return false;
-}
 
 // 初始化系统数据库（创建并写入 ruanko.db 文件）
 void dbManager::createSystemDB() {
@@ -44,8 +41,7 @@ void dbManager::createSystemDB() {
 
     std::ofstream sysDBFile(sysDBPath, std::ios::binary);
     if (!sysDBFile) {
-        std::cerr << "无法创建系统数据库文件 ruanko.db" << std::endl;
-        return;
+        throw std::runtime_error("无法创建系统数据库文件 ruanko.db");
     }
     // 写入初始数据
 	DatabaseBlock systemDB;
@@ -67,8 +63,7 @@ void dbManager::createSystemDB() {
 void dbManager::saveDatabaseInfo(const std::string& dbName, const std::string& dbPath) {
     std::ofstream sysDBFile(basePath + "/" + systemDBFile, std::ios::binary | std::ios::app);
     if (!sysDBFile) {
-        std::cerr << "无法打开系统数据库文件 ruanko.db" << std::endl;
-        return;
+        throw std::runtime_error("无法打开系统数据库文件 ruanko.db" );
     }
 
     DatabaseBlock dbInfo;
@@ -112,23 +107,13 @@ void dbManager::removeDatabaseInfo(const std::string& db_name)
         outFile.close();
 }
 
-// 加载系统数据库信息
+// 加载系统数据库信息(未完成。应该从.db文件中读取,但不知道有什么用……)
 void dbManager::loadSystemDBInfo() {
     std::ifstream sysDBFile(basePath + "/" + systemDBFile, std::ios::binary);
     if (!sysDBFile) {
-        std::cerr << "无法读取系统数据库文件 ruanko.db" << std::endl;
-        return;
+        throw std::runtime_error("无法读取系统数据库文件 ruanko.db");
     }
 
-    std::string line;
-    while (std::getline(sysDBFile, line)) {
-        if (line.find("database_name=") == 0) {
-            std::cout << "系统数据库名: " << line.substr(14) << std::endl;
-        }
-        if (line.find("path=") == 0) {
-            std::cout << "数据库存放路径: " << line.substr(5) << std::endl;
-        }
-    }
 
     sysDBFile.close();
 }
@@ -153,20 +138,18 @@ void dbManager::createUserDatabase(const std::string& db_name) {
 void dbManager::dropDatabase(const std::string& db_name) {
  
     if (db_name == "ruanko") {
-        std::cerr << "系统数据库 ruanko 不能被删除！" << std::endl;
-        return;
+        throw std::runtime_error( "系统数据库 ruanko 不能被删除！" );
     }
 
     std::string dbDir = basePath + "/data/" + db_name;
 
     if (!fs::exists(dbDir)) {
-        std::cerr << "数据库 " << db_name << " 不存在！" << std::endl;
-        return;
+       throw std::runtime_error( "数据库 " + db_name + " 不存在！" );
     }
-    if (isConnected()) {
-        std::cerr << "数据库" << db_name << "正在使用！" << std::endl;
-        return;
-    }
+    
+	if (db_name == currentDBName) {
+		throw std::runtime_error("当前数据库 '" + db_name + "' 正在使用中，无法删除！");
+	}
  
 
     //从.db文件中删除

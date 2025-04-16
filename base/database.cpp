@@ -159,16 +159,23 @@ Table* Database::getTable(const std::string& tableName) {
 //返回调用的数据库的所有表名
 std::vector<std::string> Database::getAllTableNames() const {
     std::vector<std::string> tableNames;
-    
+
+    for (const auto& pair : m_tables) {
+        if (pair.second) {
+            tableNames.push_back(pair.second->getTableName()); 
+        }
+    }
+
     return tableNames;
 }
+
 // 从文件加载数据库数据
 void Database::loadTable(const std::string& table_name) {
     std::string file_path = m_db_path + ".db";
 
     std::ifstream file(file_path, std::ios::binary);
     if (!file) {
-        std::cerr << "加载数据库文件： " << file_path << " 失败" << std::endl;
+        throw std::runtime_error( "加载数据库文件： "+file_path +" 失败");
         return;
     }
 
@@ -198,8 +205,7 @@ void Database::saveTable(const std::string& table_name) {
 
     std::ofstream file(file_path, std::ios::binary);
     if (!file) {
-        std::cerr << "保存数据库文件： " << file_path << " 失败" << std::endl;
-        return;
+        throw std::runtime_error( "保存数据库文件： " + file_path + " 失败");
     }
 
     // 保存数据库表结构：这里只是演示，写入所有表名
