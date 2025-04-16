@@ -122,6 +122,7 @@
     <QtMoc Include="ui\login.h" />
     <ClInclude Include="base\database.h" />
     <QtMoc Include="ui\mainWindow.h" />
+    <ClInclude Include="constraintBlock.h" />
     <ClInclude Include="databaseBlock.h" />
     <ClInclude Include="debug.h" />
     <ClInclude Include="fieldBlock.h" />

@@ -116,29 +116,6 @@ string Table::timeToString(time_t time) const {
     return string(buffer);
 }
 
-void Table::saveDefineBinary() {
-    std::ofstream out(m_tdf, std::ios::binary);
-    if (!out.is_open()) {
-        throw std::runtime_error("无法保存定义文件: " + m_tableName + " .tdf ");
-    }
-
-    for (int i = 0; i < m_fields.size(); ++i) {
-        FieldBlock& field = m_fields[i];
-
-        // 填充必要的字段信息
-        field.order = i; // 设置字段的顺序
-        field.mtime = std::time(nullptr); // 设置最后修改时间为当前时间
-        field.integrities = 0; // TODO: 如果有完整性约束，需要在此处理
-
-        // 将当前字段块写入文件
-        out.write(reinterpret_cast<const char*>(&field), sizeof(FieldBlock));
-    }
-
-    out.close();
-}
-
-
-
 void Table::loadMetadataBinary() {
     ifstream tbFile(m_tb, ios::binary);
     if (!tbFile) {
@@ -163,6 +140,7 @@ void Table::loadMetadataBinary() {
     }
 
     // 如果没有找到指定的表格
+	cerr << "未找到表格: " << m_tableName << endl;
     tbFile.close();
 }
 
@@ -232,8 +210,6 @@ void Table::saveMetadataBinary() {
     tbFile.close();
 }
 
-
-
 //从.tb文件中删除表的元数据
 bool Table::deleteTableMetadata(){
     // 1. 打开元数据文件
@@ -287,10 +263,9 @@ bool Table::deleteTableMetadata(){
 // 加载表的定义（待验证）
 
 void Table::loadDefineBinary() {
-    std::string filename = dbManager::basePath+"/data/" +m_db_name + "/" + m_tableName + ".tdf";
-    std::ifstream in(filename, std::ios::binary);
+    std::ifstream in(m_tdf, std::ios::binary);
     if (!in.is_open()) {
-        throw std::runtime_error("无法打开定义文件: " + filename);
+        throw std::runtime_error("无法打开定义文件: " + m_tdf);
     }
 
     m_fields.clear();
@@ -300,8 +275,6 @@ void Table::loadDefineBinary() {
         in.read(reinterpret_cast<char*>(&field), sizeof(FieldBlock));
         if (in.gcount() < sizeof(FieldBlock)) break;
 
-        FieldBlock field;
-
         m_fields.push_back(field);
     }
 
@@ -309,6 +282,29 @@ void Table::loadDefineBinary() {
 }
 
 
+void Table::saveDefineBinary() {
+    std::ofstream out(m_tdf, std::ios::binary);
+    if (!out.is_open()) {
+        throw std::runtime_error("无法保存定义文件: " + m_tableName + " .tdf ");
+    }
+
+    for (int i = 0; i < m_fields.size(); ++i) {
+        FieldBlock& field = m_fields[i];
+
+        // 填充必要的字段信息
+        field.order = i; // 设置字段的顺序
+        field.mtime = std::time(nullptr); // 设置最后修改时间为当前时间
+        field.integrities = 0; // TODO: 如果有完整性约束，需要在此处理
+
+        // 将当前字段块写入文件
+        out.write(reinterpret_cast<const char*>(&field), sizeof(FieldBlock));
+    }
+
+    out.close();
+}
+
+
+//字段操作
 void Table::addField(const FieldBlock& field) {
     FieldBlock newField = field;
 
@@ -331,7 +327,6 @@ void Table::addField(const FieldBlock& field) {
     saveDefineBinary();
     saveMetadataBinary();
 }
-
 
 void Table::dropField(const std::string fieldName) {
 
@@ -356,8 +351,42 @@ void Table::updateCol(const Column& oldCol, const Column& newCol) {
 
 */
 
+//表完整性文件操作
+void Table::loadIntegralityBinary() {
+    std::ifstream in(m_tic, std::ios::binary);
+    if (!in.is_open()) {
+        throw std::runtime_error("无法打开完整性文件: " + m_tic);
+    }
+
+    m_constraints.clear();
+
+    while (in.peek() != EOF) {
+        ConstraintBlock constraints;
+        in.read(reinterpret_cast<char*>(&constraints), sizeof(ConstraintBlock));
+        if (in.gcount() < sizeof(ConstraintBlock)) break;
+
+        m_constraints.push_back(constraints);
+    }
+
+    in.close();
+}
+void Table::saveIntegralityBinary(){
+    std::ofstream out(m_tic, std::ios::binary);
+    if (!out.is_open()) {
+        throw std::runtime_error("无法保存完整性文件: " + m_tableName + " .tic ");
+    }
+
+    for (int i = 0; i < m_fields.size(); ++i) {
+        ConstraintBlock& constraints = m_constraints[i];
+
+        // 将当前字段块写入文件
+        out.write(reinterpret_cast<const char*>(&constraints), sizeof(ConstraintBlock));
+    }
+
+    out.close();
+}
+
 //表记录文件操作
-//加载表记录文件(待验证)
 bool Table::loadRecord() {
     ifstream trdFile(m_tableName + ".trd"); // 打开记录文件
 

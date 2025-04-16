@@ -5,10 +5,11 @@
 #include <fstream>
 #include <string>
 #include <vector>
-#include"fieldBlock.h"
 #include <ctime>
 #include <sstream>
 #include"tableBlock.h"
+#include"fieldBlock.h"
+#include"constraintBlock.h"
 using namespace std;
 
 
@@ -64,8 +65,8 @@ public:
 	void updateField(const std::string fieldName, const FieldBlock& updatedField);
 
     //表完整性文件
-    bool saveIntegrality()const;
-    bool loadIntegrality();
+    void saveIntegralityBinary();
+    void loadIntegralityBinary();
 
     //表记录文件
     bool saveRecord()const;
@@ -100,6 +101,7 @@ private:
     time_t m_lastModifyTime; // 表的最后修改时间
 
 	vector<FieldBlock> m_fields; // 存储表的字段信息
+	vector<ConstraintBlock> m_constraints; // 存储表的完整性约束信息
 
     // 辅助方法：将时间戳转为字符串格式
     string timeToString(time_t time) const;
