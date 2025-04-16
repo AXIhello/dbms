@@ -3,6 +3,8 @@
 #include <iostream>
 #include <fstream>
 #include <filesystem>
+#include <unordered_map>
+#include <unordered_set>
 
 namespace fs = std::filesystem;
 std::string dbManager::basePath = std::filesystem::current_path().string() + "/DBMS_ROOT";
