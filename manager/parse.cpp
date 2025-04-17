@@ -1,6 +1,6 @@
 #include "parse.h"
 #include "dbManager.h"
-#include "base/Record.h"
+#include "base/record/Record.h"
 #include "ui/output.h"
 #include "base/user.h"
 #include "base/database.h"

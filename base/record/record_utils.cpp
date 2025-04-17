@@ -1,0 +1,473 @@
+#ifdef _MSC_VER
+#define _CRT_SECURE_NO_WARNINGS
+#endif
+
+#include "Record.h"
+#include "manager/parse.h"
+#include "ui/output.h"
+
+#include <regex>
+#include <iostream>
+#include <fstream>
+#include <sstream>
+#include <unordered_map>
+#include <algorithm>
+
+Record::Record() {
+    // 暂定为空
+}
+
+bool Record::table_exists(const std::string& table_name) {
+    std::string tdf_filename = table_name + ".tdf";
+    std::ifstream file(tdf_filename,std::ios::binary);
+    return file.good();
+}
+
+std::unordered_map<std::string, std::string> Record::read_table_structure_static(const std::string& table_name) {
+    std::unordered_map<std::string, std::string> result;
+    // 替换为类似 read_field_blocks 的二进制读取
+    std::vector<FieldBlock> fields = read_field_blocks(table_name);
+
+    for (const auto& field : fields) {
+        std::string column_name = field.name;
+        std::string column_type;
+
+        // 将类型代码转换为字符串类型
+        switch (field.type) {
+        case 1: column_type = "INTEGER"; break;
+        case 2: column_type = "FLOAT"; break;
+        case 3: column_type = "VARCHAR"; break;
+        case 4: column_type = "CHAR"; break;
+        case 5: column_type = "DATETIME"; break;
+        default: column_type = "UNKNOWN";
+        }
+
+        result[column_name] = column_type;
+    }
+
+    return result;
+}
+
+
+
+void Record::validate_columns() {
+    // 首先从.tdf文件读取表结构
+    if (table_structure.empty()) {
+        table_structure=read_table_structure_static(table_name);
+    }
+
+    // 验证所有提供的列名是否在表结构中
+    for (const auto& column : columns) {
+        if (table_structure.find(column) == table_structure.end()) {
+            throw std::runtime_error("字段'" + column + "' 并不存在于表'" + table_name + "'中。");
+        }
+    }
+}
+
+bool Record::is_valid_type(const std::string& value, const std::string& type) {
+    if (type == "INT") {
+        // 检查是否为整数
+        try {
+            std::stoi(value);
+            return true;
+        }
+        catch (...) {
+            return false;
+        }
+    }
+    else if (type == "FLOAT" || type == "DOUBLE") {
+        // 检查是否为浮点数
+        try {
+            std::stod(value);
+            return true;
+        }
+        catch (...) {
+            return false;
+        }
+    }
+    else if (type == "VARCHAR" || type == "CHAR" || type == "TEXT") {
+        // 检查字符串是否被引号括起来
+        return (value.front() == '\'' && value.back() == '\'') ||
+            (value.front() == '\"' && value.back() == '\"');
+    }
+    else if (type == "DATE" || type == "DATETIME") {
+        // 简单检查日期格式，待拓展
+        std::regex date_regex(R"('(\d{4}-\d{2}-\d{2})')");
+        return std::regex_match(value, date_regex);
+    }
+
+    return true;
+}
+
+// 修改validate_types方法使用FieldBlock进行验证
+void Record::validate_types() {
+    std::vector<FieldBlock> fields = read_field_blocks(table_name);
+    std::unordered_map<std::string, FieldBlock> field_map;
+
+    // 构建字段名到FieldBlock的映射
+    for (const auto& field : fields) {
+        field_map[field.name] = field;
+    }
+
+    // 验证每个值的类型是否与对应的字段类型匹配
+    for (size_t i = 0; i < columns.size(); ++i) {
+        std::string column = columns[i];
+        std::string value = values[i];
+
+        if (field_map.find(column) == field_map.end()) {
+            throw std::runtime_error("字段 '" + column + "' 不存在于表中");
+        }
+
+        FieldBlock field = field_map[column];
+
+        if (!validate_field_block(value, field)) {
+            throw std::runtime_error("字段 '" + column + "' 的值类型不匹配");
+        }
+    }
+}
+
+// 创建表结构的.tdf文件
+void Record::write_to_tdf_format(const std::string& table_name,
+    const std::vector<std::string>& columns,
+    const std::vector<std::string>& types,
+    const std::vector<int>& params) {
+
+    if (columns.size() != types.size() || columns.size() != params.size()) {
+        throw std::runtime_error("字段名、类型和参数数量不匹配");
+    }
+
+    std::string tdf_filename = table_name + ".tdf";
+    std::ofstream file(tdf_filename, std::ios::binary);
+
+    if (!file) {
+        throw std::runtime_error("无法创建表定义文件: " + tdf_filename);
+    }
+
+    // 写入文件头信息（如果需要的话）
+
+    // 写入每个字段的FieldBlock结构
+    for (size_t i = 0; i < columns.size(); ++i) {
+        FieldBlock field;
+        field.order = static_cast<int>(i + 1);  // 字段顺序从1开始
+
+        // 复制字段名，确保不超过128个字符
+        std::strncpy(field.name, columns[i].c_str(), 127);
+        field.name[127] = '\0';  // 确保字符串结束
+
+        // 设置字段类型
+        if (types[i] == "INTEGER") {
+            field.type = 1;
+        }
+        else if (types[i] == "FLOAT") {
+            field.type = 2;
+        }
+        else if (types[i] == "VARCHAR") {
+            field.type = 3;
+        }
+        else if (types[i] == "CHAR") {
+            field.type = 4;
+        }
+        else if (types[i] == "DATETIME") {
+            field.type = 5;
+        }
+        else {
+            field.type = 0;  // 未知类型
+        }
+
+        // 设置参数（如VARCHAR的长度）
+        field.param = params[i];
+
+        // 设置最后修改时间为当前时间
+        field.mtime = std::time(nullptr);
+
+        // 设置完整性约束（暂时不考虑）
+        field.integrities = 0;
+
+        // 写入FieldBlock结构
+        file.write(reinterpret_cast<const char*>(&field), sizeof(FieldBlock));
+    }
+
+    file.close();
+    std::cout << "成功创建表定义文件: " << tdf_filename << std::endl;
+}
+// 从.tdf文件读取FieldBlock结构
+std::vector<FieldBlock> Record::read_field_blocks(const std::string& table_name) {
+    std::vector<FieldBlock> fields;
+    std::string tdf_filename = table_name + ".tdf";
+    std::ifstream file(tdf_filename, std::ios::binary);
+
+    if (!file) {
+        throw std::runtime_error("无法打开表定义文件: " + tdf_filename);
+    }
+
+    // 读取文件头信息（如果有的话）
+
+    // 开始读取FieldBlock结构
+    FieldBlock field;
+    while (file.read(reinterpret_cast<char*>(&field), sizeof(FieldBlock))) {
+        fields.push_back(field);
+    }
+
+    return fields;
+}
+
+// 根据FieldBlock验证值类型
+bool Record::validate_field_block(const std::string& value, const FieldBlock& field) {
+    // 在函数开始处定义正则表达式，而不是在case中
+    std::regex date_regex(R"('(\d{4}-\d{2}-\d{2})')");
+
+    switch (field.type) {
+    case 1: // INTEGER
+        try {
+            std::stoi(value);
+            return true;
+        }
+        catch (...) {
+            return false;
+        }
+
+    case 2: // FLOAT
+        try {
+            std::stof(value);
+            return true;
+        }
+        catch (...) {
+            return false;
+        }
+
+    case 3: // VARCHAR
+    case 4: // CHAR
+        // 检查字符串长度是否符合参数要求
+        if (value.length() <= static_cast<size_t>(field.param)) {
+            return true;
+        }
+        return false;
+
+    case 5: // DATETIME
+        // 使用前面定义的正则表达式
+        return std::regex_match(value, date_regex);
+
+    default:
+        return false;
+    }
+}
+
+void Record::validate_types_without_columns() {
+    // 按表结构中的列顺序验证值的类型
+    size_t i = 0;
+    for (const auto& column : columns) {
+        if (i < values.size()) {  // 确保不会越界
+            std::string expected_type = table_structure[column];
+            std::string value = values[i];
+
+            if (!is_valid_type(value, expected_type)) {
+                throw std::runtime_error("Type mismatch for column '" + column +
+                    "'. Expected " + expected_type +
+                    ", got value: " + value);
+            }
+            ++i;
+        }
+    }
+}
+
+// 解析列名列表
+std::vector<std::string> Record::parse_column_list(const std::string& columns) {
+    std::vector<std::string> result;
+    std::stringstream ss(columns);
+    std::string column;
+
+    while (std::getline(ss, column, ',')) {
+        // 去除前后空格
+        column.erase(0, column.find_first_not_of(" \t"));
+        column.erase(column.find_last_not_of(" \t") + 1);
+        result.push_back(column);
+    }
+
+    return result;
+}
+
+// 设置表名
+void Record::set_table_name(const std::string& name) {
+    this->table_name = name;
+}
+
+// 添加列
+void Record::add_column(const std::string& column) {
+    columns.push_back(column);
+}
+
+// 添加值
+void Record::add_value(const std::string& value) {
+    values.push_back(value);
+}
+
+// 获取表名
+std::string Record::get_table_name() const {
+    return table_name;
+}
+
+// 获取所有列
+const std::vector<std::string>& Record::get_columns() const {
+    return columns;
+}
+
+// 获取所有值
+const std::vector<std::string>& Record::get_values() const {
+    return values;
+}
+
+// 实现条件解析方法
+void Record::parse_condition(const std::string& condition) {
+    // 清除之前的条件数据
+    condition_field = "";
+    condition_operator = "";
+    condition_value = "";
+
+    // 如果条件为空则跳过
+    if (condition.empty()) {
+        return;
+    }
+
+    // 用于匹配不同比较运算符的正则表达式
+    std::regex eq_regex("\\s*(\\w+)\\s*=\\s*([^\\s]+)\\s*");   // 字段 = 值
+    std::regex neq_regex("\\s*(\\w+)\\s*!=\\s*([^\\s]+)\\s*"); // 字段 != 值
+    std::regex gt_regex("\\s*(\\w+)\\s*>\\s*([^\\s]+)\\s*");   // 字段 > 值
+    std::regex lt_regex("\\s*(\\w+)\\s*<\\s*([^\\s]+)\\s*");   // 字段 < 值
+    std::regex gte_regex("\\s*(\\w+)\\s*>=\\s*([^\\s]+)\\s*"); // 字段 >= 值
+    std::regex lte_regex("\\s*(\\w+)\\s*<=\\s*([^\\s]+)\\s*"); // 字段 <= 值
+
+    std::smatch matches;
+
+    // 尝试匹配每种操作符模式
+    if (std::regex_match(condition, matches, eq_regex)) {
+        condition_field = matches[1];
+        condition_operator = "=";
+        condition_value = matches[2];
+    }
+    else if (std::regex_match(condition, matches, neq_regex)) {
+        condition_field = matches[1];
+        condition_operator = "!=";
+        condition_value = matches[2];
+    }
+    else if (std::regex_match(condition, matches, gt_regex)) {
+        condition_field = matches[1];
+        condition_operator = ">";
+        condition_value = matches[2];
+    }
+    else if (std::regex_match(condition, matches, lt_regex)) {
+        condition_field = matches[1];
+        condition_operator = "<";
+        condition_value = matches[2];
+    }
+    else if (std::regex_match(condition, matches, gte_regex)) {
+        condition_field = matches[1];
+        condition_operator = ">=";
+        condition_value = matches[2];
+    }
+    else if (std::regex_match(condition, matches, lte_regex)) {
+        condition_field = matches[1];
+        condition_operator = "<=";
+        condition_value = matches[2];
+    }
+    else {
+        throw std::runtime_error("无效的条件格式：" + condition);
+    }
+
+    // 验证字段是否存在于表中
+    if (!table_structure.empty() && table_structure.find(condition_field) == table_structure.end()) {
+        throw std::runtime_error("字段 '" + condition_field + "' 不存在于表 '" + table_name + "' 中。");
+    }
+}
+
+// 实现条件匹配判断方法
+bool Record::matches_condition(const std::unordered_map<std::string, std::string>& record_data) const {
+    // 如果没有条件，则所有记录都匹配
+    if (condition_field.empty() || condition_operator.empty()) {
+        return true;
+    }
+
+    // 检查记录中是否包含条件字段
+    if (record_data.find(condition_field) == record_data.end()) {
+        return false; // 字段不存在，不匹配
+    }
+
+    // 获取记录中对应字段的值
+    std::string field_value = record_data.at(condition_field);
+
+    // 根据字段类型进行比较
+    std::string field_type = table_structure.at(condition_field);
+
+    // 数值型比较
+    if (field_type == "INT" || field_type == "FLOAT" || field_type == "DOUBLE") {
+        try {
+            // 将字符串转换为数值进行比较
+            double record_val = std::stod(field_value);
+            double condition_val = std::stod(condition_value);
+
+            if (condition_operator == "=") return record_val == condition_val;
+            if (condition_operator == "!=") return record_val != condition_val;
+            if (condition_operator == ">") return record_val > condition_val;
+            if (condition_operator == "<") return record_val < condition_val;
+            if (condition_operator == ">=") return record_val >= condition_val;
+            if (condition_operator == "<=") return record_val <= condition_val;
+        }
+        catch (const std::exception& e) {
+            // 转换失败，按字符串比较
+            std::cerr << "数值转换失败，按字符串比较: " << e.what() << std::endl;
+        }
+    }
+
+    // 字符串比较（或数值转换失败的情况）
+    if (field_type == "VARCHAR" || field_type == "CHAR" || field_type == "TEXT" ||
+        condition_operator == "=" || condition_operator == "!=") {
+
+        // 处理引号
+        std::string clean_field_value = field_value;
+        std::string clean_condition_value = condition_value;
+
+        // 去除可能存在的引号
+        auto remove_quotes = [](std::string& s) {
+            if ((s.front() == '\'' && s.back() == '\'') ||
+                (s.front() == '\"' && s.back() == '\"')) {
+                s = s.substr(1, s.length() - 2);
+            }
+            };
+
+        remove_quotes(clean_field_value);
+        remove_quotes(clean_condition_value);
+
+        if (condition_operator == "=") return clean_field_value == clean_condition_value;
+        if (condition_operator == "!=") return clean_field_value != clean_condition_value;
+        if (condition_operator == ">") return clean_field_value > clean_condition_value;
+        if (condition_operator == "<") return clean_field_value < clean_condition_value;
+        if (condition_operator == ">=") return clean_field_value >= clean_condition_value;
+        if (condition_operator == "<=") return clean_field_value <= clean_condition_value;
+    }
+
+    // 日期比较 (简单实现，可能需要更复杂的日期解析)
+    if (field_type == "DATE" || field_type == "DATETIME") {
+        // 去除引号后直接比较字符串（因为ISO格式日期字符串可以直接比较）
+        std::string clean_field_value = field_value;
+        std::string clean_condition_value = condition_value;
+
+        auto remove_quotes = [](std::string& s) {
+            if ((s.front() == '\'' && s.back() == '\'') ||
+                (s.front() == '\"' && s.back() == '\"')) {
+                s = s.substr(1, s.length() - 2);
+            }
+            };
+
+        remove_quotes(clean_field_value);
+        remove_quotes(clean_condition_value);
+
+        if (condition_operator == "=") return clean_field_value == clean_condition_value;
+        if (condition_operator == "!=") return clean_field_value != clean_condition_value;
+        if (condition_operator == ">") return clean_field_value > clean_condition_value;
+        if (condition_operator == "<") return clean_field_value < clean_condition_value;
+        if (condition_operator == ">=") return clean_field_value >= clean_condition_value;
+        if (condition_operator == "<=") return clean_field_value <= clean_condition_value;
+    }
+
+    // 默认返回false
+    return false;
+}
