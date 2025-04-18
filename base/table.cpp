@@ -335,6 +335,19 @@ void Table::dropField(const std::string fieldName) {
 void Table::updateField(const std::string fieldName, const FieldBlock& updatedField) {
 
 }
+
+void Table::renameField(const std::string oldName, const std::string newName) {
+	// 查找字段
+	auto it = std::find_if(m_fields.begin(), m_fields.end(), [&](const FieldBlock& field) {
+		return field.name == oldName;
+		});
+	if (it != m_fields.end()) {
+        strncpy_s(it->name, newName.c_str(), sizeof(it->name) - 1); // 更新字段名
+		saveDefineBinary(); // 保存到定义文件
+		m_lastModifyTime = std::time(nullptr); // 更新时间戳
+	}
+}
+
 /*
 // 更新列√
 void Table::updateCol(const Column& oldCol, const Column& newCol) {
@@ -350,6 +363,8 @@ void Table::updateCol(const Column& oldCol, const Column& newCol) {
 }
 
 */
+
+
 
 //表完整性文件操作
 void Table::loadIntegralityBinary() {

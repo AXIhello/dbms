@@ -80,9 +80,7 @@ void Record::parse_values(const std::string& vals) {
         values.push_back(current_value);
     }
 }
-// 修改insert_into方法，使用符合.trd格式的方式写入数据
 void Record::insert_into() {
-    // 读取表约束并执行检查
     std::vector<ConstraintBlock> constraints = read_constraints(table_name);
     if (!check_constraints(columns, values, constraints)) {
         throw std::runtime_error("插入数据违反表约束");
@@ -90,87 +88,81 @@ void Record::insert_into() {
 
     std::string file_name = this->table_name + ".trd";
     std::ofstream file(file_name, std::ios::app | std::ios::binary);
-
     if (!file) {
         throw std::runtime_error("打开文件" + file_name + "失败。");
     }
 
-    // 读取字段结构
     std::vector<FieldBlock> fields = read_field_blocks(table_name);
+    std::vector<bool> is_null(fields.size(), true);
     std::unordered_map<std::string, size_t> field_indices;
-
-    // 构建字段名到索引的映射
     for (size_t i = 0; i < fields.size(); ++i) {
         field_indices[fields[i].name] = i;
     }
 
-    // 准备一条完整记录的数据
     std::vector<std::string> record_values(fields.size());
-
-    // 填充数据
     for (size_t i = 0; i < columns.size(); ++i) {
         if (field_indices.find(columns[i]) != field_indices.end()) {
             size_t idx = field_indices[columns[i]];
             record_values[idx] = values[i];
+            is_null[idx] = false;
         }
     }
 
-    // 按照.trd格式写入记录
-    // 这里假设.trd文件格式为每个字段值直接连续存储，可能需要根据实际格式调整
     for (size_t i = 0; i < record_values.size(); ++i) {
         const FieldBlock& field = fields[i];
         const std::string& value = record_values[i];
+        char null_flag = is_null[i] ? 1 : 0;
+        file.write(&null_flag, sizeof(char));
+        size_t bytes_written = sizeof(char);
 
-        // 根据字段类型写入值
-        switch (field.type) {
-        case 1: { // INTEGER
-            int int_val = std::stoi(value);
-            file.write(reinterpret_cast<const char*>(&int_val), sizeof(int));
-            break;
+        if (!is_null[i]) {
+            switch (field.type) {
+            case 1: { // INTEGER
+                int int_val = std::stoi(value);
+                file.write(reinterpret_cast<const char*>(&int_val), sizeof(int));
+                bytes_written += sizeof(int);
+                break;
+            }
+            case 2: { // FLOAT
+                float float_val = std::stof(value);
+                file.write(reinterpret_cast<const char*>(&float_val), sizeof(float));
+                bytes_written += sizeof(float);
+                break;
+            }
+            case 3: // VARCHAR
+            case 4: { // CHAR
+                std::vector<char> buffer(field.param, 0);
+                std::memcpy(buffer.data(), value.c_str(), std::min((size_t)field.param, value.size()));
+                file.write(buffer.data(), field.param);
+                bytes_written += field.param;
+                break;
+            }
+            case 5: { // DATETIME
+                std::tm tm = custom_strptime(value, "%Y-%m-%d %H:%M:%S");
+                std::time_t t = std::mktime(&tm);
+                file.write(reinterpret_cast<const char*>(&t), sizeof(std::time_t));
+                bytes_written += sizeof(std::time_t);
+                break;
+            }
+            default:
+                throw std::runtime_error("未知的字段类型");
+            }
         }
-        case 2: { // FLOAT
-            float float_val = std::stof(value);
-            file.write(reinterpret_cast<const char*>(&float_val), sizeof(float));
-            break;
-        }
-        case 3: // VARCHAR
-        case 4: { // CHAR
-            // 写入固定长度的字符串
-            char* buffer = new char[field.param];
-            std::memset(buffer, 0, field.param);
-            std::strncpy(buffer, value.c_str(), field.param - 1);
-            file.write(buffer, field.param);
-            delete[] buffer;
-            break;
-        }
-        case 5: { // DATETIME
-            // 简化处理，实际应转换为时间戳
-            std::time_t now = std::time(nullptr);
-            file.write(reinterpret_cast<const char*>(&now), sizeof(std::time_t));
-            break;
-        }
-        default:
-            throw std::runtime_error("未知的字段类型");
+        else {
+            switch (field.type) {
+            case 1: bytes_written += sizeof(int); break;
+            case 2: bytes_written += sizeof(float); break;
+            case 3:
+            case 4: bytes_written += field.param; break;
+            case 5: bytes_written += sizeof(std::time_t); break;
+            default: break;
+            }
         }
 
-        // 如果需要，可以添加填充以确保每个字段是4字节的倍数
-        // 计算需要填充的字节数
-        size_t bytes_written = 0;
-        switch (field.type) {
-        case 1: bytes_written = sizeof(int); break;
-        case 2: bytes_written = sizeof(float); break;
-        case 3:
-        case 4: bytes_written = field.param; break;
-        case 5: bytes_written = sizeof(std::time_t); break;
-        default: bytes_written = 0;
-        }
-
-        // 计算需要填充的字节数，以使总字节数是4的倍数
         size_t padding = (4 - (bytes_written % 4)) % 4;
         if (padding > 0) {
-            char* pad = new char[padding]();  // 初始化为0
+            char pad[4] = { 0 };
             file.write(pad, padding);
-            delete[] pad;
         }
     }
 

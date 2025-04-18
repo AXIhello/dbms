@@ -65,6 +65,7 @@ public:
     void addField(const FieldBlock& field);
     void dropField(const std::string fieldName);
 	void updateField(const std::string fieldName, const FieldBlock& updatedField);
+	void renameField(const std::string oldName, const std::string newName);
 
     //表完整性文件
     void saveIntegralityBinary();
@@ -75,7 +76,7 @@ public:
     bool loadRecord();
     void addRecord(const string& recordData);
     void deleteRecord(int recordID);
-    void updateRecord(int recordID, const string& updatedData);
+    void updateRecord();
 
     //表索引文件
     bool saveIndex()const;
