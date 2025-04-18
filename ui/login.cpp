@@ -2,8 +2,8 @@
 #include <QMessageBox>
 #include "base/user.h"
 
-login::login(QWidget *parent)
-	: QWidget(parent)
+login::login(QDialog *parent)
+	: QDialog(parent)
 {
 	ui.setupUi(this);
 }
@@ -11,11 +11,11 @@ login::login(QWidget *parent)
 login::~login()
 {}
 
-void login::on_loginButton_clicked()
+void login::on_loginBtn_clicked()
 {
 	
-	QString username = ui.nameEdit->text();
-	QString password = ui.passwordEdit->text();
+	QString username = ui.usrLineEdit->text();
+	QString password = ui.pwdLineEdit->text();
 	if (authenticate(username, password))
 	{
 		emit acceptedLogin();
