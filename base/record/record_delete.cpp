@@ -17,15 +17,13 @@
 void Record::delete_(const std::string& tableName, const std::string& condition) {
     this->table_name = tableName;
 
-    // 检查表是否存在
-    if (!table_exists(this->table_name)) {
-        throw std::runtime_error("表 '" + this->table_name + "' 不存在。");
+    if (!table_exists(table_name)) {
+        throw std::runtime_error("表 '" + table_name + "' 不存在。");
     }
 
-    // 读取表结构
     std::vector<FieldBlock> fields = read_field_blocks(table_name);
+    this->table_structure = read_table_structure_static(table_name);
 
-    // 解析条件
     if (!condition.empty()) {
         try {
             parse_condition(condition);
@@ -35,122 +33,97 @@ void Record::delete_(const std::string& tableName, const std::string& condition)
         }
     }
 
-    // 执行删除操作
-    std::string trd_filename = this->table_name + ".trd";
-    std::string temp_filename = this->table_name + ".tmp";
-    std::ifstream infile(trd_filename, std::ios::binary);
-    std::ofstream outfile(temp_filename, std::ios::binary);
+    std::string trd_filename = table_name + ".trd";
+    std::string tmp_filename = table_name + ".tmp";
 
+    std::ifstream infile(trd_filename, std::ios::binary);
+    std::ofstream outfile(tmp_filename, std::ios::binary);
     if (!infile || !outfile) {
-        throw std::runtime_error("无法打开文件进行删除操作");
+        throw std::runtime_error("无法打开数据文件进行删除操作。");
     }
 
+    std::vector<std::unordered_map<std::string, std::string>> records = read_records(table_name);
     int deleted_count = 0;
 
-    // 计算记录大小
-    size_t record_size = 0;
-    for (const auto& field : fields) {
-        size_t field_size = 0;
-        switch (field.type) {
-        case 1: field_size = sizeof(int); break;         // INTEGER
-        case 2: field_size = sizeof(float); break;       // FLOAT
-        case 3: field_size = field.param; break;         // VARCHAR
-        case 4: field_size = field.param; break;         // CHAR
-        case 5: field_size = sizeof(std::time_t); break; // DATETIME
-        }
-
-        // 添加填充以确保4字节对齐
-        field_size = ((field_size + 3) / 4) * 4;
-        record_size += field_size;
-    }
-
-    // 处理记录
-    char* record_buffer = new char[record_size];
-    while (infile.read(record_buffer, record_size)) {
-        // 将记录解析为字段名到值的映射
-        std::unordered_map<std::string, std::string> record_data;
-        char* buffer_ptr = record_buffer;
-
-        for (const auto& field : fields) {
-            std::string value;
-
-            // 根据字段类型提取值
-            switch (field.type) {
-            case 1: {  // INTEGER
-                int int_val;
-                std::memcpy(&int_val, buffer_ptr, sizeof(int));
-                value = std::to_string(int_val);
-                buffer_ptr += sizeof(int);
-                break;
-            }
-            case 2: {  // FLOAT
-                float float_val;
-                std::memcpy(&float_val, buffer_ptr, sizeof(float));
-                value = std::to_string(float_val);
-                buffer_ptr += sizeof(float);
-                break;
-            }
-            case 3:    // VARCHAR
-            case 4: {  // CHAR
-                value = std::string(buffer_ptr);
-                buffer_ptr += field.param;
-                break;
-            }
-            case 5: {  // DATETIME
-                std::time_t time_val;
-                std::memcpy(&time_val, buffer_ptr, sizeof(std::time_t));
-                value = std::to_string(time_val);
-                buffer_ptr += sizeof(std::time_t);
-                break;
-            }
-            }
-
-            size_t field_bytes = 0;
-            switch (field.type) {
-            case 1: field_bytes = sizeof(int); break;
-            case 2: field_bytes = sizeof(float); break;
-            case 3:
-            case 4: field_bytes = field.param; break;
-            case 5: field_bytes = sizeof(std::time_t); break;
-            default: field_bytes = 0; break;
-            }
-            size_t padding = (4 - (field_bytes % 4)) % 4;
-            buffer_ptr += padding;
-
-
-            record_data[field.name] = value;
-        }
-
-        // 检查记录是否满足条件
-        bool matches = condition.empty() || matches_condition(record_data);
-
-        // 在循环内，当matches为true时添加:
-        if (matches) {
-            // 检查引用完整性
+    for (const auto& record_data : records) {
+        if (!condition.empty() && matches_condition(record_data)) {
             if (!check_references_before_delete(table_name, record_data)) {
                 throw std::runtime_error("删除操作违反引用完整性约束");
             }
-            // 满足删除条件，不写入（即删除）
             deleted_count++;
+            continue;
         }
-        else {
-            // 不满足删除条件，保留记录
-            outfile.write(record_buffer, record_size);
+
+        for (const auto& field : fields) {
+            auto it = record_data.find(field.name);
+
+            if (it == record_data.end() || it->second == "NULL") {
+                char null_flag = 1;
+                outfile.write(&null_flag, sizeof(char));
+
+                size_t dummy_size = 0;
+                switch (field.type) {
+                case 1: dummy_size = sizeof(int); break;
+                case 2: dummy_size = sizeof(float); break;
+                case 3:
+                case 4: dummy_size = field.param; break;
+                case 5: dummy_size = sizeof(std::time_t); break;
+                }
+                std::vector<char> dummy(dummy_size, 0);
+                outfile.write(dummy.data(), dummy_size);
+            }
+            else {
+                char null_flag = 0;
+                outfile.write(&null_flag, sizeof(char));
+
+                const std::string& val = it->second;
+                switch (field.type) {
+                case 1: {
+                    int v = std::stoi(val);
+                    outfile.write(reinterpret_cast<const char*>(&v), sizeof(int));
+                    break;
+                }
+                case 2: {
+                    float v = std::stof(val);
+                    outfile.write(reinterpret_cast<const char*>(&v), sizeof(float));
+                    break;
+                }
+                case 3:
+                case 4: {
+                    std::vector<char> buf(field.param, 0);
+                    std::memcpy(buf.data(), val.c_str(), std::min((size_t)field.param, val.size()));
+                    outfile.write(buf.data(), field.param);
+                    break;
+                }
+                case 5: { // DATETIME
+                    std::tm tm = custom_strptime(val, "%Y-%m-%d %H:%M:%S");
+                    std::time_t t = std::mktime(&tm);
+                    outfile.write(reinterpret_cast<const char*>(&t), sizeof(std::time_t));
+                    break;
+                }
+                }
+            }
+
+            size_t field_size = 0;
+            switch (field.type) {
+            case 1: field_size = sizeof(int); break;
+            case 2: field_size = sizeof(float); break;
+            case 3:
+            case 4: field_size = field.param; break;
+            case 5: field_size = sizeof(std::time_t); break;
+            }
+            size_t padding = (4 - (sizeof(char) + field_size) % 4) % 4;
+            char pad[4] = { 0 };
+            outfile.write(pad, padding);
         }
     }
 
-    delete[] record_buffer;
     infile.close();
     outfile.close();
 
-    // 替换原文件
-    if (std::remove(trd_filename.c_str()) != 0) {
-        std::remove(temp_filename.c_str());
-        throw std::runtime_error("无法删除原表数据文件。");
-    }
-
-    if (std::rename(temp_filename.c_str(), trd_filename.c_str()) != 0) {
-        throw std::runtime_error("无法重命名临时文件。");
+    std::remove(trd_filename.c_str());
+    if (std::rename(tmp_filename.c_str(), trd_filename.c_str()) != 0) {
+        throw std::runtime_error("无法替换原表数据文件");
     }
 
     std::cout << "成功删除了 " << deleted_count << " 条记录。" << std::endl;
