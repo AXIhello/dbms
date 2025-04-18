@@ -168,6 +168,21 @@ void Record::update(const std::string& tableName, const std::string& setClause, 
             for (const auto& [field_name, new_value] : update_values) {
                 record_data[field_name] = new_value;
             }
+
+            // 转换record_data为columns和values以便进行约束检查
+            std::vector<std::string> check_columns;
+            std::vector<std::string> check_values;
+            for (const auto& [field_name, value] : record_data) {
+                check_columns.push_back(field_name);
+                check_values.push_back(value);
+            }
+
+            // 读取并检查约束
+            std::vector<ConstraintBlock> constraints = read_constraints(table_name);
+            if (!check_constraints(check_columns, check_values, constraints)) {
+                throw std::runtime_error("更新数据违反表约束");
+            }
+
             updated_count++;
         }
 

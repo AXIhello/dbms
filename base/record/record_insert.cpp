@@ -82,6 +82,12 @@ void Record::parse_values(const std::string& vals) {
 }
 // 修改insert_into方法，使用符合.trd格式的方式写入数据
 void Record::insert_into() {
+    // 读取表约束并执行检查
+    std::vector<ConstraintBlock> constraints = read_constraints(table_name);
+    if (!check_constraints(columns, values, constraints)) {
+        throw std::runtime_error("插入数据违反表约束");
+    }
+
     std::string file_name = this->table_name + ".trd";
     std::ofstream file(file_name, std::ios::app | std::ios::binary);
 

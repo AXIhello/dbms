@@ -98,9 +98,10 @@ bool Record::check_constraints(const std::vector<std::string>& columns,
         }
 
         if (!constraint_satisfied) {
-            // 约束检查失败
-            std::string constraint_name = constraint.name;
-            std::cerr << "约束违反: " << constraint_name << " 不满足";
+            // 约束检查失败，增加更详细的错误信息
+            std::string error_message = "违反约束: " + std::string(constraint.name) +
+                " 在字段: " + std::string(constraint.field);
+            std::cerr << error_message << std::endl;
             return false;
         }
     }
@@ -358,14 +359,18 @@ bool Record::check_auto_increment_constraint(const ConstraintBlock& constraint, 
 // 检查引用完整性（在删除前检查）
 bool Record::check_references_before_delete(const std::string& table_name,
     std::unordered_map<std::string, std::string>& record_data) {
-    // 获取系统中所有表
-    // 这需要有一个系统表或目录来存储所有表名
-    // 简化起见，可以扫描当前目录中的.tdf文件
-    std::vector<std::string> all_tables;
 
-    // 获取当前目录下的所有文件
-    // 实际中应使用平台相关的目录遍历API
-    // 简化实现，仅作示例
+        // 获取系统中所有表
+        std::vector<std::string> all_tables;
+
+        // 扫描当前目录中所有.tdf文件来获取表名
+        std::filesystem::path current_path = std::filesystem::current_path();
+        for (const auto& entry : std::filesystem::directory_iterator(current_path)) {
+            if (entry.path().extension() == ".tdf") {
+                std::string table = entry.path().stem().string();
+                all_tables.push_back(table);
+            }
+        }
 
     // 检查每个表是否有引用当前要删除的记录的外键
     for (const auto& ref_table : all_tables) {

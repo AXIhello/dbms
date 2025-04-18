@@ -124,7 +124,16 @@ void Record::delete_(const std::string& tableName, const std::string& condition)
         // 检查记录是否满足条件
         bool matches = condition.empty() || matches_condition(record_data);
 
-        if (!matches) {
+        // 在循环内，当matches为true时添加:
+        if (matches) {
+            // 检查引用完整性
+            if (!check_references_before_delete(table_name, record_data)) {
+                throw std::runtime_error("删除操作违反引用完整性约束");
+            }
+            // 满足删除条件，不写入（即删除）
+            deleted_count++;
+        }
+        else {
             // 不满足删除条件，保留记录
             outfile.write(record_buffer, record_size);
         }
