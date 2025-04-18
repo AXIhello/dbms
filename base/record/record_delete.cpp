@@ -137,10 +137,6 @@ void Record::delete_(const std::string& tableName, const std::string& condition)
             // 不满足删除条件，保留记录
             outfile.write(record_buffer, record_size);
         }
-        else {
-            // 满足删除条件，不写入（即删除）
-            deleted_count++;
-        }
     }
 
     delete[] record_buffer;
