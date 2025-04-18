@@ -109,6 +109,7 @@
     <ClCompile Include="base\record\record_update.cpp" />
     <ClCompile Include="debug.cpp" />
     <ClCompile Include="manager\dbManager.cpp" />
+    <ClCompile Include="base\record\record_check.cpp" />
     <ClCompile Include="ui\login.cpp" />
     <ClCompile Include="base\database.cpp" />
     <ClCompile Include="ui\mainWindow.cpp" />

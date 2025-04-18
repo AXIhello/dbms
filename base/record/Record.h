@@ -1,9 +1,12 @@
+// 在Record.h中添加新的成员变量和函数
 #ifndef RECORD_H
 #define RECORD_H
 #include <string>
 #include <vector>
 #include <unordered_map>
 #include"fieldBlock.h"
+#include"constraintBlock.h"
+
 class Record {
 private:
     std::string table_name;
@@ -28,11 +31,35 @@ private:
     // 检查值的类型是否有效
     bool is_valid_type(const std::string& value, const std::string& type);
 
+    // 约束检查相关
+    static std::vector<ConstraintBlock> read_constraints(const std::string& table_name);
+    bool check_constraints(const std::vector<std::string>& columns,
+        const std::vector<std::string>& values,
+        const std::vector<ConstraintBlock>& constraints);
+    bool check_primary_key_constraint(const ConstraintBlock& constraint,
+        const std::string& value);
+    bool check_foreign_key_constraint(const ConstraintBlock& constraint,
+        const std::string& value);
+    bool check_unique_constraint(const ConstraintBlock& constraint,
+        const std::string& value);
+    bool check_not_null_constraint(const ConstraintBlock& constraint,
+        const std::string& value);
+    bool check_check_constraint(const ConstraintBlock& constraint,
+        const std::string& value);
+    bool check_default_constraint(const ConstraintBlock& constraint,
+        std::string& value);
+    bool check_auto_increment_constraint(const ConstraintBlock& constraint,
+        std::string& value);
+
+    // 检查引用完整性
+    bool check_references_before_delete(const std::string& table_name,
+        std::unordered_map<std::string, std::string>& record_data);
+
 public:
     // 构造函数
     Record();
     void write_to_tdf_format(const std::string& table_name, const std::vector<std::string>& columns,
-    const std::vector<std::string>& types, const std::vector<int>& params);
+        const std::vector<std::string>& types, const std::vector<int>& params);
     bool validate_field_block(const std::string& value, const FieldBlock& field);
     // 表操作相关函数
     void insert_record(const std::string& table_name, const std::string& cols, const std::string& vals);
