@@ -76,7 +76,7 @@ public:
     bool loadRecord();
     void addRecord(const string& recordData);
     void deleteRecord(int recordID);
-    void updateRecord();
+    void updateRecord(std::vector<FieldBlock>& fields);
 
     //表索引文件
     bool saveIndex()const;
