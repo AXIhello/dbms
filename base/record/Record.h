@@ -1,4 +1,3 @@
-// 在Record.h中添加新的成员变量和函数
 #ifndef RECORD_H
 #define RECORD_H
 #include <string>
@@ -10,7 +9,7 @@
 
 class Record {
 private:
-    std::vector<std::unordered_map<std::string, std::string>> read_records(const std::string table_name);
+    static std::vector<std::unordered_map<std::string, std::string>> read_records(const std::string table_name);
     std::string table_name;
     std::vector<std::string> columns;
     std::vector<std::string> values;
@@ -55,7 +54,7 @@ private:
 
     // 检查引用完整性
     bool check_references_before_delete(const std::string& table_name,
-        std::unordered_map<std::string, std::string>& record_data);
+        const std::unordered_map<std::string, std::string>& record_data);
 
 public:
     // 构造函数
@@ -81,5 +80,6 @@ public:
     const std::vector<std::string>& get_columns() const;
     const std::vector<std::string>& get_values() const;
 };
+std::tm custom_strptime(const std::string& datetime_str, const std::string& format);
 
 #endif // RECORD_H

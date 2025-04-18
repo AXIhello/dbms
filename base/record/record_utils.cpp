@@ -12,6 +12,24 @@
 #include <sstream>
 #include <unordered_map>
 #include <algorithm>
+#include<time.h>
+#include <ctime>
+#include <sstream>
+#include <iomanip>
+
+std::tm custom_strptime(const std::string& datetime_str, const std::string& format) {
+    std::tm tm = {};
+#ifdef _WIN32
+    std::istringstream ss(datetime_str);
+    ss >> std::get_time(&tm, format.c_str());
+    if (ss.fail()) {
+        throw std::runtime_error("时间字符串解析失败：" + datetime_str);
+    }
+#else
+    strptime(datetime_str.c_str(), format.c_str(), &tm);
+#endif
+    return tm;
+}
 
 Record::Record() {
     // 暂定为空
@@ -180,9 +198,6 @@ void Record::write_to_tdf_format(const std::string& table_name,
         // 设置最后修改时间为当前时间
         field.mtime = std::time(nullptr);
 
-        // 设置完整性约束（暂时不考虑）
-        field.integrities = 0;
-
         // 写入FieldBlock结构
         file.write(reinterpret_cast<const char*>(&field), sizeof(FieldBlock));
     }
@@ -200,14 +215,11 @@ std::vector<FieldBlock> Record::read_field_blocks(const std::string& table_name)
         throw std::runtime_error("无法打开表定义文件: " + tdf_filename);
     }
 
-    // 读取文件头信息（如果有的话）
-
     // 开始读取FieldBlock结构
     FieldBlock field;
     while (file.read(reinterpret_cast<char*>(&field), sizeof(FieldBlock))) {
         fields.push_back(field);
     }
-
     return fields;
 }
 
