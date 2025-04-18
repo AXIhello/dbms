@@ -97,6 +97,8 @@ void Record::insert_into() {
 
     // 读取字段结构
     std::vector<FieldBlock> fields = read_field_blocks(table_name);
+    // 在 insert_into() 方法中添加 NULL 值跟踪
+    std::vector<bool> is_null(fields.size(), true);  // 跟踪哪些字段为 NULL
     std::unordered_map<std::string, size_t> field_indices;
 
     // 构建字段名到索引的映射
@@ -112,6 +114,7 @@ void Record::insert_into() {
         if (field_indices.find(columns[i]) != field_indices.end()) {
             size_t idx = field_indices[columns[i]];
             record_values[idx] = values[i];
+            is_null[idx] = false;  // 该字段不为 NULL
         }
     }
 
@@ -121,48 +124,62 @@ void Record::insert_into() {
         const FieldBlock& field = fields[i];
         const std::string& value = record_values[i];
 
-        // 根据字段类型写入值
-        switch (field.type) {
-        case 1: { // INTEGER
-            int int_val = std::stoi(value);
-            file.write(reinterpret_cast<const char*>(&int_val), sizeof(int));
-            break;
-        }
-        case 2: { // FLOAT
-            float float_val = std::stof(value);
-            file.write(reinterpret_cast<const char*>(&float_val), sizeof(float));
-            break;
-        }
-        case 3: // VARCHAR
-        case 4: { // CHAR
-            // 写入固定长度的字符串
-            char* buffer = new char[field.param];
-            std::memset(buffer, 0, field.param);
-            std::strncpy(buffer, value.c_str(), field.param - 1);
-            file.write(buffer, field.param);
-            delete[] buffer;
-            break;
-        }
-        case 5: { // DATETIME
-            // 简化处理，实际应转换为时间戳
-            std::time_t now = std::time(nullptr);
-            file.write(reinterpret_cast<const char*>(&now), sizeof(std::time_t));
-            break;
-        }
-        default:
-            throw std::runtime_error("未知的字段类型");
-        }
+        // 写入NULL标志（1字节）: 1表示是NULL，0表示不是NULL
+        char null_flag = is_null[i] ? 1 : 0;
+        file.write(&null_flag, sizeof(char));
 
-        // 如果需要，可以添加填充以确保每个字段是4字节的倍数
-        // 计算需要填充的字节数
-        size_t bytes_written = 0;
-        switch (field.type) {
-        case 1: bytes_written = sizeof(int); break;
-        case 2: bytes_written = sizeof(float); break;
-        case 3:
-        case 4: bytes_written = field.param; break;
-        case 5: bytes_written = sizeof(std::time_t); break;
-        default: bytes_written = 0;
+        size_t bytes_written = sizeof(char); // NULL标志已写入1字节
+
+        if (!is_null[i]) {
+            // 非NULL值的处理
+            switch (field.type) {
+            case 1: { // INTEGER
+                int int_val = std::stoi(value);
+                file.write(reinterpret_cast<const char*>(&int_val), sizeof(int));
+                bytes_written += sizeof(int);
+                break;
+            }
+            case 2: { // FLOAT
+                float float_val = std::stof(value);
+                file.write(reinterpret_cast<const char*>(&float_val), sizeof(float));
+                bytes_written += sizeof(float);
+                break;
+            }
+            case 3: // VARCHAR
+            case 4: { // CHAR
+                // 写入固定长度的字符串
+                char* buffer = new char[field.param];
+                std::memset(buffer, 0, field.param);
+                std::strncpy(buffer, value.c_str(), field.param - 1);
+                file.write(buffer, field.param);
+                bytes_written += field.param;
+                delete[] buffer;
+                break;
+            }
+            case 5: { // DATETIME
+                // 简化处理，实际应转换为时间戳
+                std::time_t now = std::time(nullptr);
+                file.write(reinterpret_cast<const char*>(&now), sizeof(std::time_t));
+                bytes_written += sizeof(std::time_t);
+                break;
+            }
+            default:
+                throw std::runtime_error("未知的字段类型");
+            }
+        }
+        else {
+            // NULL值的处理 - 对于NULL值，不写入任何额外数据
+            // 仅依靠前面写入的null_flag来标识
+
+            // 计算如果有值时会写入多少字节，以便正确计算填充
+            switch (field.type) {
+            case 1: bytes_written += sizeof(int); break;
+            case 2: bytes_written += sizeof(float); break;
+            case 3:
+            case 4: bytes_written += field.param; break;
+            case 5: bytes_written += sizeof(std::time_t); break;
+            default: break;
+            }
         }
 
         // 计算需要填充的字节数，以使总字节数是4的倍数
@@ -173,7 +190,6 @@ void Record::insert_into() {
             delete[] pad;
         }
     }
-
     file.close();
     std::cout << "记录插入表 " << this->table_name << " 成功。" << std::endl;
 }

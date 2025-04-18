@@ -10,6 +10,7 @@
 
 class Record {
 private:
+    std::vector<std::unordered_map<std::string, std::string>> read_records(const std::string table_name);
     std::string table_name;
     std::vector<std::string> columns;
     std::vector<std::string> values;

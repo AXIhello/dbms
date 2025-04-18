@@ -471,3 +471,94 @@ bool Record::matches_condition(const std::unordered_map<std::string, std::string
     // 默认返回false
     return false;
 }
+
+// 从.trd文件读取记录
+std::vector<std::unordered_map<std::string, std::string>> Record::read_records(const std:: string table_name) {
+    std::vector<std::unordered_map<std::string, std::string>> records;
+    std::string trd_filename = table_name + ".trd";
+    std::ifstream file(trd_filename, std::ios::binary);
+
+    if (!file) {
+        return records; // 如果文件不存在，返回空记录集
+    }
+
+    // 读取表结构以获取字段信息
+    std::vector<FieldBlock> fields = read_field_blocks(table_name);
+
+    // 读取文件中的每条记录
+    while (file.peek() != EOF) {
+        std::unordered_map<std::string, std::string> record_data;
+
+        for (const auto& field : fields) {
+            // 读取NULL标志
+            char null_flag;
+            file.read(&null_flag, sizeof(char));
+            size_t bytes_read = sizeof(char);
+
+            if (null_flag == 1) {
+                // 是NULL值
+                record_data[field.name] = "NULL";
+
+                // 计算若有值时应读取的字节数
+                switch (field.type) {
+                case 1: bytes_read += sizeof(int); break;
+                case 2: bytes_read += sizeof(float); break;
+                case 3:
+                case 4: bytes_read += field.param; break;
+                case 5: bytes_read += sizeof(std::time_t); break;
+                default: break;
+                }
+            }
+            else {
+                // 非NULL值，根据类型读取
+                switch (field.type) {
+                case 1: { // INTEGER
+                    int int_val;
+                    file.read(reinterpret_cast<char*>(&int_val), sizeof(int));
+                    record_data[field.name] = std::to_string(int_val);
+                    bytes_read += sizeof(int);
+                    break;
+                }
+                case 2: { // FLOAT
+                    float float_val;
+                    file.read(reinterpret_cast<char*>(&float_val), sizeof(float));
+                    record_data[field.name] = std::to_string(float_val);
+                    bytes_read += sizeof(float);
+                    break;
+                }
+                case 3: // VARCHAR
+                case 4: { // CHAR
+                    char* buffer = new char[field.param];
+                    file.read(buffer, field.param);
+                    record_data[field.name] = "'" + std::string(buffer) + "'";
+                    bytes_read += field.param;
+                    delete[] buffer;
+                    break;
+                }
+                case 5: { // DATETIME
+                    std::time_t time_val;
+                    file.read(reinterpret_cast<char*>(&time_val), sizeof(std::time_t));
+                    // 将时间戳转换为字符串
+                    char time_str[30];
+                    std::strftime(time_str, sizeof(time_str), "%Y-%m-%d %H:%M:%S", std::localtime(&time_val));
+                    record_data[field.name] = "'" + std::string(time_str) + "'";
+                    bytes_read += sizeof(std::time_t);
+                    break;
+                }
+                default:
+                    throw std::runtime_error("未知的字段类型");
+                }
+            }
+
+            // 跳过填充字节
+            size_t padding = (4 - (bytes_read % 4)) % 4;
+            if (padding > 0) {
+                file.seekg(padding, std::ios::cur);
+            }
+        }
+
+        records.push_back(record_data);
+    }
+
+    return records;
+}
