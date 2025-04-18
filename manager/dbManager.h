@@ -9,6 +9,10 @@
 #include <unordered_map>
 #include <chrono>  // 添加此行以包含 std::chrono
 #include"databaseBlock.h"
+#include <unordered_map>
+#include <unordered_set>
+
+
 
 namespace fs = std::filesystem;
 
@@ -42,6 +46,7 @@ public:
     //void listDatabases(); 
     std::vector<std::string> getDatabaseList();
     bool isConnected();//待扩展与实现；
+
 
 private:
     dbManager();  // DBMS_ROOT根目录

@@ -12,6 +12,9 @@ Table::Table(const std::string& dbName, const std::string& tableName)
     m_lastModifyTime = m_createTime;
 	m_tb = dbManager::basePath + "/data/" + m_db_name + "/" + m_db_name + ".tb";
 	m_tdf = dbManager::basePath + "/data/" + m_db_name + "/" + m_tableName + ".tdf";
+    m_tic = dbManager::basePath + "/data/" + m_db_name + "/" + m_tableName + ".tic";
+    m_tid = dbManager::basePath + "/data/" + m_db_name + "/" + m_tableName + ".tid";
+    m_trd = dbManager::basePath + "/data/" + m_db_name + "/" + m_tableName + ".trd";
 
 	if (isTableExist()) {
 		load(); // 加载表的元数据
@@ -23,28 +26,28 @@ Table::Table(const std::string& dbName, const std::string& tableName)
 }
 
 
-// 析构函数（待改）
+// 析构函数（一般为空）
 Table::~Table() {
 
     // 删除表的相关文件  
 
-	deleteTableMetadata(); // 删除表的元数据文件
+	//deleteTableMetadata(); // 删除表的元数据文件
 
-    vector<string> filesToDelete = {
-        m_tableName + ".tic", // 表的完整性文件  
-        m_tableName + ".trd", // 表的数据文件  
-        m_tableName + ".tdf", // 表的定义文件  
-        m_tableName + ".tid"  // 表的索引文件  
-    };
+    //vector<string> filesToDelete = {
+    //    m_tic, // 表的完整性文件  
+    //    m_trd, // 表的数据文件  
+    //    m_tdf, // 表的定义文件  
+    //    m_tid  // 表的索引文件  
+    //};
 
-    for (const auto& file : filesToDelete) {
-        if (std::remove(file.c_str()) == 0) {
-            cout << "文件删除成功: " << file << endl;
-        }
-        else {
-            cerr << "文件删除失败: " << file << endl;
-        }
-    }
+    //for (const auto& file : filesToDelete) {
+    //    if (std::remove(file.c_str()) == 0) {
+    //        cout << "文件删除成功: " << file << endl;
+    //    }
+    //    else {
+    //       throw std::runtime_error("文件删除失败: ");
+    //    }
+    //}
 }
 
 void Table::load()
@@ -113,34 +116,10 @@ string Table::timeToString(time_t time) const {
     return string(buffer);
 }
 
-void Table::saveDefineBinary() {
-    std::ofstream out(m_tdf, std::ios::binary);
-    if (!out.is_open()) {
-        throw std::runtime_error("无法保存定义文件: " + m_tableName + " .tdf ");
-    }
-
-    for (int i = 0; i < m_fields.size(); ++i) {
-        FieldBlock& field = m_fields[i];
-
-        // 填充必要的字段信息
-        field.order = i; // 设置字段的顺序
-        field.mtime = std::time(nullptr); // 设置最后修改时间为当前时间
-        field.integrities = 0; // TODO: 如果有完整性约束，需要在此处理
-
-        // 将当前字段块写入文件
-        out.write(reinterpret_cast<const char*>(&field), sizeof(FieldBlock));
-    }
-
-    out.close();
-}
-
-
-
 void Table::loadMetadataBinary() {
     ifstream tbFile(m_tb, ios::binary);
     if (!tbFile) {
-        cerr << "Failed to open database file." << endl;
-        return;
+		throw std::runtime_error("无法打开元数据文件: " + m_tb);
     }
 
     // 读取每个 TableBlock，查找指定名称的表
@@ -150,7 +129,6 @@ void Table::loadMetadataBinary() {
             // 找到目标表格，将其元数据复制到该表对象的 TableBlock 中
             m_recordCount = tableBlock.record_num;
             m_fieldCount = tableBlock.field_num;
-            m_tb = tableBlock.name;  // 假设表描述文件路径使用表名
             m_tdf = tableBlock.tdf;
             m_tic = tableBlock.tic;
             m_trd = tableBlock.trd;
@@ -162,7 +140,8 @@ void Table::loadMetadataBinary() {
     }
 
     // 如果没有找到指定的表格
-    cerr << "表" << m_tableName << "未找到" << endl;
+	cerr << "未找到表格: " << m_tableName << endl;
+    tbFile.close();
 }
 
 //保存至.tb文件
@@ -231,64 +210,62 @@ void Table::saveMetadataBinary() {
     tbFile.close();
 }
 
-
-//元数据操作
-
-bool Table::deleteTableMetadata() const {
-    // 打开文件进行读取
-    string filename = m_db_name + ".tb";
-    ifstream tbFileIn(filename);
-
+//从.tb文件中删除表的元数据
+bool Table::deleteTableMetadata(){
+    // 1. 打开元数据文件
+    std::ifstream tbFileIn(m_tb, std::ios::binary);
     if (!tbFileIn.is_open()) {
-        cerr << "无法打开元数据文件: " << filename << endl;
-        return false;
+        throw std::runtime_error("无法打开元数据文件: " + m_tb);
     }
 
-    // 将文件内容读取到字符串流
-    stringstream buffer;
-    buffer << tbFileIn.rdbuf();
-    tbFileIn.close();
-
-    // 将文件内容存储到字符串中进行分析
-    string fileContent = buffer.str();
-
-    // 查找表的元数据部分
-    size_t startPos = fileContent.find("TableName: " + m_tableName);
-    if (startPos == string::npos) {
-        cerr << "未找到表的元数据: " << m_tableName << endl;
-        return false;
-    }
-
-    size_t endPos = fileContent.find("TableName: ", startPos + 1); // 查找下一个表的开始
-    if (endPos == string::npos) {
-        endPos = fileContent.length(); // 如果没有下一个表，则到文件末尾
-    }
-
-    // 删除表的元数据部分
-    fileContent.erase(startPos, endPos - startPos);
-
-    // 将修改后的内容写回文件
-    ofstream tbFileOut(filename, ios::trunc); // 使用截断模式重新写入文件
+    // 2. 创建临时文件
+    std::string tempFile = m_tb + ".tmp";
+    std::ofstream tbFileOut(tempFile, std::ios::binary);
     if (!tbFileOut.is_open()) {
-        cerr << "无法写入元数据文件: " << filename << endl;
-        return false;
+        tbFileIn.close();
+        throw std::runtime_error("无法创建临时文件: " + tempFile);
     }
 
-    tbFileOut << fileContent;
+    TableBlock block;
+    bool found = false;
+
+    // 3. 遍历并筛选写入
+    while (tbFileIn.read(reinterpret_cast<char*>(&block), sizeof(TableBlock))) {
+        if (std::string(block.name) == m_tableName) {
+            found = true; // 找到要删除的表，跳过写入
+            continue;
+        }
+        tbFileOut.write(reinterpret_cast<const char*>(&block), sizeof(TableBlock));
+    }
+
+    tbFileIn.close();
     tbFileOut.close();
 
-    cout << "表的元数据已成功删除: " << m_tableName << endl;
+    // 4. 检查是否找到并替换原文件
+    if (!found) {
+        std::remove(tempFile.c_str()); // 清理临时文件
+        throw std::runtime_error("未找到表元数据: " + m_tableName);
+    }
+
+    if (std::remove(m_tb.c_str()) != 0) {
+        throw std::runtime_error("无法删除旧元数据文件: " + m_tb);
+    }
+
+    if (std::rename(tempFile.c_str(), m_tb.c_str()) != 0) {
+        throw std::runtime_error("无法重命名临时文件: " + tempFile);
+    }
+
     return true;
 }
+
 
 //表定义文件操作
 // 加载表的定义（待验证）
 
 void Table::loadDefineBinary() {
-    std::string filename = dbManager::basePath+"/data/" +m_db_name + "/" + m_tableName + ".tdf";
-    std::ifstream in(filename, std::ios::binary);
+    std::ifstream in(m_tdf, std::ios::binary);
     if (!in.is_open()) {
-        throw std::runtime_error("无法打开定义文件: " + filename);
+        throw std::runtime_error("无法打开定义文件: " + m_tdf);
     }
 
     m_fields.clear();
@@ -298,29 +275,36 @@ void Table::loadDefineBinary() {
         in.read(reinterpret_cast<char*>(&field), sizeof(FieldBlock));
         if (in.gcount() < sizeof(FieldBlock)) break;
 
-        FieldBlock col;
-        //col.name = std::string(field.name);
-        //col.size = field.param;
-
-        //// 映射类型整数为字符串
-        //switch (field.type) {
-        //    case 0: col.type = "INT"; break;
-        //    case 1: col.type = "FLOAT"; break;
-        //    case 2: col.type = "CHAR"; break;
-        //    case 3: col.type = "VARCHAR"; break;
-        //    default: col.type = "UNKNOWN"; break;
-        //}
-
-        // 暂时忽略 integrities 和 mtime
-        //col.defaultValue = "";  // 可以后期扩展读取默认值字段
-
-        m_fields.push_back(col);
+        m_fields.push_back(field);
     }
 
     in.close();
 }
 
 
+void Table::saveDefineBinary() {
+    std::ofstream out(m_tdf, std::ios::binary);
+    if (!out.is_open()) {
+        throw std::runtime_error("无法保存定义文件: " + m_tableName + " .tdf ");
+    }
+
+    for (int i = 0; i < m_fields.size(); ++i) {
+        FieldBlock& field = m_fields[i];
+
+        // 填充必要的字段信息
+        field.order = i; // 设置字段的顺序
+        field.mtime = std::time(nullptr); // 设置最后修改时间为当前时间
+        field.integrities = 0; // TODO: 如果有完整性约束，需要在此处理
+
+        // 将当前字段块写入文件
+        out.write(reinterpret_cast<const char*>(&field), sizeof(FieldBlock));
+    }
+
+    out.close();
+}
+
+
+//字段操作
 void Table::addField(const FieldBlock& field) {
     FieldBlock newField = field;
 
@@ -344,26 +328,14 @@ void Table::addField(const FieldBlock& field) {
     saveMetadataBinary();
 }
 
+void Table::dropField(const std::string fieldName) {
 
+}
+
+void Table::updateField(const std::string fieldName, const FieldBlock& updatedField) {
+
+}
 /*
-// 添加列√
-void Table::addCol(const FieldBlock& col) {
-	m_columns.push_back(col); // 添加新列
-    loadRecord();//更改表记录文件内容
-	m_lastModifyTime = time(0); // 更新最后修改时间
-}
-
-// 删除列√
-void Table::deleteCol(const string& colName) {
-	// 删除指定列
-	auto it = std::remove_if(m_columns.begin(), m_columns.end(), [&](const Column& col) {
-		return col.name == colName;
-		});
-	m_columns.erase(it, m_columns.end());
-    loadRecord();//更改表记录文件内容
-	m_lastModifyTime = time(0); // 更新最后修改时间
-}
-
 // 更新列√
 void Table::updateCol(const Column& oldCol, const Column& newCol) {
 	// 更新指定列
@@ -379,14 +351,47 @@ void Table::updateCol(const Column& oldCol, const Column& newCol) {
 
 */
 
+//表完整性文件操作
+void Table::loadIntegralityBinary() {
+    std::ifstream in(m_tic, std::ios::binary);
+    if (!in.is_open()) {
+        throw std::runtime_error("无法打开完整性文件: " + m_tic);
+    }
+
+    m_constraints.clear();
+
+    while (in.peek() != EOF) {
+        ConstraintBlock constraints;
+        in.read(reinterpret_cast<char*>(&constraints), sizeof(ConstraintBlock));
+        if (in.gcount() < sizeof(ConstraintBlock)) break;
+
+        m_constraints.push_back(constraints);
+    }
+
+    in.close();
+}
+void Table::saveIntegralityBinary(){
+    std::ofstream out(m_tic, std::ios::binary);
+    if (!out.is_open()) {
+        throw std::runtime_error("无法保存完整性文件: " + m_tableName + " .tic ");
+    }
+
+    for (int i = 0; i < m_fields.size(); ++i) {
+        ConstraintBlock& constraints = m_constraints[i];
+
+        // 将当前字段块写入文件
+        out.write(reinterpret_cast<const char*>(&constraints), sizeof(ConstraintBlock));
+    }
+
+    out.close();
+}
+
 //表记录文件操作
-//加载表记录文件(待验证)
 bool Table::loadRecord() {
     ifstream trdFile(m_tableName + ".trd"); // 打开记录文件
 
     if (!trdFile.is_open()) {
-        cerr << "无法打开数据文件: " << m_tableName + ".trd" << endl;
-        return false;
+        throw std::runtime_error( "无法打开数据文件: " + m_tableName + ".trd" );
     }
 
     // 读取文件的第一行（列名）
@@ -579,7 +584,7 @@ bool Table::isTableExist() const {
     std::fstream tbFile(m_tb, std::ios::in | std::ios::binary);
 
     if (!tbFile.is_open()) {
-        std::cerr << "无法打开数据库文件: " << m_tb << std::endl;
+        throw std::runtime_error( "无法打开数据库文件: "+ m_tb);
         return false;  // 无法打开文件，认为表不存在
     }
 
@@ -596,3 +601,23 @@ bool Table::isTableExist() const {
     return false;  // 没有找到表名，返回 false
 }
 
+//从磁盘中删除4个表定义文件
+void Table::deleteFilesDisk()
+{
+	// 删除表的相关文件
+	std::vector<std::string> filesToDelete = {
+		 // 表的定义文件
+		m_tdf,
+        m_tic,// 表的完整性文件
+		m_trd, // 表的数据文件
+		m_tid  // 表的索引文件
+	};
+	for (const auto& file : filesToDelete) {
+		if (std::remove(file.c_str()) == 0) {
+			cout << "文件删除成功: " << file << endl;
+		}
+		else {
+			throw std::runtime_error("文件删除失败: " + file);
+		}
+	}
+}

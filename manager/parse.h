@@ -5,7 +5,7 @@
 #include <regex>
 #include <functional>
 #include <vector>
-#include"base/Record.h"
+#include"base/record/Record.h"
 #include "base/table.h"
 #include "base/database.h"
 #include <string>
@@ -28,6 +28,10 @@ private:
 
     std::vector<SqlPattern> patterns;
     QString cleanSQL(const QString& sql);//清理sql结构，去除多余空格/制表符等
+    
+    int getTypeFromString(const std::string& columnType);//类型转换函数
+
+
     void registerPatterns();
 
     void handleCreateDatabase(const std::smatch& m);
@@ -48,6 +52,9 @@ private:
     void handleSelectDatabase();
 
     void handleDropTable(const std::smatch& m);
+
+    void handleUpdate(const std::smatch& m);
+    void handleDelete(const std::smatch& m);
 
     Database* db;
 

@@ -16,6 +16,9 @@
     <Filter Include="debug">
       <UniqueIdentifier>{12c09639-2926-4507-bebe-2c08f0d88ec1}</UniqueIdentifier>
     </Filter>
+    <Filter Include="base\record">
+      <UniqueIdentifier>{ffaa26c9-66bd-4aec-aa17-63f944b3b32e}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <!-- base -->
@@ -25,9 +28,6 @@
     <ClCompile Include="base\table.cpp">
       <Filter>base</Filter>
     </ClCompile>
-    <ClCompile Include="base\Record.cpp">
-      <Filter>base</Filter>
-    </ClCompile>
     <ClCompile Include="base\user.cpp">
       <Filter>base</Filter>
     </ClCompile>
@@ -35,9 +35,6 @@
       <Filter>base</Filter>
     </ClInclude>
     <ClInclude Include="base\table.h">
-      <Filter>base</Filter>
-    </ClInclude>
-    <ClInclude Include="base\Record.h">
       <Filter>base</Filter>
     </ClInclude>
     <ClInclude Include="base\user.h">
@@ -94,6 +91,24 @@
     <ClCompile Include="debug.cpp">
       <Filter>debug</Filter>
     </ClCompile>
+    <ClCompile Include="base\record\record_utils.cpp">
+      <Filter>base\record</Filter>
+    </ClCompile>
+    <ClCompile Include="base\record\record_insert.cpp">
+      <Filter>base\record</Filter>
+    </ClCompile>
+    <ClCompile Include="base\record\record_delete.cpp">
+      <Filter>base\record</Filter>
+    </ClCompile>
+    <ClCompile Include="base\record\record_select.cpp">
+      <Filter>base\record</Filter>
+    </ClCompile>
+    <ClCompile Include="base\record\record_update.cpp">
+      <Filter>base\record</Filter>
+    </ClCompile>
+    <ClCompile Include="base\record\record_check.cpp">
+      <Filter>base\record</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="tableBlock.h">
@@ -107,6 +122,10 @@
     </ClInclude>
     <ClInclude Include="debug.h">
       <Filter>debug</Filter>
+    </ClInclude>
+    <ClInclude Include="constraintBlock.h" />
+    <ClInclude Include="base\record\Record.h">
+      <Filter>base\record</Filter>
     </ClInclude>
   </ItemGroup>
 </Project>
