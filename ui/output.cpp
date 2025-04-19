@@ -2,50 +2,70 @@
 
 void Output::printSelectResult(QTextEdit* outputEdit, const std::vector<Record>& results) {
     if (!outputEdit) return;
+    outputEdit->clear();
 
     if (results.empty()) {
-        outputEdit->append("无查询结果。");
+        outputEdit->append("<p style='color:gray;'>无查询结果。</p>");
         return;
     }
 
-    // 打印表头
     const auto& columns = results[0].get_columns();
-    QString header;
-    for (const auto& col : columns) {
-        header += QString::fromStdString(col) + "\t";
-    }
-    outputEdit->append(header);
-    outputEdit->append(QString(columns.size() * 8, '-'));
 
-    // 打印每条记录
+    QString html;
+    html += "<style>"
+        "table { border-collapse: collapse; width: 100%; font-family: Consolas, monospace; }"
+        "th, td { border: 1px solid #888; padding: 6px 10px; text-align: left; }"
+        "th { background-color: #f0f0f0; }"
+        "tr:nth-child(even) { background-color: #fafafa; }"
+        "</style>";
+
+    html += "<table>";
+
+    // 表头
+    html += "<tr>";
+    for (const auto& col : columns) {
+        html += "<th>" + QString::fromStdString(col) + "</th>";
+    }
+    html += "</tr>";
+
+    // 数据行
     for (const auto& record : results) {
         const auto& values = record.get_values();
-        QString row;
+        html += "<tr>";
         for (const auto& val : values) {
-            row += QString::fromStdString(val) + "\t";
+            html += "<td>" + QString::fromStdString(val) + "</td>";
         }
-        outputEdit->append(row);
+        html += "</tr>";
     }
+
+    html += "</table>";
+
+    outputEdit->append(html);
 }
+
 
 void Output::printMessage(QTextEdit* outputEdit, const QString& message) {
     if (!outputEdit) return;
+    outputEdit->clear();
     outputEdit->append(message);
 }
 
 void Output::printError(QTextEdit* outputEdit, const QString& error) {
     if (!outputEdit) return;
+    outputEdit->clear();
     outputEdit->append("[错误] " + error);
 }
 
 void Output::printInfo(QTextEdit* outputEdit, const QString& message) {
     if (outputEdit) {
+        outputEdit->clear();
         outputEdit->append("[信息] :" + message);
     }
 }
 
 void Output::printDatabaseList(QTextEdit* outputEdit, const std::vector<std::string>& dbs) {
     if (!outputEdit) return;
+    outputEdit->clear();
 
     // 如果没有数据库
     if (dbs.empty()) {
