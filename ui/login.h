@@ -1,10 +1,10 @@
 #pragma once
 
-#include <QWidget>
+#include <QDialog>
 #include "ui_login.h"
 
 
-class login : public QWidget
+class login : public QDialog
 {
 	Q_OBJECT
 
@@ -12,15 +12,15 @@ signals:
 	void acceptedLogin();
 
 public:
-	login(QWidget *parent = nullptr);
+	login(QDialog *parent = nullptr);
 	~login();
 
 private:
-	Ui::loginClass ui;
+	Ui::Login ui;
 
 	bool authenticate(const QString& username, const QString& password); //验证
 
 
 private slots:
-	void on_loginButton_clicked();
+	void on_loginBtn_clicked();
 };

@@ -1,4 +1,3 @@
-// 在Record.h中添加新的成员变量和函数
 #ifndef RECORD_H
 #define RECORD_H
 #include <string>
@@ -10,6 +9,7 @@
 
 class Record {
 private:
+    static std::vector<std::unordered_map<std::string, std::string>> read_records(const std::string table_name);
     std::string table_name;
     std::vector<std::string> columns;
     std::vector<std::string> values;
@@ -35,7 +35,7 @@ private:
     // 约束检查相关
     static std::vector<ConstraintBlock> read_constraints(const std::string& table_name);
     bool check_constraints(const std::vector<std::string>& columns,
-        const std::vector<std::string>& values,
+        std::vector<std::string>& values,
         const std::vector<ConstraintBlock>& constraints);
     bool check_primary_key_constraint(const ConstraintBlock& constraint,
         const std::string& value);
@@ -54,7 +54,13 @@ private:
 
     // 检查引用完整性
     bool check_references_before_delete(const std::string& table_name,
-        std::unordered_map<std::string, std::string>& record_data);
+        const std::unordered_map<std::string, std::string>& record_data);
+    // 计算数据本体的大小（不含null标志）
+    static size_t get_field_data_size(int type, int param);
+    // 写入一个字段，包括 null_flag + 数据 + padding
+    static void write_field(std::ofstream& out, const FieldBlock& field, const std::string& value);
+    // 读取一个字段，返回字符串值（带 null 判断）
+    static std::string read_field(std::ifstream& in, const FieldBlock& field);
 
 public:
     // 构造函数
@@ -80,5 +86,6 @@ public:
     const std::vector<std::string>& get_columns() const;
     const std::vector<std::string>& get_values() const;
 };
+std::tm custom_strptime(const std::string& datetime_str, const std::string& format);
 
 #endif // RECORD_H

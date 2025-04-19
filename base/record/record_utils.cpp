@@ -12,6 +12,24 @@
 #include <sstream>
 #include <unordered_map>
 #include <algorithm>
+#include<time.h>
+#include <ctime>
+#include <sstream>
+#include <iomanip>
+
+std::tm custom_strptime(const std::string& datetime_str, const std::string& format) {
+    std::tm tm = {};
+#ifdef _WIN32
+    std::istringstream ss(datetime_str);
+    ss >> std::get_time(&tm, format.c_str());
+    if (ss.fail()) {
+        throw std::runtime_error("时间字符串解析失败：" + datetime_str);
+    }
+#else
+    strptime(datetime_str.c_str(), format.c_str(), &tm);
+#endif
+    return tm;
+}
 
 Record::Record() {
     // 暂定为空
@@ -37,7 +55,7 @@ std::unordered_map<std::string, std::string> Record::read_table_structure_static
         case 1: column_type = "INTEGER"; break;
         case 2: column_type = "FLOAT"; break;
         case 3: column_type = "VARCHAR"; break;
-        case 4: column_type = "CHAR"; break;
+        case 4: column_type = "BOOL"; break;
         case 5: column_type = "DATETIME"; break;
         default: column_type = "UNKNOWN";
         }
@@ -85,10 +103,13 @@ bool Record::is_valid_type(const std::string& value, const std::string& type) {
             return false;
         }
     }
-    else if (type == "VARCHAR" || type == "CHAR" || type == "TEXT") {
+    else if (type == "VARCHAR"  || type == "TEXT") {
         // 检查字符串是否被引号括起来
         return (value.front() == '\'' && value.back() == '\'') ||
             (value.front() == '\"' && value.back() == '\"');
+    }
+    else if (type == "BOOL") {
+        return value == "0" || value == "1";
     }
     else if (type == "DATE" || type == "DATETIME") {
         // 简单检查日期格式，待拓展
@@ -164,7 +185,7 @@ void Record::write_to_tdf_format(const std::string& table_name,
         else if (types[i] == "VARCHAR") {
             field.type = 3;
         }
-        else if (types[i] == "CHAR") {
+        else if (types[i] == "BOOL") {
             field.type = 4;
         }
         else if (types[i] == "DATETIME") {
@@ -179,9 +200,6 @@ void Record::write_to_tdf_format(const std::string& table_name,
 
         // 设置最后修改时间为当前时间
         field.mtime = std::time(nullptr);
-
-        // 设置完整性约束（暂时不考虑）
-        field.integrities = 0;
 
         // 写入FieldBlock结构
         file.write(reinterpret_cast<const char*>(&field), sizeof(FieldBlock));
@@ -200,14 +218,11 @@ std::vector<FieldBlock> Record::read_field_blocks(const std::string& table_name)
         throw std::runtime_error("无法打开表定义文件: " + tdf_filename);
     }
 
-    // 读取文件头信息（如果有的话）
-
     // 开始读取FieldBlock结构
     FieldBlock field;
     while (file.read(reinterpret_cast<char*>(&field), sizeof(FieldBlock))) {
         fields.push_back(field);
     }
-
     return fields;
 }
 
@@ -236,12 +251,9 @@ bool Record::validate_field_block(const std::string& value, const FieldBlock& fi
         }
 
     case 3: // VARCHAR
-    case 4: // CHAR
-        // 检查字符串长度是否符合参数要求
-        if (value.length() <= static_cast<size_t>(field.param)) {
-            return true;
-        }
-        return false;
+        return value.length() <= static_cast<size_t>(field.param);
+    case 4: // BOOL
+        return value == "0" || value == "1";
 
     case 5: // DATETIME
         // 使用前面定义的正则表达式
@@ -416,9 +428,19 @@ bool Record::matches_condition(const std::unordered_map<std::string, std::string
             std::cerr << "数值转换失败，按字符串比较: " << e.what() << std::endl;
         }
     }
+    // 布尔型比较（0或1作为字符串）
+    if (field_type == "BOOL") {
+        if (condition_value != "0" && condition_value != "1") {
+            throw std::runtime_error("布尔类型条件值必须是 '0' 或 '1'");
+        }
+
+        if (condition_operator == "=") return field_value == condition_value;
+        if (condition_operator == "!=") return field_value != condition_value;
+        throw std::runtime_error("布尔类型只支持 '=' 和 '!=' 比较");
+    }
 
     // 字符串比较（或数值转换失败的情况）
-    if (field_type == "VARCHAR" || field_type == "CHAR" || field_type == "TEXT" ||
+    if (field_type == "VARCHAR" ||  field_type == "TEXT" ||
         condition_operator == "=" || condition_operator == "!=") {
 
         // 处理引号
@@ -470,4 +492,199 @@ bool Record::matches_condition(const std::unordered_map<std::string, std::string
 
     // 默认返回false
     return false;
+}
+
+// 从.trd文件读取记录
+std::vector<std::unordered_map<std::string, std::string>> Record::read_records(const std:: string table_name) {
+    std::vector<std::unordered_map<std::string, std::string>> records;
+    std::string trd_filename = table_name + ".trd";
+    std::ifstream file(trd_filename, std::ios::binary);
+
+    if (!file) {
+        return records; // 如果文件不存在，返回空记录集
+    }
+
+    // 读取表结构以获取字段信息
+    std::vector<FieldBlock> fields = read_field_blocks(table_name);
+
+    // 读取文件中的每条记录
+    while (file.peek() != EOF) {
+        std::unordered_map<std::string, std::string> record_data;
+
+        for (const auto& field : fields) {
+            // 读取NULL标志
+            char null_flag;
+            file.read(&null_flag, sizeof(char));
+            size_t bytes_read = sizeof(char);
+
+            if (null_flag == 1) {
+                // 是NULL值
+                record_data[field.name] = "NULL";
+
+                // 计算若有值时应读取的字节数
+                switch (field.type) {
+                case 1: bytes_read += sizeof(int); break;
+                case 2: bytes_read += sizeof(float); break;
+                case 3: bytes_read += field.param; break;
+                case 4: bytes_read += sizeof(char); break;
+                case 5: bytes_read += sizeof(std::time_t); break;
+                default: break;
+                }
+            }
+            else {
+                // 非NULL值，根据类型读取
+                switch (field.type) {
+                case 1: { // INTEGER
+                    int int_val;
+                    file.read(reinterpret_cast<char*>(&int_val), sizeof(int));
+                    record_data[field.name] = std::to_string(int_val);
+                    bytes_read += sizeof(int);
+                    break;
+                }
+                case 2: { // FLOAT
+                    float float_val;
+                    file.read(reinterpret_cast<char*>(&float_val), sizeof(float));
+                    record_data[field.name] = std::to_string(float_val);
+                    bytes_read += sizeof(float);
+                    break;
+                }
+                case 3: {
+                    char* buffer = new char[field.param];
+                    file.read(buffer, field.param);
+                    record_data[field.name] = "'" + std::string(buffer) + "'";
+                    delete[] buffer;
+                    break;
+                }
+                case 4: { // BOOL
+                    char b;
+                    file.read(&b, sizeof(char));
+                    record_data[field.name] = (b == 1) ? "1" : "0";
+                    break;
+                }
+                case 5: { // DATETIME
+                    std::time_t time_val;
+                    file.read(reinterpret_cast<char*>(&time_val), sizeof(std::time_t));
+                    // 将时间戳转换为字符串
+                    char time_str[30];
+                    std::strftime(time_str, sizeof(time_str), "%Y-%m-%d %H:%M:%S", std::localtime(&time_val));
+                    record_data[field.name] = "'" + std::string(time_str) + "'";
+                    bytes_read += sizeof(std::time_t);
+                    break;
+                }
+                default:
+                    throw std::runtime_error("未知的字段类型");
+                }
+            }
+
+            // 跳过填充字节
+            size_t padding = (4 - (bytes_read % 4)) % 4;
+            if (padding > 0) {
+                file.seekg(padding, std::ios::cur);
+            }
+        }
+
+        records.push_back(record_data);
+    }
+
+    return records;
+}
+
+size_t Record::get_field_data_size(int type, int param) {
+    switch (type) {
+    case 1: return sizeof(int);             // INT
+    case 2: return sizeof(float);           // FLOAT
+    case 3: return param;                   // VARCHAR
+    case 4: return sizeof(char);            // BOOL
+    case 5: return sizeof(std::time_t);     // DATETIME
+    default: return 0;
+    }
+}
+
+void Record::write_field(std::ofstream& out, const FieldBlock& field, const std::string& value) {
+    bool is_null = (value == "NULL");
+    char null_flag = is_null ? 1 : 0;
+    out.write(&null_flag, sizeof(char));
+
+    if (is_null) {
+        size_t data_size = get_field_data_size(field.type, field.param);
+        std::vector<char> dummy(data_size, 0);
+        out.write(dummy.data(), data_size);
+    }
+    else {
+        switch (field.type) {
+        case 1: {
+            int v = std::stoi(value);
+            out.write(reinterpret_cast<const char*>(&v), sizeof(int));
+            break;
+        }
+        case 2: {
+            float f = std::stof(value);
+            out.write(reinterpret_cast<const char*>(&f), sizeof(float));
+            break;
+        }
+        case 3: {
+            std::vector<char> buf(field.param, 0);
+            std::memcpy(buf.data(), value.c_str(), std::min((size_t)field.param, value.size()));
+            out.write(buf.data(), field.param);
+            break;
+        }
+        case 4: {
+            char b = (value == "1") ? 1 : 0;
+            out.write(&b, sizeof(char));
+            break;
+        }
+        case 5: {
+            std::tm tm = custom_strptime(value, "%Y-%m-%d %H:%M:%S");
+            std::time_t t = std::mktime(&tm);
+            out.write(reinterpret_cast<const char*>(&t), sizeof(std::time_t));
+            break;
+        }
+        }
+    }
+
+    size_t data_size = get_field_data_size(field.type, field.param);
+    size_t padding = (4 - (sizeof(char) + data_size) % 4) % 4;
+    char pad[4] = { 0 };
+    out.write(pad, padding);
+}
+
+std::string Record::read_field(std::ifstream& in, const FieldBlock& field) {
+    char null_flag;
+    in.read(&null_flag, sizeof(char));
+    if (in.eof()) return "";
+
+    if (null_flag == 1) {
+        in.seekg(get_field_data_size(field.type, field.param), std::ios::cur);
+        return "NULL";
+    }
+
+    switch (field.type) {
+    case 1: {
+        int v;
+        in.read(reinterpret_cast<char*>(&v), sizeof(int));
+        return std::to_string(v);
+    }
+    case 2: {
+        float f;
+        in.read(reinterpret_cast<char*>(&f), sizeof(float));
+        return std::to_string(f);
+    }
+    case 3: {
+        std::vector<char> buf(field.param, 0);
+        in.read(buf.data(), field.param);
+        return std::string(buf.data());
+    }
+    case 4: {
+        char b;
+        in.read(&b, sizeof(char));
+        return (b == 1) ? "1" : "0";
+    }
+    case 5: {
+        std::time_t t;
+        in.read(reinterpret_cast<char*>(&t), sizeof(std::time_t));
+        return std::to_string(t);
+    }
+    }
+
+    return "";
 }
