@@ -1,7 +1,7 @@
 #ifdef _MSC_VER
 #define _CRT_SECURE_NO_WARNINGS
 #endif
-
+#include <stdexcept>
 #include "Record.h"
 #include "manager/parse.h"
 #include "ui/output.h"
@@ -79,6 +79,16 @@ void Record::validate_columns() {
         if (table_structure.find(column) == table_structure.end()) {
             throw std::runtime_error("字段'" + column + "' 并不存在于表'" + table_name + "'中。");
         }
+    }
+}
+std::string Record::get_type_string(int type) {
+    switch (type) {
+    case 1: return "INT";
+    case 2: return "DOUBLE"; // 或 FLOAT
+    case 3: return "VARCHAR";
+    case 4: return "BOOL";
+    case 5: return "DATETIME";
+    default: return "UNKNOWN";
     }
 }
 
@@ -623,10 +633,6 @@ void Record::write_field(std::ofstream& out, const FieldBlock& field, const std:
             break;
         }
         case 3: {
-            if (value.size() < 2 || value.front() != '\'' || value.back() != '\'') {
-                throw std::runtime_error("VARCHAR类型的字段值必须被单引号包裹");
-            }
-
             // 写入原始字符串（包含引号）
             std::vector<char> buf(field.param, 0);
             std::memcpy(buf.data(), value.c_str(), std::min((size_t)field.param, value.size()));

@@ -100,7 +100,7 @@ bool Record::check_primary_key_constraint(const ConstraintBlock& constraint, con
         std::cerr << "主键不能为NULL: " << constraint.field << std::endl;
         return false;
     }
-    std::string condition = std::string(constraint.field) + " = '" + value + "'";
+    std::string condition = std::string(constraint.field) + " = " + value;
     try {
         if (!select("*", table_name, condition).empty()) {
             std::cerr << "主键重复: " << constraint.field << " = " << value << std::endl;
@@ -121,7 +121,7 @@ bool Record::check_foreign_key_constraint(const ConstraintBlock& constraint, con
 
     if (is_null(value)) return true;
 
-    std::string condition = ref_field + " = '" + value + "'";
+    std::string condition = ref_field + " = " + value ;
     try {
         if (select("*", ref_table, condition).empty()) {
             std::cerr << "外键约束违反: " << constraint.field << " = " << value << std::endl;
@@ -136,7 +136,7 @@ bool Record::check_foreign_key_constraint(const ConstraintBlock& constraint, con
 
 bool Record::check_unique_constraint(const ConstraintBlock& constraint, const std::string& value) {
     if (is_null(value)) return true;
-    std::string condition = std::string(constraint.field) + " = '" + value + "'";
+    std::string condition = std::string(constraint.field) + " = " + value ;
     try {
         if (!select("*", table_name, condition).empty()) {
             std::cerr << "唯一约束违反: " << constraint.field << " = " << value << std::endl;
@@ -258,7 +258,7 @@ bool Record::check_references_before_delete(const std::string& table_name,
                     std::string ref_field = c.param + strlen(ref_prefix.c_str());
                     if (record_data.find(ref_field) != record_data.end()) {
                         std::string val = record_data.at(ref_field);
-                        std::string cond = std::string(c.field) + " = '" + val + "'";
+                        std::string cond = std::string(c.field) + " = " + val ;
                         try {
                             if (!select("*", ref_table, cond).empty()) {
                                 std::cerr << "引用完整性违反: " << ref_table << " 引用了 " << val << std::endl;

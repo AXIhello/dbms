@@ -15,20 +15,13 @@
 
 void Record::insert_record(const std::string& table_name, const std::string& cols, const std::string& vals) {
     this->table_name = table_name;
-    // 检查表是否存在
     if (!table_exists(this->table_name)) {
         throw std::runtime_error("表 '" + this->table_name + "' 不存在。");
     }
     if (!cols.empty()) {
-        // 带列名的情况
-        // 解析列名和值
         parse_columns(cols);
         parse_values(vals);
-
-        // 验证列名是否存在于表中
         validate_columns();
-
-        // 验证值的类型是否匹配
         validate_types();
     }
     else {
@@ -36,13 +29,12 @@ void Record::insert_record(const std::string& table_name, const std::string& col
     }
     insert_into();
 }
+
 void Record::parse_columns(const std::string& cols) {
     columns.clear();
     std::stringstream ss(cols);
     std::string column;
-
     while (std::getline(ss, column, ',')) {
-        // 去除前后空格
         column.erase(0, column.find_first_not_of(" \t"));
         column.erase(column.find_last_not_of(" \t") + 1);
         columns.push_back(column);
@@ -57,12 +49,11 @@ void Record::parse_values(const std::string& vals) {
     std::string current_value;
 
     for (char c : vals) {
-        if (c == '\'' || c == '\"') {
+        if (c == '\'' || c == '"') {
             in_quotes = !in_quotes;
             current_value += c;
         }
         else if (c == ',' && !in_quotes) {
-            // 完成一个值的解析
             current_value.erase(0, current_value.find_first_not_of(" \t"));
             current_value.erase(current_value.find_last_not_of(" \t") + 1);
             values.push_back(current_value);
@@ -72,8 +63,6 @@ void Record::parse_values(const std::string& vals) {
             current_value += c;
         }
     }
-
-    // 添加最后一个值
     if (!current_value.empty()) {
         current_value.erase(0, current_value.find_first_not_of(" \t"));
         current_value.erase(current_value.find_last_not_of(" \t") + 1);
@@ -87,16 +76,9 @@ void Record::insert_into() {
         throw std::runtime_error("插入数据违反表约束");
     }
 
-    std::string file_name = this->table_name + ".trd";
-    std::ofstream file(file_name, std::ios::app | std::ios::binary);
-    if (!file) {
-        throw std::runtime_error("打开文件" + file_name + "失败。");
-    }
-
     std::vector<FieldBlock> fields = read_field_blocks(table_name);
     std::vector<bool> is_null(fields.size(), true);
     std::unordered_map<std::string, size_t> field_indices;
-
     for (size_t i = 0; i < fields.size(); ++i) {
         field_indices[fields[i].name] = i;
     }
@@ -108,6 +90,21 @@ void Record::insert_into() {
         is_null[idx] = false;
     }
 
+
+    for (size_t i = 0; i < fields.size(); ++i) {
+        const FieldBlock& field = fields[i];
+        const std::string& value = record_values[i];
+        if (!is_valid_type(value, get_type_string(field.type))) {
+            throw std::runtime_error("字段 '" + std::string(field.name) + "' 的值 '" + value + "' 不符合类型要求");
+        }
+    }
+
+    std::string file_name = this->table_name + ".trd";
+    std::ofstream file(file_name, std::ios::app | std::ios::binary);
+    if (!file) {
+        throw std::runtime_error("打开文件" + file_name + "失败。");
+    }
+
     for (size_t i = 0; i < fields.size(); ++i) {
         write_field(file, fields[i], record_values[i]);
     }
@@ -115,4 +112,3 @@ void Record::insert_into() {
     file.close();
     std::cout << "记录插入表 " << this->table_name << " 成功。" << std::endl;
 }
-

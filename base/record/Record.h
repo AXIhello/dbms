@@ -78,6 +78,7 @@ public:
     static bool table_exists(const std::string& table_name);
     static std::unordered_map<std::string, std::string> read_table_structure_static(const std::string& table_name);
     static std::vector<std::string> parse_column_list(const std::string& columns);
+    static std::string get_type_string(int type);
     // Setter 和 Getter 方法
     void set_table_name(const std::string& name);
     void add_column(const std::string& column);
