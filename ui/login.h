@@ -16,7 +16,7 @@ public:
 	~login();
 
 private:
-	Ui::Login ui;
+	Ui::Dialog ui;
 
 	bool authenticate(const QString& username, const QString& password); //验证
 
