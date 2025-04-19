@@ -29,6 +29,13 @@ private:
     std::vector<SqlPattern> patterns;
     QString cleanSQL(const QString& sql);//清理sql结构，去除多余空格/制表符等
     
+    std::string trim(const std::string& s); //工具用
+    std::vector<std::string> splitDefinition(const std::string& input);
+    std::string toUpper(const std::string& str);
+    std::string toLower(const std::string& input);
+
+
+    
     int getTypeFromString(const std::string& columnType);//类型转换函数
 
 
@@ -42,8 +49,8 @@ private:
 	void handleCreateTable(const std::smatch& m);
 
     void handleAddColumn(const std::smatch& m);
-    void handleDeleteColumn(const std::smatch& m);
-    void handleUpdateColumn(const std::smatch& m);
+    void handleDropColumn(const std::smatch& m);
+    void handleModifyColumn(const std::smatch& m);
    
     void handleShowDatabases(const std::smatch& m);
     void handleShowTables(const std::smatch& m);
@@ -57,12 +64,6 @@ private:
     void handleDelete(const std::smatch& m);
 
     Database* db;
-
-    std::string toUpper(const std::string& str) {
-        std::string upperStr = str;
-        std::transform(upperStr.begin(), upperStr.end(), upperStr.begin(), ::toupper);
-        return upperStr;
-    }
 
 };
 

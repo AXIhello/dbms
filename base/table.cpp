@@ -55,7 +55,7 @@ void Table::load()
     loadMetadataBinary();
     loadDefineBinary();
     //loadRecordBinary();
-    // loadIntegrality(); // 未实现
+    loadIntegrityBinary(); // 未实现
     // loadIndex();       // 未实现
 }
 
@@ -178,10 +178,10 @@ void Table::saveMetadataBinary() {
             tableBlock.crtime = m_createTime;
             tableBlock.mtime = m_lastModifyTime;
 
-            strncpy_s(tableBlock.tdf, (m_tableName + ".tdf").c_str(), sizeof(tableBlock.tdf) - 1);
-            strncpy_s(tableBlock.tic, (m_tableName + ".tic").c_str(), sizeof(tableBlock.tic) - 1);
-            strncpy_s(tableBlock.trd, (m_tableName + ".trd").c_str(), sizeof(tableBlock.trd) - 1);
-            strncpy_s(tableBlock.tid, (m_tableName + ".tid").c_str(), sizeof(tableBlock.tid) - 1);
+            strncpy_s(tableBlock.tdf, (m_tdf).c_str(), sizeof(tableBlock.tdf) - 1);
+            strncpy_s(tableBlock.tic, (m_tic).c_str(), sizeof(tableBlock.tic) - 1);
+            strncpy_s(tableBlock.trd, (m_trd).c_str(), sizeof(tableBlock.trd) - 1);
+            strncpy_s(tableBlock.tid, (m_tid).c_str(), sizeof(tableBlock.tid) - 1);
 
             tbFile.write(reinterpret_cast<char*>(&tableBlock), sizeof(TableBlock));
             break;
@@ -294,13 +294,27 @@ void Table::saveDefineBinary() {
         // 填充必要的字段信息
         field.order = i; // 设置字段的顺序
         field.mtime = std::time(nullptr); // 设置最后修改时间为当前时间
-        field.integrities = 0; // TODO: 如果有完整性约束，需要在此处理
+        field.integrities = 0; //无用的参数。 全部设置 0
 
         // 将当前字段块写入文件
         out.write(reinterpret_cast<const char*>(&field), sizeof(FieldBlock));
     }
 
     out.close();
+}
+
+void Table::addConstraint(const ConstraintBlock& constraint) {
+    // 将约束添加到表的约束列表中
+    m_constraints.push_back(constraint);
+
+    // 更新时间戳
+   // m_lastModifyTime = std::time(nullptr);
+    // 将所有约束保存到 .tic 文件中
+    saveIntegrityBinary();
+
+    // 保存定义文件和元数据文件
+    /*saveDefineBinary();
+    saveMetadataBinary();*/
 }
 
 
@@ -326,8 +340,10 @@ void Table::addField(const FieldBlock& field) {
     // 保存到定义文件和元数据文件
     saveDefineBinary();
     saveMetadataBinary();
+    loadRecord(); //
 }
 
+//待实现。不管有没有值，都直接删
 void Table::dropField(const std::string fieldName) {
 
 }
@@ -367,46 +383,57 @@ void Table::updateCol(const Column& oldCol, const Column& newCol) {
 
 
 //表完整性文件操作
-void Table::loadIntegralityBinary() {
+void Table::loadIntegrityBinary() {
+    // 打开 .tic 文件进行二进制读取
     std::ifstream in(m_tic, std::ios::binary);
     if (!in.is_open()) {
         throw std::runtime_error("无法打开完整性文件: " + m_tic);
     }
 
-    m_constraints.clear();
-
-    while (in.peek() != EOF) {
-        ConstraintBlock constraints;
-        in.read(reinterpret_cast<char*>(&constraints), sizeof(ConstraintBlock));
-        if (in.gcount() < sizeof(ConstraintBlock)) break;
-
-        m_constraints.push_back(constraints);
+    // 检查文件是否为空，若为空则直接返回
+    in.seekg(0, std::ios::end);
+    if (in.tellg() == 0) {
+        in.close();
+        return;  // 如果文件为空，直接返回
     }
 
+    // 清空已有的约束数据
+    m_constraints.clear();
+
+    // 读取每个 ConstraintBlock 到 m_constraints 中
+    ConstraintBlock constraint;
+    while (in.read(reinterpret_cast<char*>(&constraint), sizeof(ConstraintBlock))) {
+        m_constraints.push_back(constraint);
+    }
+
+    // 关闭文件
     in.close();
 }
-void Table::saveIntegralityBinary(){
+
+
+void Table::saveIntegrityBinary() {
     std::ofstream out(m_tic, std::ios::binary);
     if (!out.is_open()) {
         throw std::runtime_error("无法保存完整性文件: " + m_tableName + " .tic ");
     }
 
-    for (int i = 0; i < m_fields.size(); ++i) {
-        ConstraintBlock& constraints = m_constraints[i];
-
-        // 将当前字段块写入文件
-        out.write(reinterpret_cast<const char*>(&constraints), sizeof(ConstraintBlock));
+    // 遍历字段和对应的约束
+    for (int i = 0; i < m_constraints.size(); ++i) {
+        // 直接保存有效的约束
+        out.write(reinterpret_cast<const char*>(&m_constraints[i]), sizeof(ConstraintBlock));
     }
 
     out.close();
 }
 
+
+
 //表记录文件操作
 bool Table::loadRecord() {
-    ifstream trdFile(m_tableName + ".trd"); // 打开记录文件
+    ifstream trdFile(m_trd); // 打开记录文件
 
     if (!trdFile.is_open()) {
-        throw std::runtime_error( "无法打开数据文件: " + m_tableName + ".trd" );
+        throw std::runtime_error( "无法打开数据文件: " + m_trd );
     }
 
     // 读取文件的第一行（列名）

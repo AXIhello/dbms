@@ -16,8 +16,7 @@ Database::Database(const std::string& db_name) {
 
 // 析构函数：保存数据库√
 Database::~Database() {
-    std::cout << "保存数据库： " << m_db_name << std::endl;
-    saveTable(m_db_name + ".db");
+   
 }
 
 void Database::loadDatabase(const std::string& db_name)
@@ -74,29 +73,40 @@ void Database::loadTables() {
 }
 
 
-
 // 创建新表√
-void Database::createTable(const std::string& table_name, const std::vector<FieldBlock>& fields) {
-    /*if (m_tables.find(table_name) != m_tables.end()) {
-        throw std::runtime_error("表 " + table_name + " 已存在");
-    }*/
-	if (tableExistsOnDisk(table_name)) {
+void Database::createTable(const std::string& table_name, const std::vector<FieldBlock>& fields, const std::vector<ConstraintBlock>& constraints) {
+    // 检查表是否已存在
+    if (tableExistsOnDisk(table_name)) {
         throw std::runtime_error("表 '" + table_name + "' 已存在。");
-	}
-
-    Table* new_table = new Table(m_db_name, table_name);
-    new_table->initializeNew();
-    new_table->setFieldCount(fields.size()); //字段数即为传过来的fields个数
-
-    for (const auto& field : fields) {
-        new_table->addField(field);
     }
 
+    // 创建新的 Table 对象
+    Table* new_table = new Table(m_db_name, table_name);
+    new_table->initializeNew();
+    new_table->setFieldCount(fields.size()); // 设置字段数为传入字段数量
+
+    // 添加字段到表中
+    for (const auto& field : fields) {
+        new_table->addField(field);  // 每个字段都添加到表中
+    }
+
+    // 如果约束列表不为空，处理约束
+    if (!constraints.empty()) {
+        for (const auto& constraint : constraints) {
+            new_table->addConstraint(constraint);  // 每个约束都添加到表中
+            new_table->saveIntegrityBinary();
+        }
+    }
+
+    // 保存表的定义、元数据和完整性信息
     new_table->saveDefineBinary();
     new_table->saveMetadataBinary();
+    
 
+    // 将新表添加到表集合中
     m_tables[table_name] = new_table;
 
+    // 输出成功信息
     std::cout << "表 " << table_name << " 创建成功" << std::endl;
 }
 
@@ -193,8 +203,6 @@ void Database::loadTable(const std::string& table_name) {
         table->loadDefineBinary(); // 假设你有这个方法
         m_tables[tableName] = table;
     }
-
-    std::cout << "数据库结构加载成功，共 " << tableCount << " 张表" << std::endl;
 }
 
 
