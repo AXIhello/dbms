@@ -224,7 +224,7 @@ void dbManager::useDatabase(const std::string& db_name) {
     }
 
     if (currentDB) {
-        delete currentDB;
+        delete currentDB; //卸载再加载
     }
 
     currentDB = new Database(db_name);  // Database 构造时自动加载

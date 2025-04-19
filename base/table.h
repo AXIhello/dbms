@@ -66,9 +66,11 @@ public:
     void dropField(const std::string fieldName);
 	void updateField(const std::string fieldName, const FieldBlock& updatedField);
 
+
     //表完整性文件
-    void saveIntegralityBinary();
-    void loadIntegralityBinary();
+    void addConstraint(const ConstraintBlock& constraint);
+    void saveIntegrityBinary();
+    void loadIntegrityBinary();
 
     //表记录文件
     bool saveRecord()const;

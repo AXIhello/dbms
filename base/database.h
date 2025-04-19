@@ -21,7 +21,7 @@ public:
     // 创建表
    // void createTable(const std::string& table_name);
 	// 创建表（带字段定义）
-    void createTable(const std::string& table_name, const std::vector<FieldBlock>& fields);
+    void createTable(const std::string& table_name, const std::vector<FieldBlock>& fields, const std::vector<ConstraintBlock>& constraints);
 	bool tableExistsOnDisk(const std::string& table_name) const;
 
 
