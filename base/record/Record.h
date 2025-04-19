@@ -55,6 +55,12 @@ private:
     // 检查引用完整性
     bool check_references_before_delete(const std::string& table_name,
         const std::unordered_map<std::string, std::string>& record_data);
+    // 计算数据本体的大小（不含null标志）
+    static size_t get_field_data_size(int type, int param);
+    // 写入一个字段，包括 null_flag + 数据 + padding
+    static void write_field(std::ofstream& out, const FieldBlock& field, const std::string& value);
+    // 读取一个字段，返回字符串值（带 null 判断）
+    static std::string read_field(std::ifstream& in, const FieldBlock& field);
 
 public:
     // 构造函数
