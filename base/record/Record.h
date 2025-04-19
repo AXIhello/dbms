@@ -35,7 +35,7 @@ private:
     // 约束检查相关
     static std::vector<ConstraintBlock> read_constraints(const std::string& table_name);
     bool check_constraints(const std::vector<std::string>& columns,
-        const std::vector<std::string>& values,
+        std::vector<std::string>& values,
         const std::vector<ConstraintBlock>& constraints);
     bool check_primary_key_constraint(const ConstraintBlock& constraint,
         const std::string& value);
