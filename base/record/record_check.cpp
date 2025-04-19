@@ -358,7 +358,7 @@ bool Record::check_auto_increment_constraint(const ConstraintBlock& constraint, 
 
 // 检查引用完整性（在删除前检查）
 bool Record::check_references_before_delete(const std::string& table_name,
-    std::unordered_map<std::string, std::string>& record_data) {
+    const std::unordered_map<std::string, std::string>& record_data) {
 
         // 获取系统中所有表
         std::vector<std::string> all_tables;
@@ -391,7 +391,7 @@ bool Record::check_references_before_delete(const std::string& table_name,
                     // 检查被引用的字段是否在要删除的记录中
                     if (record_data.find(ref_field) != record_data.end()) {
                         // 检查是否有记录引用了要删除的值
-                        std::string ref_value = record_data[ref_field];
+                        std::string ref_value = record_data.at(ref_field);
                         std::string condition = std::string(constraint.field) + " = " + std::string(ref_value);
 
                         try {
