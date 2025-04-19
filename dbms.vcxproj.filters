@@ -123,9 +123,11 @@
     <ClInclude Include="debug.h">
       <Filter>debug</Filter>
     </ClInclude>
-    <ClInclude Include="constraintBlock.h" />
     <ClInclude Include="base\record\Record.h">
       <Filter>base\record</Filter>
+    </ClInclude>
+    <ClInclude Include="constraintBlock.h">
+      <Filter>base</Filter>
     </ClInclude>
   </ItemGroup>
 </Project>

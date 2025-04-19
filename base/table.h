@@ -67,16 +67,18 @@ public:
 	void updateField(const std::string fieldName, const FieldBlock& updatedField);
 	void renameField(const std::string oldName, const std::string newName);
 
+
     //表完整性文件
-    void saveIntegralityBinary();
-    void loadIntegralityBinary();
+    void addConstraint(const ConstraintBlock& constraint);
+    void saveIntegrityBinary();
+    void loadIntegrityBinary();
 
     //表记录文件
     bool saveRecord()const;
     bool loadRecord();
     void addRecord(const string& recordData);
     void deleteRecord(int recordID);
-    void updateRecord();
+    void updateRecord(std::vector<FieldBlock>& fields);
 
     //表索引文件
     bool saveIndex()const;

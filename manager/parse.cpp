@@ -5,6 +5,7 @@
 #include "base/user.h"
 #include "base/database.h"
 #include"fieldBlock.h"
+#include "constraintBlock.h"
 #include <QRegularExpression>
 #include <QStringList>
 #include <iostream>
@@ -14,7 +15,7 @@
 #include <algorithm>
 //#include <main.cpp>
 
-Parse::Parse(QTextEdit * outputEdit, MainWindow* mainWindow) : outputEdit(outputEdit), mainWindow(mainWindow) {
+Parse::Parse(QTextEdit* outputEdit, MainWindow* mainWindow) : outputEdit(outputEdit), mainWindow(mainWindow) {
     registerPatterns();
 }
 Parse::Parse(Database* database)
@@ -25,6 +26,7 @@ Parse::Parse(Database* database)
 
 
 void Parse::registerPatterns() {
+    /*对数据库级别的操作*/
     //DONE
     patterns.push_back({
         std::regex(R"(^CREATE\s+DATABASE\s+(\w+);$)", std::regex::icase),
@@ -49,13 +51,15 @@ void Parse::registerPatterns() {
         [this](const std::smatch& m) { handleShowDatabases(m); }
         });
 
-	//DONE
+    //DONE
     patterns.push_back({
     std::regex(R"(^SELECT\s+DATABASE\s*\(\s*\)\s*;?$)", std::regex::icase),
     [this](const std::smatch& m) { handleSelectDatabase(); }
         });
 
-    //待修改：建表的同时规定表级完整性定义
+
+    /*对表级别的操作*/
+    //待修改：建表的同时规定表级完整性定义 check, 字段级完整性约束
     patterns.push_back({
     std::regex(R"(^CREATE\s+TABLE\s+(\w+)\s*\((.*)\)\s*;?$)", std::regex::icase),
     [this](const std::smatch& m) { handleCreateTable(m); }
@@ -73,6 +77,28 @@ void Parse::registerPatterns() {
         [this](const std::smatch& m) { handleShowTables(m); }
         });
 
+    //大小写问题未完成（输入端应该大小写都可以）
+    patterns.push_back({
+     std::regex(R"(ALTER\s+TABLE\s+(\w+)\s+ADD\s+COLUMN\s+(\w+)\s+(\w+)(\(\d+\))?(?:\s+(.*?))?\s*;?\s*$)", std::regex::icase),
+     [this](const std::smatch& m) { handleAddColumn(m); }
+        });
+
+
+    //会崩溃 xtree报错
+    patterns.push_back({
+        std::regex(R"(ALTER\s+TABLE\s+(\w+)\s+DROP\s+COLUMN\s+(\w+);)", std::regex::icase),
+        [this](const std::smatch& m) { handleDropColumn(m); }
+        });
+
+    //解析有问题。modify修改类型，change修改字段名 
+    patterns.push_back({
+      std::regex(R"(ALTER\s+TABLE\s+(\w+)\s+MODIFY\s+(\w+)\s+(\w+)(\(\d+\))?(.*);?)", std::regex::icase),
+      [this](const std::smatch& m) { handleModifyColumn(m); }
+        });
+
+
+
+    /*对数据的操作*/
     //DONE 
     patterns.push_back({
         std::regex(R"(^INSERT\s+INTO\s+(\w+)\s*\(([^)]+)\)\s*VALUES\s*\(([^)]+)\);$)", std::regex::icase),
@@ -85,30 +111,13 @@ void Parse::registerPatterns() {
         [this](const std::smatch& m) { handleSelect(m); }
         });
 
-    //大小写问题未完成
-    patterns.push_back({
-     std::regex(R"(ALTER\s+TABLE\s+(\w+)\s+ADD\s+COLUMN\s+(\w+)\s+(\w+)(\(\d+\))?(?:\s+(.*?))?\s*;?\s*$)", std::regex::icase),
-     [this](const std::smatch& m) { handleAddColumn(m); }
-        });
-
-
     //
-    patterns.push_back({
-        std::regex(R"(ALTER\s+TABLE\s+(\w+)\s+DROP\s+COLUMN\s+(\w+);)", std::regex::icase),
-        [this](const std::smatch& m) { handleDeleteColumn(m); }
-        });
-
-    //
-    patterns.push_back({
-        std::regex(R"(ALTER\s+TABLE\s+(\w+)\s+UPDATE\s+COLUMN\s+(\w+)\s+SET\s+(\w+)(\(\d+\))?;)", std::regex::icase),
-        [this](const std::smatch& m) { handleUpdateColumn(m); }
-        });
-
     patterns.push_back({
         std::regex(R"(^UPDATE\s+(\w+)\s+SET\s+(.+?)(?:\s+WHERE\s+(.+))?$)", std::regex::icase),
         [this](const std::smatch& m) { handleUpdate(m); }
         });
 
+    //
     patterns.push_back({
         std::regex(R"(^DELETE\s+FROM\s+(\w+)\s*(?:WHERE\s+(.+))?\s*;$)", std::regex::icase),
         [this](const std::smatch& m) { handleDelete(m); }
@@ -117,28 +126,35 @@ void Parse::registerPatterns() {
 }
 
 void Parse::execute(const QString& sql_qt) {
+    // 1. 清理 SQL 字符串
     QString cleanedSQL = cleanSQL(sql_qt);  // 使用 cleanSQL 来处理输入
-
     std::string sql = cleanedSQL.toStdString();  // 转为 std::string 类型
 
+    // 2. 转换为大写
+    std::string upperSQL = toUpper(sql);
+
+    // 3. 遍历所有正则模式并匹配
     for (const auto& p : patterns) {
         std::smatch match;
-        if (std::regex_match(sql, match, p.pattern)) {
+
+        // 4. 正则匹配
+        if (std::regex_match(upperSQL, match, p.pattern)) {
             p.action(match);  // 执行匹配后的动作
             return;
         }
     }
+
+    // 如果没有找到匹配的模式，可以选择抛出异常或返回错误
+    Output::printError(outputEdit, "SQL 语句格式错误或不支持的 SQL 类型");
 }
 
-    // 如果没有匹配，输出错误
-  
 
 void Parse::handleCreateDatabase(const std::smatch& m) {
-	try { dbManager::getInstance().createUserDatabase(m[1]); }
-	catch (const std::exception& e) {
-		Output::printError(outputEdit, "数据库创建失败: " + QString::fromStdString(e.what()));
-		return;
-	}
+    try { dbManager::getInstance().createUserDatabase(m[1]); }
+    catch (const std::exception& e) {
+        Output::printError(outputEdit, "数据库创建失败: " + QString::fromStdString(e.what()));
+        return;
+    }
     Output::printMessage(outputEdit, "数据库 '" + QString::fromStdString(m[1]) + "' 创建成功！");
     mainWindow->refreshDatabaseList();
 }
@@ -146,10 +162,10 @@ void Parse::handleCreateDatabase(const std::smatch& m) {
 
 void Parse::handleDropDatabase(const std::smatch& m) {
     try { dbManager::getInstance().dropDatabase(m[1]); }
-	catch (const std::exception& e) {
-		Output::printError(outputEdit, "数据库删除失败: " + QString::fromStdString(e.what()));
-		return;
-	}
+    catch (const std::exception& e) {
+        Output::printError(outputEdit, "数据库删除失败: " + QString::fromStdString(e.what()));
+        return;
+    }
     Output::printMessage(outputEdit, "数据库 '" + QString::fromStdString(m[1]) + "' 删除成功！");
 
 }
@@ -189,9 +205,43 @@ void Parse::handleSelectDatabase() {
 }
 
 
+
+std::vector<std::string> split(const std::string& str, char delimiter) {
+    std::vector<std::string> result;
+    std::string current;
+    int bracketCount = 0; // 用来追踪括号层数
+
+    for (char ch : str) {
+        if (ch == '(') {
+            bracketCount++; // 遇到左括号，进入括号内
+        }
+        if (ch == ')') {
+            bracketCount--; // 遇到右括号，退出括号内
+        }
+
+        if (ch == delimiter && bracketCount == 0) {
+            // 只有当括号层数为0时，才分割
+            result.push_back(current);
+            current.clear();
+        }
+        else {
+            current.push_back(ch);
+        }
+    }
+
+    // 将最后一个部分添加到结果中
+    if (!current.empty()) {
+        result.push_back(current);
+    }
+
+    return result;
+}
+
+
+
 void Parse::handleCreateTable(const std::smatch& match) {
     std::string tableName = match[1];
-    std::string rawDefinition = match[2]; // 字段部分，如 id INT, name CHAR(20)
+    std::string rawDefinition = match[2];
 
     Database* db = nullptr;
     try {
@@ -203,51 +253,251 @@ void Parse::handleCreateTable(const std::smatch& match) {
     }
 
     std::vector<FieldBlock> fields;
-    std::regex colPattern(R"((\w+)\s+(\w+)(?:\((\d+)\))?)");  // 例如 id INT, name CHAR(20)
-    auto begin = std::sregex_iterator(rawDefinition.begin(), rawDefinition.end(), colPattern);
-    auto end = std::sregex_iterator();
+    std::vector<ConstraintBlock> constraints;
     int fieldIndex = 0;
 
-    for (auto it = begin; it != end; ++it, ++fieldIndex) {
-        std::smatch m = *it;
-        FieldBlock field{};
+    // 自定义分割器：支持括号内部有逗号的情况
+    std::vector<std::string> definitions;
+    int depth = 0;
+    std::string token;
+    for (char ch : rawDefinition) {
+        if (ch == ',' && depth == 0) {
+            if (!token.empty()) {
+                definitions.push_back(trim(token));
+                token.clear();
+            }
+        }
+        else {
+            if (ch == '(') depth++;
+            else if (ch == ')') depth--;
+            token += ch;
+        }
+    }
+    if (!token.empty()) {
+        definitions.push_back(trim(token));
+    }
 
-        // 设置字段顺序
-        field.order = fieldIndex;
+    for (const std::string& def : definitions) {
+        std::string upperDef = toUpper(def);
 
-        // 设置字段名称
-        std::string name = m[1];
-        strncpy_s(field.name, name.c_str(), sizeof(field.name));
-        field.name[sizeof(field.name) - 1] = '\0';
+        // === 表级约束 ===
 
-        // 类型映射：字符串 → int（1: INT, 2: FLOAT, 3: VARCHAR, 4: CHAR 5:DATETIME）
-        std::string type = toUpper(m[2]);
-        if (type == "INT") field.type = 1;
-        else if (type == "FLOAT") field.type = 2;
-        else if (type == "CHAR") field.type = 4;
-        else if (type == "VARCHAR") field.type = 3;
-        else if (type == "DATETIME") field.type = 5;
-        else{
-            Output::printError(outputEdit, "不支持的字段类型: " + QString::fromStdString(type));
+        if (upperDef.find("PRIMARY KEY") == 0) {
+            size_t start = def.find('(');
+            size_t end = def.find(')');
+            if (start != std::string::npos && end != std::string::npos && end > start) {
+                std::string inside = def.substr(start + 1, end - start - 1);
+                std::vector<std::string> keys = split(inside, ',');
+                for (const std::string& key : keys) {
+                    ConstraintBlock cb{};
+                    cb.type = 1;
+                    std::string field = toUpper(trim(key));
+                    strncpy_s(cb.field, field.c_str(), sizeof(cb.field));
+
+                    std::string pkName = "PK_" + toUpper(tableName); // 用表名命名主键
+                    strncpy_s(cb.name, pkName.c_str(), sizeof(cb.name));
+                    cb.param[0] = '\0';
+
+                    constraints.push_back(cb);
+                }
+            }
+            continue;
+        }
+
+        if (upperDef.find("CHECK") == 0) {
+            size_t start = def.find('(');
+            size_t end = def.rfind(')');
+            if (start != std::string::npos && end != std::string::npos && end > start) {
+                std::string expr = trim(def.substr(start + 1, end - start - 1));
+
+                ConstraintBlock cb{};
+                cb.type = 3;
+                cb.field[0] = '\0';
+                strncpy_s(cb.param, expr.c_str(), sizeof(cb.param));
+
+                // 自动命名 CHECK（用表达式哈希简化避免重复）
+                std::hash<std::string> hasher;
+                std::string checkName = "CHK_" + std::to_string(hasher(expr));
+                strncpy_s(cb.name, checkName.c_str(), sizeof(cb.name));
+
+                constraints.push_back(cb);
+            }
+            continue;
+        }
+
+        if (upperDef.find("FOREIGN KEY") == 0) {
+            std::regex tableLevelFKRegex(R"(FOREIGN\s+KEY\s*\(\s*(\w+)\s*\)\s+REFERENCES\s+(\w+)\s*\(\s*(\w+)\s*\))", std::regex::icase);
+            std::smatch match;
+            if (std::regex_search(def, match, tableLevelFKRegex)) {
+                std::string localField = toUpper(match[1].str());
+                std::string refTable = toUpper(match[2].str());
+                std::string refField = toUpper(match[3].str());
+
+                ConstraintBlock cb{};
+                cb.type = 2;
+
+                std::string fkName = "FK_" + localField + "_" + refTable;
+                strncpy_s(cb.name, fkName.c_str(), sizeof(cb.name));
+                strncpy_s(cb.field, localField.c_str(), sizeof(cb.field));
+
+                std::string paramStr = refTable + "(" + refField + ")";
+                strncpy_s(cb.param, paramStr.c_str(), sizeof(cb.param));
+
+                constraints.push_back(cb);
+            }
+            continue;
+        }
+
+        if (upperDef.find("UNIQUE") == 0) {
+            size_t start = def.find('(');
+            size_t end = def.find(')');
+            if (start != std::string::npos && end != std::string::npos && end > start) {
+                std::string inside = def.substr(start + 1, end - start - 1);
+                std::vector<std::string> keys = split(inside, ',');
+                for (const std::string& key : keys) {
+                    ConstraintBlock cb{};
+                    cb.type = 4;
+                    std::string field = toUpper(trim(key));
+                    strncpy_s(cb.field, field.c_str(), sizeof(cb.field));
+
+                    std::string uniqueName = "UQ_" + field;
+                    strncpy_s(cb.name, uniqueName.c_str(), sizeof(cb.name));
+                    cb.param[0] = '\0';
+
+                    constraints.push_back(cb);
+                }
+            }
+            continue;
+        }
+
+
+
+
+        // === 字段定义 ===
+        std::regex fieldRegex(R"(^\s*(\w+)\s+([a-zA-Z]+(\s*\(\s*\d+\s*\))?))", std::regex::icase);
+        std::smatch fieldMatch;
+        if (!std::regex_search(def, fieldMatch, fieldRegex)) {
+            Output::printError(outputEdit, "字段定义解析失败: " + QString::fromStdString(def));
             return;
         }
 
-        // 参数：如 CHAR(10) → 10，若未指定则默认 4
-        field.param = m[3].matched ? std::stoi(m[3]) : 4;
+        std::string name = fieldMatch[1];
+        std::string typeRaw = fieldMatch[2];
 
+        FieldBlock field{};
+        field.order = fieldIndex++;
+        strncpy_s(field.name, name.c_str(), sizeof(field.name));
+        field.name[sizeof(field.name) - 1] = '\0';
         field.mtime = std::time(nullptr);
-        field.integrities = 0; // 先不支持完整性约束
+        field.param = 0;
+
+        std::string rest = toUpper(def.substr(def.find(typeRaw) + typeRaw.length()));
+
+        // PRIMARY KEY (字段级约束)
+        if (rest.find("PRIMARY KEY") != std::string::npos) {
+            ConstraintBlock cb{};
+            cb.type = 1;
+            strncpy_s(cb.field, name.c_str(), sizeof(cb.field));
+
+            // 自动命名：PK_字段名
+            std::string pkName = "PK_" + name;
+            strncpy_s(cb.name, pkName.c_str(), sizeof(cb.name));
+
+            constraints.push_back(cb);
+        }
+
+        // 处理字段级 REFERENCES student(sno) 的外键定义
+        std::regex fkSimpleRegex(R"(REFERENCES\s+(\w+)\s*\(\s*(\w+)\s*\))", std::regex::icase);
+        std::smatch fkSimpleMatch;
+        if (std::regex_search(rest, fkSimpleMatch, fkSimpleRegex)) {
+            ConstraintBlock cb{};
+            cb.type = 2;
+
+            std::string refTable = toUpper(fkSimpleMatch[1].str());
+            std::string refField = toUpper(fkSimpleMatch[2].str());
+            std::string localField = toUpper(name);  // 当前字段名
+
+            // 自动生成约束名：FK_字段_引用表
+            std::string fkName = "FK_" + localField + "_" + refTable;
+
+            strncpy_s(cb.name, fkName.c_str(), sizeof(cb.name));
+            strncpy_s(cb.field, localField.c_str(), sizeof(cb.field));
+            std::string paramStr = refTable + "(" + refField + ")";
+            strncpy_s(cb.param, paramStr.c_str(), sizeof(cb.param));
+
+            constraints.push_back(cb);
+        }
+
+        // CHECK (字段级，支持 IN(...) 格式)
+        std::regex checkRegex(R"(CHECK\s*\(([^)]+)\))", std::regex::icase);
+        std::smatch checkMatch;
+        if (std::regex_search(rest, checkMatch, checkRegex)) {
+            ConstraintBlock cb{};
+            cb.type = 3;
+            std::string expr = checkMatch[1];
+            std::string checkName = "CHK_" + toUpper(name);
+            strncpy_s(cb.name, checkName.c_str(), sizeof(cb.name));
+            strncpy_s(cb.field, name.c_str(), sizeof(cb.field));
+            strncpy_s(cb.param, expr.c_str(), sizeof(cb.param));
+            constraints.push_back(cb);
+        }
+
+        // UNIQUE (字段级约束)
+        if (rest.find("UNIQUE") != std::string::npos) {
+            ConstraintBlock cb{};
+            cb.type = 4;
+            strncpy_s(cb.field, name.c_str(), sizeof(cb.field));
+
+            // 自动命名：UNQ_字段名
+            std::string uniqueName = "UNQ_" + name;
+            strncpy_s(cb.name, uniqueName.c_str(), sizeof(cb.name));
+
+            constraints.push_back(cb);
+        }
+
+        // NOT NULL
+        if (rest.find("NOT NULL") != std::string::npos) {
+            ConstraintBlock cb{};
+            cb.type = 5;
+            strncpy_s(cb.field, name.c_str(), sizeof(cb.field));
+            constraints.push_back(cb);
+        }
+
+        
+        // DEFAULT
+        std::regex defaultRegex(R"(DEFAULT\s+([^\s,]+|CURRENT_TIMESTAMP))", std::regex::icase);
+        std::smatch defaultMatch;
+        if (std::regex_search(rest, defaultMatch, defaultRegex)) {
+            ConstraintBlock cb{};
+            cb.type = 6;
+            strncpy_s(cb.field, name.c_str(), sizeof(cb.field));
+
+            // 检查是否为 CURRENT_TIMESTAMP
+            if (defaultMatch[1].str() == "CURRENT_TIMESTAMP") {
+                strncpy_s(cb.param, "CURRENT_TIMESTAMP", sizeof(cb.param));
+            }
+            else {
+                strncpy_s(cb.param, defaultMatch[1].str().c_str(), sizeof(cb.param));
+            }
+
+            constraints.push_back(cb);
+        }
+
+
+        // AUTO_INCREMENT
+        if (rest.find("AUTO_INCREMENT") != std::string::npos) {
+            ConstraintBlock cb{};
+            cb.type = 7;
+            strncpy_s(cb.field, name.c_str(), sizeof(cb.field));
+            constraints.push_back(cb);
+        }
+
 
         fields.push_back(field);
-
-        if (mainWindow) {
-            mainWindow->refreshTree(); // 在这里刷新
-        }
     }
-
+    //仅仅当有完整性约束时才写入constraints
     try {
-       // std::vector<tableIntegrityBlock> constraints; // 目前为空
-        db->createTable(tableName, fields);
+        db->createTable(tableName, fields, constraints);
     }
     catch (const std::exception& e) {
         Output::printError(outputEdit, "表创建失败: " + QString::fromStdString(e.what()));
@@ -257,18 +507,16 @@ void Parse::handleCreateTable(const std::smatch& match) {
     Output::printMessage(outputEdit, "表 " + QString::fromStdString(tableName) + " 创建成功");
 }
 
-
-
 void Parse::handleDropTable(const std::smatch& match) {
     std::string tableName = match[1];
     // 获取当前数据库
-    try { 
-        Database* db = dbManager::getInstance().getCurrentDatabase(); 
-        if(!db->getTable(tableName))
-			throw std::runtime_error("表 '" + tableName + "' 不存在。");
+    try {
+        Database* db = dbManager::getInstance().getCurrentDatabase();
+        if (!db->getTable(tableName))
+            throw std::runtime_error("表 '" + tableName + "' 不存在。");
         db->dropTable(tableName);
     }
-    catch(const std::exception& e){
+    catch (const std::exception& e) {
         Output::printError(outputEdit, "表删除失败: " + QString::fromStdString(e.what()));
         return;
     }
@@ -281,19 +529,19 @@ void Parse::handleDropTable(const std::smatch& match) {
 void Parse::handleShowTables(const std::smatch& m) {
     try {
         Database* db = dbManager::getInstance().getCurrentDatabase();
-       /* if (!db) {
-            Output::printError(outputEdit, "请先使用 USE 语句选择数据库");
-            return;
-        }*/
-        // 获取表名列表
+        /* if (!db) {
+             Output::printError(outputEdit, "请先使用 USE 语句选择数据库");
+             return;
+         }*/
+         // 获取表名列表
         std::vector<std::string> tableNames = db->getAllTableNames();
 
-      /*  if (tableNames.empty()) {
-            Output::printMessage(outputEdit, "当前数据库中没有表");
-            return;
-        }*/
+        /*  if (tableNames.empty()) {
+              Output::printMessage(outputEdit, "当前数据库中没有表");
+              return;
+          }*/
 
-        // 使用 Output 类的 printTableList 方法来美化输出
+          // 使用 Output 类的 printTableList 方法来美化输出
         Output::printTableList(outputEdit, tableNames);
     }
     catch (const std::exception& e) {
@@ -335,7 +583,7 @@ void Parse::handleInsertInto(const std::smatch& m) {
 
 void Parse::handleSelect(const std::smatch& m) {
     std::string table_name = m[1];
-	std::string table_path = dbManager::getInstance().getCurrentDatabase()->getDBPath() + "/" + table_name;
+    std::string table_path = dbManager::getInstance().getCurrentDatabase()->getDBPath() + "/" + table_name;
 
     // 权限检查
    /* if (!user::hasPermission("select|" + table_name)) {
@@ -365,7 +613,7 @@ void Parse::handleSelect(const std::smatch& m) {
 }
 
 
-
+//TODO : 新增了以后，如果.trd中原本有数据，则将新增的字段的值置空
 void Parse::handleAddColumn(const std::smatch& m) {
     std::string tableName = m[1].str();
     std::string fieldName = m[2].str();
@@ -402,28 +650,29 @@ void Parse::handleAddColumn(const std::smatch& m) {
         field.param = 32;
     }
 
-    try{
+    try {
         Table* table = dbManager::getInstance().getCurrentDatabase()->getTable(tableName);
         table->addField(field);
-	}
-	catch (const std::exception& e) {
-		Output::printError(outputEdit, QString("添加字段失败: %1").arg(QString::fromStdString(e.what())));
-	}
-    
+    }
+    catch (const std::exception& e) {
+        Output::printError(outputEdit, QString("添加字段失败: %1").arg(QString::fromStdString(e.what())));
+    }
+
 
     Output::printMessage(outputEdit, QString("字段 %1 成功添加到表 %2")
         .arg(QString::fromStdString(fieldName), QString::fromStdString(tableName)));
 }
 
 
-void Parse::handleDeleteColumn(const std::smatch& match) {
+//dropField还未实现
+void Parse::handleDropColumn(const std::smatch& match) {
     std::string tableName = match[1];  // 获取表名
     std::string columnName = match[2];  // 获取列名
 
     try {
         Table* table = db->getTable(tableName);  // 获取表对象
         if (table) {
-            table->dropField(columnName);  // 调用 Table 的 deleteCol 方法
+            table->dropField(columnName);  // 调用 Table 的 dropField 方法
 
             Output::printMessage(outputEdit, QString::fromStdString("ALTER TABLE " + tableName + " DROP COLUMN 执行成功。"));
         }
@@ -436,8 +685,8 @@ void Parse::handleDeleteColumn(const std::smatch& match) {
     }
 }
 
-
-void Parse::handleUpdateColumn(const std::smatch& match) {
+//待修改
+void Parse::handleModifyColumn(const std::smatch& match) {
     std::string tableName = match[1];  // 获取表名
     std::string oldColumnName = match[2];  // 获取旧列名
     std::string newColumnName = match[3];  // 获取新列名
@@ -470,7 +719,7 @@ void Parse::handleUpdateColumn(const std::smatch& match) {
 
 
 void Parse::handleUpdate(const std::smatch& m) {
-    std::string tableName = m[1];  
+    std::string tableName = m[1];
     std::string setClause = m[2];  // SET 子句
     std::string condition = m.size() > 3 ? m[3].str() : "";
 
@@ -493,7 +742,7 @@ void Parse::handleUpdate(const std::smatch& m) {
 }
 
 void Parse::handleDelete(const std::smatch& m) {
-    std::string table_name = m[1];  
+    std::string table_name = m[1];
     std::string condition = m[2];   // 删除条件
 
     if (condition.front() == '(' && condition.back() == ')') {
@@ -504,7 +753,7 @@ void Parse::handleDelete(const std::smatch& m) {
         std::string table_path = dbManager::getInstance().getCurrentDatabase()->getDBPath() + "/" + table_name;
 
         Record r;
-        r.delete_(table_name, condition);  
+        r.delete_(table_name, condition);
 
         // 输出
         Output::printMessage(outputEdit, QString::fromStdString("DELETE FROM 执行成功。"));
@@ -526,21 +775,64 @@ int Parse::getTypeFromString(const std::string& columnType) {
     return -1;  // 如果是无效类型
 }
 
+std::vector<std::string> Parse::splitDefinition(const std::string& input) {
+    std::vector<std::string> tokens;
+    std::string current;
+    int parenCount = 0;
 
-// parse.cpp
+    for (char c : input) {
+        if (c == ',' && parenCount == 0) {
+            tokens.push_back(current);
+            current.clear();
+        }
+        else {
+            current += c;
+            if (c == '(') parenCount++;
+            if (c == ')') parenCount--;
+        }
+    }
+    if (!current.empty()) {
+        tokens.push_back(current); // 最后一部分
+    }
+
+    return tokens;
+}
+
+
+std::string Parse::trim(const std::string& s) {
+    auto start = s.find_first_not_of(" \t\r\n");
+    auto end = s.find_last_not_of(" \t\r\n");
+    return (start == std::string::npos) ? "" : s.substr(start, end - start + 1);
+}
+
+
 QString Parse::cleanSQL(const QString& sql) {
-    QString cleaned = sql;
+    QString cleaned = sql.trimmed();
 
-    // 去除前后空白符
-    cleaned = cleaned.trimmed();
-
-    // 将多个空格或 Tab 替换为单个空格
-    cleaned.replace(QRegularExpression("[ \\t]+"), " ");
-
-    // 将所有换行符和回车换行符统一替换为空格
+    // 统一换行符为空格
     cleaned.replace(QRegularExpression("[\\r\\n]+"), " ");
 
-    // 最后再做一次前后 trim
+    // 多个空格或 Tab 变单空格
+    cleaned.replace(QRegularExpression("[ \\t]+"), " ");
+
+    //// 替换括号为带空格，便于分词（不去掉括号）
+    //cleaned.replace("(", " ( ");
+    //cleaned.replace(")", " ) ");
+
+    // 最终 trim，不去掉分号或括号
     return cleaned.trimmed();
 }
 
+
+std::string Parse::toUpper(const std::string& str) {
+    std::string upperStr = str;
+    std::transform(upperStr.begin(), upperStr.end(), upperStr.begin(), ::toupper);
+    return upperStr;
+}
+
+std::string Parse::toLower(const std::string& input) {
+    std::string result = input;
+    std::transform(result.begin(), result.end(), result.begin(),
+        [](unsigned char c) { return std::tolower(c); });
+    return result;
+}
