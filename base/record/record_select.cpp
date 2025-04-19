@@ -17,22 +17,18 @@
 std::vector<Record> Record::select(const std::string& columns, const std::string& table_name, const std::string& condition) {
     std::vector<Record> results;
 
-    // 检查表是否存在
     if (!table_exists(table_name)) {
         throw std::runtime_error("表 '" + table_name + "' 不存在。");
     }
 
-    // 读取字段定义（用于列名/类型验证）
     std::vector<FieldBlock> fields = read_field_blocks(table_name);
     std::unordered_map<std::string, std::string> table_structure = read_table_structure_static(table_name);
 
-    // 构造所有列名列表
     std::vector<std::string> all_columns;
     for (const auto& field : fields) {
         all_columns.push_back(field.name);
     }
 
-    // 确定查询的列
     std::vector<std::string> selected_columns;
     if (columns == "*") {
         selected_columns = all_columns;
@@ -46,40 +42,42 @@ std::vector<Record> Record::select(const std::string& columns, const std::string
         }
     }
 
-    // 创建一个临时对象处理条件
-    Record temp_record;
-    temp_record.set_table_name(table_name);
-    temp_record.table_structure = table_structure;
-
+    Record temp;
+    temp.set_table_name(table_name);
+    temp.table_structure = table_structure;
     if (!condition.empty()) {
-        temp_record.parse_condition(condition);
+        temp.parse_condition(condition);
     }
 
-    // 使用通用读取方法获取所有记录（支持NULL标识）
-    std::vector<std::unordered_map<std::string, std::string>> raw_records = read_records(table_name);
+    std::ifstream infile(table_name + ".trd", std::ios::binary);
+    if (!infile) {
+        throw std::runtime_error("无法打开数据文件进行查询。");
+    }
 
-    // 遍历并筛选满足条件的记录
-    for (const auto& raw_record : raw_records) {
-        if (!condition.empty() && !temp_record.matches_condition(raw_record)) {
+    while (!infile.eof()) {
+        std::unordered_map<std::string, std::string> record_data;
+        std::streampos record_start = infile.tellg();
+
+        for (const auto& field : fields) {
+            record_data[field.name] = read_field(infile, field);
+        }
+
+        if (infile.eof()) break;
+
+        if (!condition.empty() && !temp.matches_condition(record_data)) {
             continue;
         }
 
-        // 构造结果记录
         Record result_record;
         result_record.set_table_name(table_name);
-
         for (const auto& col : selected_columns) {
             result_record.add_column(col);
-            if (raw_record.count(col)) {
-                result_record.add_value(raw_record.at(col));
-            }
-            else {
-                result_record.add_value("NULL");
-            }
+            result_record.add_value(record_data.count(col) ? record_data.at(col) : "NULL");
         }
 
         results.push_back(result_record);
     }
 
+    infile.close();
     return results;
 }
