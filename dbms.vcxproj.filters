@@ -75,9 +75,6 @@
     <QtUic Include="ui\MainWindow.ui">
       <Filter>ui</Filter>
     </QtUic>
-    <QtUic Include="ui\login.ui">
-      <Filter>ui</Filter>
-    </QtUic>
     <QtUic Include="ui\dbms.ui">
       <Filter>ui</Filter>
     </QtUic>
@@ -129,5 +126,8 @@
     <ClInclude Include="constraintBlock.h">
       <Filter>base</Filter>
     </ClInclude>
+  </ItemGroup>
+  <ItemGroup>
+    <QtUic Include="login.ui" />
   </ItemGroup>
 </Project>
