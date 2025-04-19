@@ -639,7 +639,6 @@ void Table::updateRecord(std::vector<FieldBlock>& fields) {
                     break;
                 }
                 case 3: // VARCHAR
-                case 4: { // CHAR
                     char* buffer = new char[field.param];
                     std::memset(buffer, 0, field.param);
 
@@ -650,6 +649,10 @@ void Table::updateRecord(std::vector<FieldBlock>& fields) {
                     file.write(buffer, field.param);
                     delete[] buffer;
                     break;
+				case 4: { // BOOL
+					bool bool_val = (value == "true" || value == "1");
+					file.write(reinterpret_cast<const char*>(&bool_val), sizeof(bool));
+					break;
                 }
                 case 5: { // DATETIME
                     std::time_t now = std::time(nullptr); // 简化为当前时间
