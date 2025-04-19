@@ -550,10 +550,10 @@ void Table::updateRecord(std::vector<FieldBlock>& fields) {
                 value = std::to_string(int_val);
                 break;
             }
-            case 2: { // FLOAT
-                float float_val;
-                file.read(reinterpret_cast<char*>(&float_val), sizeof(float));
-                value = std::to_string(float_val);
+            case 2: { // DOUBLE
+                double double_val;
+                file.read(reinterpret_cast<char*>(&double_val), sizeof(double));
+                value = std::to_string(double_val);
                 break;
             }
             case 3: // VARCHAR
@@ -660,13 +660,12 @@ void Table::updateRecord(std::vector<FieldBlock>& fields) {
                     file.write(reinterpret_cast<const char*>(&int_val), sizeof(int));
                     break;
                 }
-                case 2: { // FLOAT
-                    float float_val = std::stof(value);
-                    file.write(reinterpret_cast<const char*>(&float_val), sizeof(float));
+                case 2: { // DOUBLE
+                    double double_val = std::stod(value);
+                    file.write(reinterpret_cast<const char*>(&double_val), sizeof(double));
                     break;
                 }
-                case 3: // VARCHAR
-                case 4: { // CHAR
+                case 3: {// VARCHAR
                     char* buffer = new char[field.param];
                     std::memset(buffer, 0, field.param);
 
@@ -677,6 +676,11 @@ void Table::updateRecord(std::vector<FieldBlock>& fields) {
                     file.write(buffer, field.param);
                     delete[] buffer;
                     break;
+                }
+				case 4: { // BOOL
+					bool bool_val = (value == "true" || value == "1");
+					file.write(reinterpret_cast<const char*>(&bool_val), sizeof(bool));
+					break;
                 }
                 case 5: { // DATETIME
                     std::time_t now = std::time(nullptr); // 简化为当前时间

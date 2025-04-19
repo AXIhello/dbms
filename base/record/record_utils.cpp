@@ -53,7 +53,7 @@ std::unordered_map<std::string, std::string> Record::read_table_structure_static
         // 将类型代码转换为字符串类型
         switch (field.type) {
         case 1: column_type = "INTEGER"; break;
-        case 2: column_type = "FLOAT"; break;
+        case 2: column_type = "DOUBLE"; break;
         case 3: column_type = "VARCHAR"; break;
         case 4: column_type = "BOOL"; break;
         case 5: column_type = "DATETIME"; break;
@@ -179,7 +179,7 @@ void Record::write_to_tdf_format(const std::string& table_name,
         if (types[i] == "INTEGER") {
             field.type = 1;
         }
-        else if (types[i] == "FLOAT") {
+        else if (types[i] == "DOUBLE") {
             field.type = 2;
         }
         else if (types[i] == "VARCHAR") {
@@ -241,9 +241,9 @@ bool Record::validate_field_block(const std::string& value, const FieldBlock& fi
             return false;
         }
 
-    case 2: // FLOAT
+    case 2: // DOUBLE
         try {
-            std::stof(value);
+            std::stod(value);
             return true;
         }
         catch (...) {
@@ -524,7 +524,7 @@ std::vector<std::unordered_map<std::string, std::string>> Record::read_records(c
                 // 计算若有值时应读取的字节数
                 switch (field.type) {
                 case 1: bytes_read += sizeof(int); break;
-                case 2: bytes_read += sizeof(float); break;
+                case 2: bytes_read += sizeof(double); break;
                 case 3: bytes_read += field.param; break;
                 case 4: bytes_read += sizeof(char); break;
                 case 5: bytes_read += sizeof(std::time_t); break;
@@ -541,11 +541,11 @@ std::vector<std::unordered_map<std::string, std::string>> Record::read_records(c
                     bytes_read += sizeof(int);
                     break;
                 }
-                case 2: { // FLOAT
-                    float float_val;
-                    file.read(reinterpret_cast<char*>(&float_val), sizeof(float));
-                    record_data[field.name] = std::to_string(float_val);
-                    bytes_read += sizeof(float);
+                case 2: { // DOUBLE
+                    double double_val;
+                    file.read(reinterpret_cast<char*>(&double_val), sizeof(double));
+                    record_data[field.name] = std::to_string(double_val);
+                    bytes_read += sizeof(double);
                     break;
                 }
                 case 3: {
@@ -592,7 +592,7 @@ std::vector<std::unordered_map<std::string, std::string>> Record::read_records(c
 size_t Record::get_field_data_size(int type, int param) {
     switch (type) {
     case 1: return sizeof(int);             // INT
-    case 2: return sizeof(float);           // FLOAT
+    case 2: return sizeof(double);           // DOUBLE
     case 3: return param;                   // VARCHAR
     case 4: return sizeof(char);            // BOOL
     case 5: return sizeof(std::time_t);     // DATETIME
@@ -618,8 +618,8 @@ void Record::write_field(std::ofstream& out, const FieldBlock& field, const std:
             break;
         }
         case 2: {
-            float f = std::stof(value);
-            out.write(reinterpret_cast<const char*>(&f), sizeof(float));
+            double d = std::stod(value);
+            out.write(reinterpret_cast<const char*>(&d), sizeof(double));
             break;
         }
         case 3: {
@@ -653,38 +653,53 @@ std::string Record::read_field(std::ifstream& in, const FieldBlock& field) {
     in.read(&null_flag, sizeof(char));
     if (in.eof()) return "";
 
+    size_t data_size = get_field_data_size(field.type, field.param);
+    std::string result;
+
     if (null_flag == 1) {
-        in.seekg(get_field_data_size(field.type, field.param), std::ios::cur);
-        return "NULL";
+        in.seekg(data_size, std::ios::cur);
+        result = "NULL";
+    }
+    else {
+        switch (field.type) {
+        case 1: {
+            int v;
+            in.read(reinterpret_cast<char*>(&v), sizeof(int));
+            result = std::to_string(v);
+            break;
+        }
+        case 2: {
+            double d;
+            in.read(reinterpret_cast<char*>(&d), sizeof(double));
+            result = std::to_string(d);
+            break;
+        }
+        case 3: {
+            std::vector<char> buf(field.param, 0);
+            in.read(buf.data(), field.param);
+            result = std::string(buf.data());
+            break;
+        }
+        case 4: {
+            char b;
+            in.read(&b, sizeof(char));
+            result = (b == 1) ? "1" : "0";
+            break;
+        }
+        case 5: {
+            std::time_t t;
+            in.read(reinterpret_cast<char*>(&t), sizeof(std::time_t));
+            result = std::to_string(t);
+            break;
+        }
+        default:
+            result = "";
+        }
+    }
+    size_t padding = (4 - (sizeof(char) + data_size) % 4) % 4;
+    if (padding > 0) {
+        in.seekg(padding, std::ios::cur);
     }
 
-    switch (field.type) {
-    case 1: {
-        int v;
-        in.read(reinterpret_cast<char*>(&v), sizeof(int));
-        return std::to_string(v);
-    }
-    case 2: {
-        float f;
-        in.read(reinterpret_cast<char*>(&f), sizeof(float));
-        return std::to_string(f);
-    }
-    case 3: {
-        std::vector<char> buf(field.param, 0);
-        in.read(buf.data(), field.param);
-        return std::string(buf.data());
-    }
-    case 4: {
-        char b;
-        in.read(&b, sizeof(char));
-        return (b == 1) ? "1" : "0";
-    }
-    case 5: {
-        std::time_t t;
-        in.read(reinterpret_cast<char*>(&t), sizeof(std::time_t));
-        return std::to_string(t);
-    }
-    }
-
-    return "";
+    return result;
 }
