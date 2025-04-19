@@ -626,7 +626,7 @@ void Parse::handleAddColumn(const std::smatch& m) {
     if (typeStr == "INT") {
         field.type = 1; field.param = 4;
     }
-    else if (typeStr == "FLOAT") {
+    else if (typeStr == "DOUBLE") {
         field.type = 2; field.param = 4;
     }
     else if (typeStr == "VARCHAR") {
@@ -767,7 +767,7 @@ void Parse::handleDelete(const std::smatch& m) {
 
 int Parse::getTypeFromString(const std::string& columnType) {
     if (columnType == "INT") return 1;
-    if (columnType == "FLOAT") return 2;
+    if (columnType == "DOUBLE") return 2;
     if (columnType == "VARCHAR") return 3;
     if (columnType == "CHAR") return 4;
     if (columnType == "DATETIME") return 5;

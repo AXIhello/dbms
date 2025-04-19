@@ -550,10 +550,10 @@ void Table::updateRecord(std::vector<FieldBlock>& fields) {
                 value = std::to_string(int_val);
                 break;
             }
-            case 2: { // FLOAT
-                float float_val;
-                file.read(reinterpret_cast<char*>(&float_val), sizeof(float));
-                value = std::to_string(float_val);
+            case 2: { // DOUBLE
+                double double_val;
+                file.read(reinterpret_cast<char*>(&double_val), sizeof(double));
+                value = std::to_string(double_val);
                 break;
             }
             case 3: // VARCHAR
@@ -660,9 +660,9 @@ void Table::updateRecord(std::vector<FieldBlock>& fields) {
                     file.write(reinterpret_cast<const char*>(&int_val), sizeof(int));
                     break;
                 }
-                case 2: { // FLOAT
-                    float float_val = std::stof(value);
-                    file.write(reinterpret_cast<const char*>(&float_val), sizeof(float));
+                case 2: { // DOUBLE
+                    double double_val = std::stod(value);
+                    file.write(reinterpret_cast<const char*>(&double_val), sizeof(double));
                     break;
                 }
                 case 3: {// VARCHAR
