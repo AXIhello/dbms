@@ -3,10 +3,10 @@
 #include <QDataStream>
 #include <QDebug>
 #include <QString>
-#include "fieldBlock.h"
+#include "base/fieldBlock.h"
 #include "constraintBlock.h"
 #include "tableBlock.h"
-#include"databaseBlock.h"
+#include"manager/databaseBlock.h"
 
 #include <ctime>
 #include <QString>
