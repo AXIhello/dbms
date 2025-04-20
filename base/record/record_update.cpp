@@ -23,7 +23,6 @@ void Record::update(const std::string& tableName, const std::string& setClause, 
     std::vector<FieldBlock> fields = read_field_blocks(table_name);
     this->table_structure = read_table_structure_static(table_name);
 
-    // 解析SET语句
     std::unordered_map<std::string, std::string> update_values;
     std::istringstream ss(setClause);
     std::string pair;
@@ -33,14 +32,11 @@ void Record::update(const std::string& tableName, const std::string& setClause, 
 
         std::string field = pair.substr(0, eq_pos);
         std::string value = pair.substr(eq_pos + 1);
-
-        // 去除空格
         field.erase(0, field.find_first_not_of(" \t"));
         field.erase(field.find_last_not_of(" \t") + 1);
         value.erase(0, value.find_first_not_of(" \t"));
         value.erase(value.find_last_not_of(" \t") + 1);
 
-        // 字段存在性与类型判断
         if (table_structure.find(field) == table_structure.end()) {
             throw std::runtime_error("字段 '" + field + "' 不存在于表结构中。");
         }
@@ -70,21 +66,21 @@ void Record::update(const std::string& tableName, const std::string& setClause, 
     while (true) {
         std::unordered_map<std::string, std::string> record_data;
         std::streampos start_pos = infile.tellg();
-        bool valid = true;
+        bool eof_reached = false;
 
         for (const auto& field : fields) {
-            if (infile.eof()) {
-                valid = false;
-                break;
-            }
-            record_data[field.name] = read_field(infile, field);
+            if (!infile) { eof_reached = true; break; }
+
+            std::string val = read_field(infile, field);
+            if (infile.eof()) { eof_reached = true; break; }
+
+            record_data[field.name] = val;
         }
 
-        if (!valid || infile.eof()) break;
+        if (eof_reached) break;
 
         bool matches = condition.empty() || matches_condition(record_data);
 
-        // 执行更新逻辑
         if (matches) {
             for (const auto& [key, val] : update_values) {
                 record_data[key] = val;
@@ -104,7 +100,6 @@ void Record::update(const std::string& tableName, const std::string& setClause, 
             updated_count++;
         }
 
-        // 回到原始位置写入更新/原始记录
         infile.seekg(start_pos);
         for (const auto& field : fields) {
             write_field(outfile, field, record_data[field.name]);
@@ -121,5 +116,3 @@ void Record::update(const std::string& tableName, const std::string& setClause, 
 
     std::cout << "成功更新了 " << updated_count << " 条记录。" << std::endl;
 }
-
-
