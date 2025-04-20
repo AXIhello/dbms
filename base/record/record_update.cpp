@@ -42,6 +42,8 @@ void Record::update(const std::string& tableName, const std::string& setClause, 
         updates[col] = val;
     }
 
+    if (updates.empty()) throw std::runtime_error("没有需要更新的字段");
+
     std::ifstream infile(table_name + ".trd", std::ios::binary);
     std::ofstream outfile(table_name + ".tmp", std::ios::binary);
     if (!infile || !outfile) throw std::runtime_error("无法打开文件");
@@ -50,23 +52,34 @@ void Record::update(const std::string& tableName, const std::string& setClause, 
     int updated = 0;
 
     while (read_single_record(infile, fields, record_data)) {
-        if (condition.empty() || matches_condition(record_data)) {
+        bool should_update = condition.empty() || matches_condition(record_data);
+
+        if (should_update) {
+            // 应用更新
             for (const auto& [col, val] : updates) {
                 record_data[col] = val;
             }
 
             std::vector<std::string> cols, vals;
             for (const auto& [k, v] : record_data) {
-                cols.push_back(k); vals.push_back(v);
+                cols.push_back(k);
+                vals.push_back(v);
             }
 
-            if (!check_constraints(cols, vals, read_constraints(table_name))) {
+            std::vector<ConstraintBlock> constraints = read_constraints(table_name);
+            if (!check_constraints(cols, vals, constraints)) {
                 throw std::runtime_error("违反表约束");
+            }
+
+            // 重要：将约束检查后可能修改的值同步回record_data
+            for (size_t i = 0; i < cols.size(); ++i) {
+                record_data[cols[i]] = vals[i];
             }
 
             updated++;
         }
 
+        // 写入记录（原始的或更新后的）
         for (const auto& field : fields) {
             write_field(outfile, field, record_data[field.name]);
         }
@@ -75,8 +88,13 @@ void Record::update(const std::string& tableName, const std::string& setClause, 
     infile.close();
     outfile.close();
 
-    std::remove((table_name + ".trd").c_str());
-    std::rename((table_name + ".tmp").c_str(), (table_name + ".trd").c_str());
+    if (std::remove((table_name + ".trd").c_str()) != 0) {
+        throw std::runtime_error("无法删除原表文件");
+    }
+
+    if (std::rename((table_name + ".tmp").c_str(), (table_name + ".trd").c_str()) != 0) {
+        throw std::runtime_error("无法重命名临时文件");
+    }
 
     std::cout << "成功更新了 " << updated << " 条记录。" << std::endl;
 }
