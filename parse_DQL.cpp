@@ -54,7 +54,7 @@ void Parse::handleSelect(const std::smatch& m) {
         }
 
         // 直接调用封装了 where 逻辑的 Record::select
-        auto records = Record::select(columns, table_path, condition);
+        auto records = Record::select(columns, table_path, condition,"","");
 
         // 显示查询结果
         Output::printSelectResult(outputEdit, records);

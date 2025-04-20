@@ -71,7 +71,12 @@ public:
     // 表操作相关函数
     void insert_record(const std::string& table_name, const std::string& cols, const std::string& vals);
     void insert_into();
-    static std::vector<Record> select(const std::string& columns, const std::string& table_name, const std::string& condition);
+    static std::vector<Record> select(
+        const std::string& columns,
+        const std::string& table_name,
+        const std::string& condition,
+        const std::string& group_by,
+        const std::string& order_by);
     void update(const std::string& tableName, const std::string& setClause, const std::string& condition);
     void delete_(const std::string& tableName, const std::string& condition);
     // 辅助函数

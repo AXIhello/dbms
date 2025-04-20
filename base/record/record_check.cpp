@@ -102,7 +102,7 @@ bool Record::check_primary_key_constraint(const ConstraintBlock& constraint, con
     }
     std::string condition = std::string(constraint.field) + " = " + value;
     try {
-        if (!select("*", table_name, condition).empty()) {
+        if (!select("*", table_name, condition,"","").empty()) {
             std::cerr << "主键重复: " << constraint.field << " = " << value << std::endl;
             return false;
         }
@@ -123,7 +123,7 @@ bool Record::check_foreign_key_constraint(const ConstraintBlock& constraint, con
 
     std::string condition = ref_field + " = " + value ;
     try {
-        if (select("*", ref_table, condition).empty()) {
+        if (select("*", ref_table, condition,"","").empty()) {
             std::cerr << "外键约束违反: " << constraint.field << " = " << value << std::endl;
             return false;
         }
@@ -138,7 +138,7 @@ bool Record::check_unique_constraint(const ConstraintBlock& constraint, const st
     if (is_null(value)) return true;
     std::string condition = std::string(constraint.field) + " = " + value ;
     try {
-        if (!select("*", table_name, condition).empty()) {
+        if (!select("*", table_name, condition,"","").empty()) {
             std::cerr << "唯一约束违反: " << constraint.field << " = " << value << std::endl;
             return false;
         }
@@ -212,7 +212,7 @@ bool Record::check_default_constraint(const ConstraintBlock& constraint, std::st
 bool Record::check_auto_increment_constraint(const ConstraintBlock& constraint, std::string& value) {
     if (is_null(value)) {
         try {
-            auto records = select(constraint.field, table_name, "");
+            auto records = select(constraint.field, table_name, "","","");
             int max_val = 0;
             for (const auto& rec : records) {
                 const auto& vals = rec.get_values();
@@ -260,7 +260,7 @@ bool Record::check_references_before_delete(const std::string& table_name,
                         std::string val = record_data.at(ref_field);
                         std::string cond = std::string(c.field) + " = " + val ;
                         try {
-                            if (!select("*", ref_table, cond).empty()) {
+                            if (!select("*", ref_table, cond,"","").empty()) {
                                 std::cerr << "引用完整性违反: " << ref_table << " 引用了 " << val << std::endl;
                                 return false;
                             }
