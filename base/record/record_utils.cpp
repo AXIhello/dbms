@@ -561,7 +561,7 @@ std::vector<std::unordered_map<std::string, std::string>> Record::read_records(c
                 case 3: {
                     char* buffer = new char[field.param];
                     file.read(buffer, field.param);
-                    record_data[field.name] = "'" + std::string(buffer) + "'";
+                    record_data[field.name] = std::string(buffer);
                     delete[] buffer;
                     break;
                 }
