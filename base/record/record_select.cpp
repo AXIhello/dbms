@@ -44,10 +44,15 @@ std::vector<Record> Record::select(
     std::map<std::string, std::vector<std::unordered_map<std::string, std::string>>> grouped;
     if (!group_by.empty()) {
         for (const auto& rec : filtered) {
-            std::string key = rec.at(group_by);
+            auto it = rec.find(group_by);
+            if (it == rec.end()) {
+                throw std::runtime_error("GROUP BY 字段 '" + group_by + "' 不存在于某条记录中");
+            }
+            std::string key = it->second;
             grouped[key].push_back(rec);
         }
     }
+
 
     std::vector<std::unordered_map<std::string, std::string>> result;
 
