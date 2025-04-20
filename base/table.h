@@ -70,6 +70,8 @@ public:
 
     //表完整性文件
     void addConstraint(const ConstraintBlock& constraint);
+	void dropConstraint(const std::string constraintName);
+	void updateConstraint(const std::string constraintName, const ConstraintBlock& updatedConstraint);
     void saveIntegrityBinary();
     void loadIntegrityBinary();
 

@@ -308,7 +308,7 @@ void Table::addConstraint(const ConstraintBlock& constraint) {
     m_constraints.push_back(constraint);
 
     // 更新时间戳
-   // m_lastModifyTime = std::time(nullptr);
+    m_lastModifyTime = std::time(nullptr);
     // 将所有约束保存到 .tic 文件中
     saveIntegrityBinary();
 
@@ -317,6 +317,23 @@ void Table::addConstraint(const ConstraintBlock& constraint) {
     saveMetadataBinary();*/
 }
 
+void Table::dropConstraint(const std::string constraintName) {
+	auto it = std::remove_if(m_constraints.begin(), m_constraints.end(), [&](const ConstraintBlock& constraint) {
+		return constraint.name == constraintName;
+		});
+}
+
+void Table::updateConstraint(const std::string constraintName, const ConstraintBlock& updatedConstraint) {
+	// 查找约束
+	auto it = std::find_if(m_constraints.begin(), m_constraints.end(), [&](const ConstraintBlock& constraint) {
+		return constraint.name == constraintName;
+		});
+	if (it != m_constraints.end()) {
+		*it = updatedConstraint;
+		saveIntegrityBinary(); // 保存到完整性文件
+		m_lastModifyTime = std::time(nullptr); // 更新时间戳
+	}
+}
 
 //字段操作
 void Table::addField(const FieldBlock& field) {
