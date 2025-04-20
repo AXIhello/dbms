@@ -407,11 +407,14 @@ void Parse::handleAddColumn(const std::smatch& m) {
     try {
         Table* table = dbManager::getInstance().getCurrentDatabase()->getTable(tableName);
         
+		std::vector<FieldBlock> fieldsCopy = table->getFields();
         table->addField(field);
 
         for (const auto& constraint : constraints) {
             table->addConstraint(constraint);
         }
+
+        table->updateRecord(fieldsCopy);
     }
     catch (const std::exception& e) {
         Output::printError(outputEdit, QString("添加字段失败: %1").arg(QString::fromStdString(e.what())));
