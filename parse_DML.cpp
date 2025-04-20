@@ -38,11 +38,9 @@ void Parse::handleUpdate(const std::smatch& m) {
     try {
         record.update(tableName, setClause, condition);
 
-        // 输出
         Output::printMessage(outputEdit, QString::fromStdString("UPDATE 执行成功。"));
     }
     catch (const std::exception& e) {
-        // 错误处理
         Output::printError(outputEdit, QString::fromStdString(e.what()));
     }
 }
@@ -63,11 +61,9 @@ void Parse::handleDelete(const std::smatch& m) {
         Record r;
         r.delete_(table_name, condition);
 
-        // 输出
         Output::printMessage(outputEdit, QString::fromStdString("DELETE FROM 执行成功。"));
     }
     catch (const std::exception& e) {
-        // 错误处理
         Output::printError(outputEdit, QString::fromStdString(e.what()));
     }
 }
