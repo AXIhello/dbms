@@ -515,7 +515,7 @@ bool Table::loadRecord() {
     return true;
 }
 
-
+//TODO:待改；对应
 void Table::updateRecord(std::vector<FieldBlock>& fields) {
     // 检查表是否存在
     if (!isTableExist()) {

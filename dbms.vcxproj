@@ -111,6 +111,11 @@
     <ClCompile Include="debug.cpp" />
     <ClCompile Include="manager\dbManager.cpp" />
     <ClCompile Include="base\record\record_check.cpp" />
+    <ClCompile Include="parse_DCL.cpp" />
+    <ClCompile Include="parse_DDL.cpp" />
+    <ClCompile Include="parse_DML.cpp" />
+    <ClCompile Include="parse_DQL.cpp" />
+    <ClCompile Include="parse_util.cpp" />
     <ClCompile Include="ui\login.cpp" />
     <ClCompile Include="base\database.cpp" />
     <ClCompile Include="ui\mainWindow.cpp" />

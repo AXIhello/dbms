@@ -1,18 +1,5 @@
 #include "parse.h"
-#include "dbManager.h"
-#include "base/record/Record.h"
-#include "ui/output.h"
-#include "base/user.h"
-#include "base/database.h"
-#include"fieldBlock.h"
-#include "constraintBlock.h"
-#include <QRegularExpression>
-#include <QStringList>
-#include <iostream>
-#include <sstream>
-#include <regex>
-#include <vector>
-#include <algorithm>
+
 //#include <main.cpp>
 
 Parse::Parse(QTextEdit* outputEdit, MainWindow* mainWindow) : outputEdit(outputEdit), mainWindow(mainWindow) {
@@ -149,60 +136,6 @@ void Parse::execute(const QString& sql_qt) {
 }
 
 
-void Parse::handleCreateDatabase(const std::smatch& m) {
-    try { dbManager::getInstance().createUserDatabase(m[1]); }
-    catch (const std::exception& e) {
-        Output::printError(outputEdit, "数据库创建失败: " + QString::fromStdString(e.what()));
-        return;
-    }
-    Output::printMessage(outputEdit, "数据库 '" + QString::fromStdString(m[1]) + "' 创建成功！");
-    mainWindow->refreshDatabaseList();
-}
-
-
-void Parse::handleDropDatabase(const std::smatch& m) {
-    try { dbManager::getInstance().dropDatabase(m[1]); }
-    catch (const std::exception& e) {
-        Output::printError(outputEdit, "数据库删除失败: " + QString::fromStdString(e.what()));
-        return;
-    }
-    Output::printMessage(outputEdit, "数据库 '" + QString::fromStdString(m[1]) + "' 删除成功！");
-
-}
-
-void Parse::handleUseDatabase(const std::smatch& m) {
-    std::string dbName = m[1];
-
-    try {
-        // 尝试切换数据库
-        dbManager::getInstance().useDatabase(dbName);
-
-        // 成功后输出信息
-        Output::printMessage(outputEdit, "已成功切换到数据库 '" + QString::fromStdString(dbName) + "'.");
-
-    }
-    catch (const std::exception& e) {
-        // 捕获异常并输出错误信息
-        Output::printError(outputEdit, e.what());
-    }
-}
-
-
-void Parse::handleShowDatabases(const std::smatch& m) {
-    auto dbs = dbManager::getInstance().getDatabaseList();
-
-    Output::printDatabaseList(outputEdit, dbs);
-}
-
-void Parse::handleSelectDatabase() {
-    try {
-        std::string dbName = dbManager::getInstance().getCurrentDatabase()->getDBName();
-        Output::printMessage(outputEdit, "当前数据库为： " + QString::fromStdString(dbName));
-    }
-    catch (const std::exception& e) {
-        Output::printError(outputEdit, e.what());
-    }
-}
 
 
 
@@ -486,111 +419,9 @@ void Parse::handleCreateTable(const std::smatch& match) {
     Output::printMessage(outputEdit, "表 " + QString::fromStdString(tableName) + " 创建成功");
 }
 
-void Parse::handleDropTable(const std::smatch& match) {
-    std::string tableName = match[1];
-    // 获取当前数据库
-    try {
-        Database* db = dbManager::getInstance().getCurrentDatabase();
-        if (!db->getTable(tableName))
-            throw std::runtime_error("表 '" + tableName + "' 不存在。");
-        db->dropTable(tableName);
-    }
-    catch (const std::exception& e) {
-        Output::printError(outputEdit, "表删除失败: " + QString::fromStdString(e.what()));
-        return;
-    }
-
-    // 输出删除成功信息
-    QString message = "表 " + QString::fromStdString(tableName) + " 删除成功";
-    Output::printMessage(outputEdit, message);
-}
-
-void Parse::handleShowTables(const std::smatch& m) {
-    try {
-        Database* db = dbManager::getInstance().getCurrentDatabase();
-        /* if (!db) {
-             Output::printError(outputEdit, "请先使用 USE 语句选择数据库");
-             return;
-         }*/
-         // 获取表名列表
-        std::vector<std::string> tableNames = db->getAllTableNames();
-
-        /*  if (tableNames.empty()) {
-              Output::printMessage(outputEdit, "当前数据库中没有表");
-              return;
-          }*/
-
-          // 使用 Output 类的 printTableList 方法来美化输出
-        Output::printTableList(outputEdit, tableNames);
-    }
-    catch (const std::exception& e) {
-        // 捕获并输出异常信息
-        Output::printError(outputEdit, "错误: " + QString::fromStdString(e.what()));
-    }
-    catch (...) {
-        // 捕获未知异常
-        Output::printError(outputEdit, "发生未知错误");
-    }
-}
 
 
-
-void Parse::handleInsertInto(const std::smatch& m) {
-    std::string table_name = m[1];
-    std::string cols = m[2];
-    std::string vals = m[3];
-
-    if (cols.front() == '(' && cols.back() == ')') {
-        cols = cols.substr(1, cols.length() - 2);
-    }
-    if (vals.front() == '(' && vals.back() == ')') {
-        vals = vals.substr(1, vals.length() - 2);
-    }
-
-    try {
-        std::string table_path = dbManager::getInstance().getCurrentDatabase()->getDBPath() + "/" + table_name;
-        Record r;
-        r.insert_record(table_path, cols, vals);
-        Output::printMessage(outputEdit, QString::fromStdString("INSERT INTO 执行成功。"));
-    }
-    catch (const std::exception& e) {
-        Output::printError(outputEdit, QString::fromStdString(e.what()));
-    }
-}
-
-
-
-void Parse::handleSelect(const std::smatch& m) {
-    std::string table_name = m[1];
-    std::string table_path = dbManager::getInstance().getCurrentDatabase()->getDBPath() + "/" + table_name;
-
-    // 权限检查
-   /* if (!user::hasPermission("select|" + table_name)) {
-        Output::printError(outputEdit, "无权限访问表 '" + QString::fromStdString(table_name) + "'。");
-        return;
-    }*/
-
-    try {
-        std::string columns = "*"; // 目前仅支持 SELECT *
-        std::string condition;
-
-        // 如果有 WHERE 子句则获取
-        if (m.size() > 2 && m[2].matched) {
-            condition = m[2].str();
-        }
-
-        // 直接调用封装了 where 逻辑的 Record::select
-        auto records = Record::select(columns, table_path, condition);
-
-        // 显示查询结果
-        Output::printSelectResult(outputEdit, records);
-    }
-    catch (const std::exception& e) {
-        Output::printError(outputEdit, "查询失败: " + QString::fromStdString(e.what()));
-    }
-
-}
-
+//TODO:新增对约束条件的统一解析方法
 
 //TODO : 新增了以后，如果.trd中原本有数据，则将新增的字段的值置空
 void Parse::handleAddColumn(const std::smatch& m) {
@@ -697,53 +528,6 @@ void Parse::handleModifyColumn(const std::smatch& match) {
 }
 
 
-void Parse::handleUpdate(const std::smatch& m) {
-    std::string tableName = m[1];
-    std::string setClause = m[2];  // SET 子句
-    std::string condition = m.size() > 3 ? m[3].str() : "";
-
-    std::cout << "UPDATE 表名: " << tableName << std::endl;
-    std::cout << "SET 子句: " << setClause << std::endl;
-    std::cout << "WHERE 条件: " << condition << std::endl;
-
-    // 创建 Record 对象来执行更新操作
-    Record record;
-    try {
-        record.update(tableName, setClause, condition);
-
-        // 输出
-        Output::printMessage(outputEdit, QString::fromStdString("UPDATE 执行成功。"));
-    }
-    catch (const std::exception& e) {
-        // 错误处理
-        Output::printError(outputEdit, QString::fromStdString(e.what()));
-    }
-}
-
-void Parse::handleDelete(const std::smatch& m) {
-    std::string table_name = m[1];
-    std::string condition = m[2];   // 删除条件
-
-    if (condition.front() == '(' && condition.back() == ')') {
-        condition = condition.substr(1, condition.length() - 2);
-    }
-
-    try {
-        std::string table_path = dbManager::getInstance().getCurrentDatabase()->getDBPath() + "/" + table_name;
-
-        Record r;
-        r.delete_(table_name, condition);
-
-        // 输出
-        Output::printMessage(outputEdit, QString::fromStdString("DELETE FROM 执行成功。"));
-    }
-    catch (const std::exception& e) {
-        // 错误处理
-        Output::printError(outputEdit, QString::fromStdString(e.what()));
-    }
-}
-
-
 int Parse::getTypeFromString(const std::string& columnType) {
     if (columnType == "INT") return 1;
     if (columnType == "DOUBLE") return 2;
@@ -753,6 +537,7 @@ int Parse::getTypeFromString(const std::string& columnType) {
 
     return -1;  // 如果是无效类型
 }
+
 
 std::vector<std::string> Parse::splitDefinition(const std::string& input) {
     std::vector<std::string> tokens;
@@ -778,40 +563,6 @@ std::vector<std::string> Parse::splitDefinition(const std::string& input) {
 }
 
 
-std::string Parse::trim(const std::string& s) {
-    auto start = s.find_first_not_of(" \t\r\n");
-    auto end = s.find_last_not_of(" \t\r\n");
-    return (start == std::string::npos) ? "" : s.substr(start, end - start + 1);
-}
 
 
-QString Parse::cleanSQL(const QString& sql) {
-    QString cleaned = sql.trimmed();
 
-    // 统一换行符为空格
-    cleaned.replace(QRegularExpression("[\\r\\n]+"), " ");
-
-    // 多个空格或 Tab 变单空格
-    cleaned.replace(QRegularExpression("[ \\t]+"), " ");
-
-    //// 替换括号为带空格，便于分词（不去掉括号）
-    //cleaned.replace("(", " ( ");
-    //cleaned.replace(")", " ) ");
-
-    // 最终 trim，不去掉分号或括号
-    return cleaned.trimmed();
-}
-
-
-std::string Parse::toUpper(const std::string& str) {
-    std::string upperStr = str;
-    std::transform(upperStr.begin(), upperStr.end(), upperStr.begin(), ::toupper);
-    return upperStr;
-}
-
-std::string Parse::toLower(const std::string& input) {
-    std::string result = input;
-    std::transform(result.begin(), result.end(), result.begin(),
-        [](unsigned char c) { return std::tolower(c); });
-    return result;
-}

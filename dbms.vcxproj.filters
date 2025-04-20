@@ -19,6 +19,9 @@
     <Filter Include="base\record">
       <UniqueIdentifier>{ffaa26c9-66bd-4aec-aa17-63f944b3b32e}</UniqueIdentifier>
     </Filter>
+    <Filter Include="manager\parse">
+      <UniqueIdentifier>{3246e29c-38c8-4a70-b0c7-91d21c7d57e5}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <!-- base -->
@@ -44,13 +47,7 @@
     <ClCompile Include="manager\dbManager.cpp">
       <Filter>manager</Filter>
     </ClCompile>
-    <ClCompile Include="manager\parse.cpp">
-      <Filter>manager</Filter>
-    </ClCompile>
     <ClInclude Include="manager\dbManager.h">
-      <Filter>manager</Filter>
-    </ClInclude>
-    <ClInclude Include="manager\parse.h">
       <Filter>manager</Filter>
     </ClInclude>
     <!-- ui -->
@@ -106,6 +103,24 @@
     <ClCompile Include="base\record\record_check.cpp">
       <Filter>base\record</Filter>
     </ClCompile>
+    <ClCompile Include="manager\parse.cpp">
+      <Filter>manager\parse</Filter>
+    </ClCompile>
+    <ClCompile Include="parse_DDL.cpp">
+      <Filter>manager\parse</Filter>
+    </ClCompile>
+    <ClCompile Include="parse_DML.cpp">
+      <Filter>manager\parse</Filter>
+    </ClCompile>
+    <ClCompile Include="parse_DCL.cpp">
+      <Filter>manager\parse</Filter>
+    </ClCompile>
+    <ClCompile Include="parse_util.cpp">
+      <Filter>manager\parse</Filter>
+    </ClCompile>
+    <ClCompile Include="parse_DQL.cpp">
+      <Filter>manager\parse</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="tableBlock.h">
@@ -125,6 +140,9 @@
     </ClInclude>
     <ClInclude Include="constraintBlock.h">
       <Filter>base</Filter>
+    </ClInclude>
+    <ClInclude Include="manager\parse.h">
+      <Filter>manager\parse</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
