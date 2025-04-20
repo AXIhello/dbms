@@ -246,3 +246,12 @@ void Parse::parseFieldAndConstraints(const std::string& def, std::vector<FieldBl
 
     fields.push_back(field); // 添加字段到字段列表
 }
+
+int Parse::getTypeFromString(const std::string& typeStr) {
+    if (typeStr == "INT") return 1;
+    else if (typeStr == "DOUBLE") return 2;
+    else if (typeStr == "VARCHAR") return 3;
+    else if (typeStr == "BOOL") return 4;
+    else if (typeStr == "DATETIME") return 5;
+    else return -1; // 未知类型
+}
