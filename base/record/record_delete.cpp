@@ -35,26 +35,33 @@ void Record::delete_(const std::string& tableName, const std::string& condition)
 
     int deleted_count = 0;
 
-    while (!infile.eof()) {
+    while (true) {
         std::unordered_map<std::string, std::string> record_data;
-        std::streampos start = infile.tellg();
+        std::streampos start_pos = infile.tellg();
+        bool valid_record = true;
 
         for (const auto& field : fields) {
+            if (infile.eof()) {
+                valid_record = false;
+                break;
+            }
             record_data[field.name] = read_field(infile, field);
         }
 
-        if (infile.eof()) break;
+        if (!valid_record || infile.eof()) break;
 
+        // 判断是否满足删除条件
         bool matches = condition.empty() || matches_condition(record_data);
         if (matches) {
             if (!check_references_before_delete(table_name, record_data)) {
                 throw std::runtime_error("删除操作违反引用完整性约束");
             }
             deleted_count++;
-            continue;
+            continue;  // 不写入该记录
         }
 
-        infile.seekg(start);
+        // 回到起始位置写入原始记录
+        infile.seekg(start_pos);
         for (const auto& field : fields) {
             write_field(outfile, field, record_data[field.name]);
         }
@@ -70,3 +77,4 @@ void Record::delete_(const std::string& tableName, const std::string& condition)
 
     std::cout << "成功删除了 " << deleted_count << " 条记录。" << std::endl;
 }
+
