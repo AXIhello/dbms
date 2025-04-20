@@ -44,7 +44,11 @@ std::vector<Record> Record::select(
     std::map<std::string, std::vector<std::unordered_map<std::string, std::string>>> grouped;
     if (!group_by.empty()) {
         for (const auto& rec : filtered) {
-            std::string key = rec.at(group_by);
+            auto it = rec.find(group_by);
+            if (it == rec.end()) {
+                throw std::runtime_error("GROUP BY 字段 '" + group_by + "' 不存在于某条记录中");
+            }
+            std::string key = it->second;
             grouped[key].push_back(rec);
         }
     }
@@ -52,39 +56,58 @@ std::vector<Record> Record::select(
     std::vector<std::unordered_map<std::string, std::string>> result;
 
     auto apply_aggregates = [](const std::string& col, const std::vector<std::unordered_map<std::string, std::string>>& records) -> std::string {
-        if (col.find("COUNT(") != std::string::npos) {
+        std::string field = col.substr(col.find("(") + 1, col.length() - col.find("(") - 2);
+        if (records.empty() || records[0].find(field) == records[0].end()) {
+            return "NULL";
+        }
+
+        if (col.find("COUNT(") == 0) {
             return std::to_string(records.size());
         }
-        else if (col.find("SUM(") != std::string::npos) {
-            std::string field = col.substr(4, col.length() - 5);
+        else if (col.find("SUM(") == 0) {
             double sum = 0;
-            for (const auto& r : records) sum += std::stod(r.at(field));
+            for (const auto& r : records) {
+                auto it = r.find(field);
+                if (it != r.end()) sum += std::stod(it->second);
+            }
             return std::to_string(sum);
         }
-        else if (col.find("AVG(") != std::string::npos) {
-            std::string field = col.substr(4, col.length() - 5);
+        else if (col.find("AVG(") == 0) {
             double sum = 0;
-            for (const auto& r : records) sum += std::stod(r.at(field));
+            for (const auto& r : records) {
+                auto it = r.find(field);
+                if (it != r.end()) sum += std::stod(it->second);
+            }
             return std::to_string(sum / records.size());
         }
-        else if (col.find("MAX(") != std::string::npos) {
-            std::string field = col.substr(4, col.length() - 5);
+        else if (col.find("MAX(") == 0) {
             double max_val = std::stod(records[0].at(field));
-            for (const auto& r : records) max_val = std::max(max_val, std::stod(r.at(field)));
+            for (const auto& r : records) {
+                auto it = r.find(field);
+                if (it != r.end()) max_val = std::max(max_val, std::stod(it->second));
+            }
             return std::to_string(max_val);
         }
-        else if (col.find("MIN(") != std::string::npos) {
-            std::string field = col.substr(4, col.length() - 5);
+        else if (col.find("MIN(") == 0) {
             double min_val = std::stod(records[0].at(field));
-            for (const auto& r : records) min_val = std::min(min_val, std::stod(r.at(field)));
+            for (const auto& r : records) {
+                auto it = r.find(field);
+                if (it != r.end()) min_val = std::min(min_val, std::stod(it->second));
+            }
             return std::to_string(min_val);
         }
-        else {
-            return "";
-        }
+        return "";
         };
 
-    std::vector<std::string> selected_cols = parse_column_list(columns);
+    std::vector<std::string> selected_cols;
+    if (columns == "*") {
+        for (const auto& field : fields) {
+            selected_cols.push_back(field.name);
+        }
+    }
+    else {
+        selected_cols = parse_column_list(columns);
+    }
 
     if (!group_by.empty()) {
         for (const auto& [key, group_records] : grouped) {
@@ -110,7 +133,8 @@ std::vector<Record> Record::select(
         for (const auto& rec : filtered) {
             std::unordered_map<std::string, std::string> row;
             for (const auto& col : selected_cols) {
-                row[col] = rec.at(col);
+                auto it = rec.find(col);
+                row[col] = (it != rec.end()) ? it->second : "NULL";
             }
             result.push_back(row);
         }
