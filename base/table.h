@@ -63,6 +63,9 @@ public:
     void loadDefineBinary();
    
 	//对表操作（添加、删除、更新字段）
+	vector<FieldBlock> getFields() const {
+		return m_fields;
+	}
     void addField(const FieldBlock& field);
     void dropField(const std::string fieldName);
 	void updateField(const std::string fieldName, const FieldBlock& updatedField);
