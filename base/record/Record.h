@@ -10,6 +10,8 @@
 class Record {
 private:
     static std::vector<std::unordered_map<std::string, std::string>> read_records(const std::string table_name);
+    static bool read_single_record(std::ifstream& file, const std::vector<FieldBlock>& fields,
+        std::unordered_map<std::string, std::string>& record_data);
     std::string table_name;
     std::vector<std::string> columns;
     std::vector<std::string> values;

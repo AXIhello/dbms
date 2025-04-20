@@ -16,102 +16,59 @@
 void Record::update(const std::string& tableName, const std::string& setClause, const std::string& condition) {
     this->table_name = tableName;
 
-    if (!table_exists(this->table_name)) {
-        throw std::runtime_error("表 '" + this->table_name + "' 不存在。");
-    }
+    if (!table_exists(tableName)) throw std::runtime_error("表不存在");
 
     std::vector<FieldBlock> fields = read_field_blocks(table_name);
     this->table_structure = read_table_structure_static(table_name);
+    if (!condition.empty()) parse_condition(condition);
 
-    std::unordered_map<std::string, std::string> update_values;
+    std::unordered_map<std::string, std::string> updates;
     std::istringstream ss(setClause);
     std::string pair;
     while (std::getline(ss, pair, ',')) {
-        size_t eq_pos = pair.find('=');
-        if (eq_pos == std::string::npos) throw std::runtime_error("无效的SET语法: " + pair);
+        size_t eq = pair.find('=');
+        if (eq == std::string::npos) throw std::runtime_error("SET语法错误");
 
-        std::string field = pair.substr(0, eq_pos);
-        std::string value = pair.substr(eq_pos + 1);
-        field.erase(0, field.find_first_not_of(" \t"));
-        field.erase(field.find_last_not_of(" \t") + 1);
-        value.erase(0, value.find_first_not_of(" \t"));
-        value.erase(value.find_last_not_of(" \t") + 1);
+        std::string col = pair.substr(0, eq);
+        std::string val = pair.substr(eq + 1);
+        col.erase(0, col.find_first_not_of(" \t")); col.erase(col.find_last_not_of(" \t") + 1);
+        val.erase(0, val.find_first_not_of(" \t")); val.erase(val.find_last_not_of(" \t") + 1);
 
-        if (table_structure.find(field) == table_structure.end()) {
-            throw std::runtime_error("字段 '" + field + "' 不存在于表结构中。");
-        }
-        if (!is_valid_type(value, table_structure[field])) {
-            throw std::runtime_error("字段 '" + field + "' 的值 '" + value + "' 与其类型不匹配");
-        }
+        if (table_structure.find(col) == table_structure.end())
+            throw std::runtime_error("字段不存在: " + col);
+        if (!is_valid_type(val, table_structure[col]))
+            throw std::runtime_error("值类型不匹配: " + col + " = " + val);
 
-        update_values[field] = value;
-    }
-
-    if (update_values.empty()) {
-        throw std::runtime_error("没有需要更新的字段。");
-    }
-
-    if (!condition.empty()) {
-        parse_condition(condition);
+        updates[col] = val;
     }
 
     std::ifstream infile(table_name + ".trd", std::ios::binary);
     std::ofstream outfile(table_name + ".tmp", std::ios::binary);
-    if (!infile || !outfile) {
-        throw std::runtime_error("无法打开数据文件进行更新操作。");
-    }
+    if (!infile || !outfile) throw std::runtime_error("无法打开文件");
 
-    int updated_count = 0;
+    std::unordered_map<std::string, std::string> record_data;
+    int updated = 0;
 
-    while (true) {
-        std::unordered_map<std::string, std::string> record_data;
-        bool eof_reached = false;
-
-        // 读取整条记录的所有字段
-        for (const auto& field : fields) {
-            if (!infile) { eof_reached = true; break; }
-
-            std::string val = read_field(infile, field);
-            if (infile.eof() && !infile.gcount()) { eof_reached = true; break; }
-
-            record_data[field.name] = val;
-        }
-
-        if (eof_reached) break;
-
-        bool matches = condition.empty() || matches_condition(record_data);
-
-        // 创建一个新的记录数据副本，用于可能的更新
-        std::unordered_map<std::string, std::string> updated_record = record_data;
-
-        if (matches) {
-            // 应用更新
-            for (const auto& [key, val] : update_values) {
-                updated_record[key] = val;
+    while (read_single_record(infile, fields, record_data)) {
+        if (condition.empty() || matches_condition(record_data)) {
+            for (const auto& [col, val] : updates) {
+                record_data[col] = val;
             }
 
             std::vector<std::string> cols, vals;
-            for (const auto& [k, v] : updated_record) {
-                cols.push_back(k);
-                vals.push_back(v);
+            for (const auto& [k, v] : record_data) {
+                cols.push_back(k); vals.push_back(v);
             }
 
-            std::vector<ConstraintBlock> constraints = read_constraints(table_name);
-            if (!check_constraints(cols, vals, constraints)) {
-                throw std::runtime_error("更新后的数据违反表约束");
+            if (!check_constraints(cols, vals, read_constraints(table_name))) {
+                throw std::runtime_error("违反表约束");
             }
 
-            // 将约束检查后可能修改的值同步回记录
-            for (size_t i = 0; i < cols.size(); ++i) {
-                updated_record[cols[i]] = vals[i];
-            }
-
-            updated_count++;
+            updated++;
         }
 
-        // 写入记录（更新后或原始的）
         for (const auto& field : fields) {
-            write_field(outfile, field, updated_record[field.name]);
+            write_field(outfile, field, record_data[field.name]);
         }
     }
 
@@ -119,9 +76,8 @@ void Record::update(const std::string& tableName, const std::string& setClause, 
     outfile.close();
 
     std::remove((table_name + ".trd").c_str());
-    if (std::rename((table_name + ".tmp").c_str(), (table_name + ".trd").c_str()) != 0) {
-        throw std::runtime_error("无法替换原表数据文件。");
-    }
+    std::rename((table_name + ".tmp").c_str(), (table_name + ".trd").c_str());
 
-    std::cout << "成功更新了 " << updated_count << " 条记录。" << std::endl;
+    std::cout << "成功更新了 " << updated << " 条记录。" << std::endl;
 }
+
