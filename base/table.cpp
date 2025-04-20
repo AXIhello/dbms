@@ -349,7 +349,15 @@ void Table::dropField(const std::string fieldName) {
 }
 
 void Table::updateField(const std::string fieldName, const FieldBlock& updatedField) {
-
+    // 查找字段
+    auto it = std::find_if(m_fields.begin(), m_fields.end(), [&](const FieldBlock& field) {
+        return field.name == fieldName;
+        });
+    if (it != m_fields.end()) {
+        *it = updatedField;
+        saveDefineBinary(); // 保存到定义文件
+        m_lastModifyTime = std::time(nullptr); // 更新时间戳
+    }
 }
 
 void Table::renameField(const std::string oldName, const std::string newName) {
