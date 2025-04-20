@@ -65,14 +65,14 @@ void Record::update(const std::string& tableName, const std::string& setClause, 
 
     while (true) {
         std::unordered_map<std::string, std::string> record_data;
-        std::streampos start_pos = infile.tellg();
         bool eof_reached = false;
 
+        // 读取整条记录的所有字段
         for (const auto& field : fields) {
             if (!infile) { eof_reached = true; break; }
 
             std::string val = read_field(infile, field);
-            if (infile.eof()) { eof_reached = true; break; }
+            if (infile.eof() && !infile.gcount()) { eof_reached = true; break; }
 
             record_data[field.name] = val;
         }
@@ -81,13 +81,17 @@ void Record::update(const std::string& tableName, const std::string& setClause, 
 
         bool matches = condition.empty() || matches_condition(record_data);
 
+        // 创建一个新的记录数据副本，用于可能的更新
+        std::unordered_map<std::string, std::string> updated_record = record_data;
+
         if (matches) {
+            // 应用更新
             for (const auto& [key, val] : update_values) {
-                record_data[key] = val;
+                updated_record[key] = val;
             }
 
             std::vector<std::string> cols, vals;
-            for (const auto& [k, v] : record_data) {
+            for (const auto& [k, v] : updated_record) {
                 cols.push_back(k);
                 vals.push_back(v);
             }
@@ -97,12 +101,17 @@ void Record::update(const std::string& tableName, const std::string& setClause, 
                 throw std::runtime_error("更新后的数据违反表约束");
             }
 
+            // 将约束检查后可能修改的值同步回记录
+            for (size_t i = 0; i < cols.size(); ++i) {
+                updated_record[cols[i]] = vals[i];
+            }
+
             updated_count++;
         }
 
-        infile.seekg(start_pos);
+        // 写入记录（更新后或原始的）
         for (const auto& field : fields) {
-            write_field(outfile, field, record_data[field.name]);
+            write_field(outfile, field, updated_record[field.name]);
         }
     }
 
