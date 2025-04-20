@@ -598,6 +598,81 @@ std::vector<std::unordered_map<std::string, std::string>> Record::read_records(c
 
     return records;
 }
+bool Record::read_single_record(std::ifstream& file, const std::vector<FieldBlock>& fields,
+    std::unordered_map<std::string, std::string>& record_data) {
+    record_data.clear();
+
+    for (const auto& field : fields) {
+        char null_flag;
+        file.read(&null_flag, sizeof(char));
+        if (!file) return false;  // 读失败或到达末尾
+
+        size_t bytes_read = sizeof(char);
+
+        if (null_flag == 1) {
+            record_data[field.name] = "NULL";
+            switch (field.type) {
+            case 1: bytes_read += sizeof(int); break;
+            case 2: bytes_read += sizeof(double); break;
+            case 3: bytes_read += field.param; break;
+            case 4: bytes_read += sizeof(char); break;
+            case 5: bytes_read += sizeof(std::time_t); break;
+            default: break;
+            }
+            file.seekg(bytes_read - sizeof(char), std::ios::cur);  // 跳过空值
+        }
+        else {
+            switch (field.type) {
+            case 1: {
+                int val;
+                file.read(reinterpret_cast<char*>(&val), sizeof(int));
+                record_data[field.name] = std::to_string(val);
+                bytes_read += sizeof(int);
+                break;
+            }
+            case 2: {
+                double val;
+                file.read(reinterpret_cast<char*>(&val), sizeof(double));
+                record_data[field.name] = std::to_string(val);
+                bytes_read += sizeof(double);
+                break;
+            }
+            case 3: {
+                char* buf = new char[field.param];
+                file.read(buf, field.param);
+                record_data[field.name] = std::string(buf);
+                delete[] buf;
+                bytes_read += field.param;
+                break;
+            }
+            case 4: {
+                char b;
+                file.read(&b, sizeof(char));
+                record_data[field.name] = (b == 1 ? "1" : "0");
+                bytes_read += sizeof(char);
+                break;
+            }
+            case 5: {
+                std::time_t t;
+                file.read(reinterpret_cast<char*>(&t), sizeof(std::time_t));
+                char buf[30];
+                std::strftime(buf, sizeof(buf), "%Y-%m-%d %H:%M:%S", std::localtime(&t));
+                record_data[field.name] = "'" + std::string(buf) + "'";
+                bytes_read += sizeof(std::time_t);
+                break;
+            }
+            default:
+                return false;
+            }
+        }
+
+        // 填充跳过
+        size_t padding = (4 - (bytes_read % 4)) % 4;
+        if (padding) file.seekg(padding, std::ios::cur);
+    }
+
+    return true;
+}
 
 size_t Record::get_field_data_size(int type, int param) {
     switch (type) {
