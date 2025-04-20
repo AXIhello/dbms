@@ -540,7 +540,6 @@ void Table::saveIntegrityBinary() {
 //    return true;
 //}
 
-//TODO:待改；对应
 void Table::updateRecord(std::vector<FieldBlock>& fields) {
     // 检查表是否存在
     if (!isTableExist()) {
@@ -603,24 +602,36 @@ void Table::updateRecord(std::vector<FieldBlock>& fields) {
         all_records.push_back(record_values);
     }
 
-    // 现在更新记录，找到需要更新的字段
+    // 遍历 fields 和 m_fields，进行字段的删除、新增和更新操作
     for (auto& record : all_records) {
-        // 遍历更新的字段
+        // 删除字段：检查 fields 中的字段是否不在 m_fields 中
         for (size_t i = 0; i < fields.size(); ++i) {
-            FieldBlock& updated_field = fields[i];
+            FieldBlock& field = fields[i];
 
-            // 查找 m_fields 中相应字段的索引
+            // 如果 fields 中的字段在 m_fields 中找不到，删除该字段
             auto it = std::find_if(m_fields.begin(), m_fields.end(), [&](const FieldBlock& f) {
+                return f.name == field.name;
+                });
+
+            if (it == m_fields.end()) {
+                // 删除对应的字段值
+                record.erase(record.begin() + i);
+                m_fields.erase(m_fields.begin() + i); // 删除 m_fields 中的字段
+                --i; // 确保删除后继续检查当前索引
+            }
+        }
+
+        // 新增字段：检查 m_fields 中是否有 fields 中没有的字段
+        for (size_t i = 0; i < m_fields.size(); ++i) {
+            FieldBlock& updated_field = m_fields[i];
+
+            // 查找该字段在 fields 中是否已经存在
+            auto it = std::find_if(fields.begin(), fields.end(), [&](const FieldBlock& f) {
                 return f.name == updated_field.name;
                 });
 
-            // 如果找到了该字段并且它不是删除的字段
-            if (it != m_fields.end()) {
-                size_t field_index = std::distance(m_fields.begin(), it);
-            }
-            else {
-                // 如果字段不存在，说明是新增字段
-                // 需要检查约束信息，例如DEFAULT约束或AUTO_INCREMENT约束
+            if (it == fields.end()) {
+                // 如果该字段在 fields 中不存在，说明是新增字段
                 std::string new_value = "NULL"; // 默认为 NULL
 
                 // 查找是否有 DEFAULT 或 AUTO_INCREMENT 约束
@@ -647,18 +658,63 @@ void Table::updateRecord(std::vector<FieldBlock>& fields) {
                 m_fields.push_back(updated_field); // 更新表的字段信息
             }
         }
-        // 删除字段逻辑：如果字段不在更新的字段列表中，就移除它
-        for (size_t i = 0; i < m_fields.size(); ++i) {
-            const FieldBlock& field = m_fields[i];
-            if (std::find_if(fields.begin(), fields.end(), [&](const FieldBlock& f) {
-                return f.name == field.name;
-                }) == fields.end()) {
-                // 如果该字段不在更新列表中，认为是删除的字段，移除该字段的记录
-                record.erase(record.begin() + i);
-                m_fields.erase(m_fields.begin() + i);
-                --i; // 确保在删除后继续检查当前索引
+
+        //// 更新字段：fields 和 m_fields 中都有的字段需要更新
+        for (size_t i = 0; i < fields.size(); ++i) {
+            FieldBlock& updated_field = fields[i];
+
+            // 查找 fields 中的字段是否在 m_fields 中存在
+            auto it = std::find_if(m_fields.begin(), m_fields.end(), [&](const FieldBlock& f) {
+                return std::string(f.name) == updated_field.name;
+                });
+
+            if (it != m_fields.end()) {
+                // 如果在 m_fields 中找到了对应字段
+                size_t field_index = std::distance(m_fields.begin(), it);
+
+                // 获取当前字段的约束
+                FieldBlock& old_field = m_fields[field_index];
+                bool is_integrity_changed = (old_field.integrities != updated_field.integrities);
+
+                // 如果约束发生变化，则需要进一步检查是 DEFAULT、NOT NULL 或 AUTO_INCREMENT 变化
+                if (is_integrity_changed) {
+                    // 检查约束变化：DEFAULT、NOT NULL 和 AUTO_INCREMENT
+                    std::string new_value; // 获取字段的新值
+
+                    for (const auto& constraint : m_constraints) {
+                        if (constraint.field == updated_field.name) {
+                            switch (constraint.type) {
+                            case 6: { // DEFAULT 约束
+                                if (new_value == "NULL" || new_value.empty()) {
+                                    new_value = constraint.param; // 使用 DEFAULT 值
+                                }
+                                break;
+                            }
+                            case 5: { // NOT NULL 约束
+                                if (new_value == "NULL" || new_value.empty()) {
+                                    new_value = "0"; // 使用空值
+                                }
+                                break;
+                            }
+                            case 7: { // AUTO_INCREMENT 约束
+                                static int auto_increment_value = 1; // 假设从 1 开始自增
+                                if (new_value == "NULL" || new_value.empty()) {
+                                    new_value = std::to_string(auto_increment_value++); // 自增处理
+                                }
+                                break;
+                            }
+                            default:
+                                break;
+                            }
+                        }
+                    }
+
+                    // 更新字段值
+                    record[field_index] = new_value;
+                }
             }
         }
+
     }
 
     // 清空原文件并重新写入所有更新后的记录
@@ -690,7 +746,7 @@ void Table::updateRecord(std::vector<FieldBlock>& fields) {
                     file.write(reinterpret_cast<const char*>(&double_val), sizeof(double));
                     break;
                 }
-                case 3: {// VARCHAR
+                case 3: { // VARCHAR
                     char* buffer = new char[field.param];
                     std::memset(buffer, 0, field.param);
 
@@ -702,10 +758,10 @@ void Table::updateRecord(std::vector<FieldBlock>& fields) {
                     delete[] buffer;
                     break;
                 }
-				case 4: { // BOOL
-					bool bool_val = (value == "true" || value == "1");
-					file.write(reinterpret_cast<const char*>(&bool_val), sizeof(bool));
-					break;
+                case 4: { // BOOL
+                    bool bool_val = (value == "true" || value == "1");
+                    file.write(reinterpret_cast<const char*>(&bool_val), sizeof(bool));
+                    break;
                 }
                 case 5: { // DATETIME
                     std::time_t now = std::time(nullptr); // 简化为当前时间
