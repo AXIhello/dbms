@@ -357,7 +357,7 @@ void Table::addField(const FieldBlock& field) {
     // 保存到定义文件和元数据文件
     saveDefineBinary();
     saveMetadataBinary();
-    loadRecord(); //
+    //loadRecord(); //
 }
 
 //待实现。不管有没有值，都直接删
@@ -454,91 +454,91 @@ void Table::saveIntegrityBinary() {
 
 
 //表记录文件操作
-bool Table::loadRecord() {
-    ifstream trdFile(m_trd); // 打开记录文件
-
-    if (!trdFile.is_open()) {
-        throw std::runtime_error( "无法打开数据文件: " + m_trd );
-    }
-
-    // 读取文件的第一行（列名）
-    string header;
-    getline(trdFile, header);
-    vector<string> fileColumns;
-    stringstream ss(header);
-    string colName;
-
-    // 将文件中的列名提取到 fileColumns 向量中
-    while (getline(ss, colName, ',')) {
-        fileColumns.push_back(colName);
-    }
-
-    // 找出哪些列需要删除（文件中有，但 m_columns 中没有）
-    vector<string> columnsToAdd;
-    vector<int> columnsToDelete;
-
-    for (size_t i = 0; i < fileColumns.size(); ++i) {
-        bool found = false;
-        for (size_t j = 0; j < m_fields.size(); ++j) {
-            if (fileColumns[i] == m_fields[j].name) {
-                found = true;
-                break;
-            }
-        }
-        if (!found) {
-            columnsToDelete.push_back(i); // 记录需要删除的列的索引
-        }
-    }
-
-    // 查找哪些列需要增加（m_columns 中有，但文件中没有）
-    for (size_t i = 0; i < m_fields.size(); ++i) {
-        bool found = false;
-        for (size_t j = 0; j < fileColumns.size(); ++j) {
-            if (m_fields[i].name == fileColumns[j]) {
-                found = true;
-                break;
-            }
-        }
-        if (!found) {
-            columnsToAdd.push_back(m_fields[i].name); // 记录需要添加的列名
-        }
-    }
-
-    // 读取源数据（从第二行开始）
-    vector<vector<string>> records;
-    string line;
-    while (getline(trdFile, line)) {
-        vector<string> record;
-        stringstream recordStream(line);
-        string value;
-
-        while (getline(recordStream, value, ',')) {
-            record.push_back(value);
-        }
-        records.push_back(record);
-    }
-
-    // 处理文件中的每条记录，按需要删除和添加列
-    for (size_t i = 0; i < records.size(); ++i) {
-        // 删除多余的列
-        for (size_t delIdx : columnsToDelete) {
-            records[i].erase(records[i].begin() + delIdx);
-        }
-
-        // 增加缺失的列，根据默认值补充
-        for (const string& colNameToAdd : columnsToAdd) {
-            // 找到对应的列的默认值，并添加到当前记录
-            for (const auto& col : m_fields) {
-                if (col.name == colNameToAdd) {
-                    //records[i].push_back(col.defaultValue);
-                    break;
-                }
-            }
-        }
-    }
-    trdFile.close(); // 关闭文件
-    return true;
-}
+//bool Table::loadRecord() {
+//    ifstream trdFile(m_trd); // 打开记录文件
+//
+//    if (!trdFile.is_open()) {
+//        throw std::runtime_error( "无法打开数据文件: " + m_trd );
+//    }
+//
+//    // 读取文件的第一行（列名）
+//    string header;
+//    getline(trdFile, header);
+//    vector<string> fileColumns;
+//    stringstream ss(header);
+//    string colName;
+//
+//    // 将文件中的列名提取到 fileColumns 向量中
+//    while (getline(ss, colName, ',')) {
+//        fileColumns.push_back(colName);
+//    }
+//
+//    // 找出哪些列需要删除（文件中有，但 m_columns 中没有）
+//    vector<string> columnsToAdd;
+//    vector<int> columnsToDelete;
+//
+//    for (size_t i = 0; i < fileColumns.size(); ++i) {
+//        bool found = false;
+//        for (size_t j = 0; j < m_fields.size(); ++j) {
+//            if (fileColumns[i] == m_fields[j].name) {
+//                found = true;
+//                break;
+//            }
+//        }
+//        if (!found) {
+//            columnsToDelete.push_back(i); // 记录需要删除的列的索引
+//        }
+//    }
+//
+//    // 查找哪些列需要增加（m_columns 中有，但文件中没有）
+//    for (size_t i = 0; i < m_fields.size(); ++i) {
+//        bool found = false;
+//        for (size_t j = 0; j < fileColumns.size(); ++j) {
+//            if (m_fields[i].name == fileColumns[j]) {
+//                found = true;
+//                break;
+//            }
+//        }
+//        if (!found) {
+//            columnsToAdd.push_back(m_fields[i].name); // 记录需要添加的列名
+//        }
+//    }
+//
+//    // 读取源数据（从第二行开始）
+//    vector<vector<string>> records;
+//    string line;
+//    while (getline(trdFile, line)) {
+//        vector<string> record;
+//        stringstream recordStream(line);
+//        string value;
+//
+//        while (getline(recordStream, value, ',')) {
+//            record.push_back(value);
+//        }
+//        records.push_back(record);
+//    }
+//
+//    // 处理文件中的每条记录，按需要删除和添加列
+//    for (size_t i = 0; i < records.size(); ++i) {
+//        // 删除多余的列
+//        for (size_t delIdx : columnsToDelete) {
+//            records[i].erase(records[i].begin() + delIdx);
+//        }
+//
+//        // 增加缺失的列，根据默认值补充
+//        for (const string& colNameToAdd : columnsToAdd) {
+//            // 找到对应的列的默认值，并添加到当前记录
+//            for (const auto& col : m_fields) {
+//                if (col.name == colNameToAdd) {
+//                    //records[i].push_back(col.defaultValue);
+//                    break;
+//                }
+//            }
+//        }
+//    }
+//    trdFile.close(); // 关闭文件
+//    return true;
+//}
 
 //TODO:待改；对应
 void Table::updateRecord(std::vector<FieldBlock>& fields) {
@@ -828,6 +828,74 @@ void Table::updateRecord(int recordID, const string& updatedData) {
     m_lastModifyTime = time(0); // 更新最后修改时间
 }
 */
+
+void Table::saveIndex(){
+
+    std::ofstream out(m_tid, std::ios::binary);
+    if (!out.is_open()) {
+        throw std::runtime_error("无法保存定义文件: " + m_tableName + " .tid ");
+    }
+
+    for (int i = 0; i < m_indexes.size(); ++i) {
+        IndexBlock& index = m_indexes[i];
+
+        // 将当前字段块写入文件
+        out.write(reinterpret_cast<const char*>(&index), sizeof(IndexBlock));
+    }
+
+    out.close();
+}
+
+void Table::loadIndex() {
+
+	std::ifstream in(m_tid, std::ios::binary);
+	if (!in.is_open()) {
+		throw std::runtime_error("无法打开索引文件: " + m_tid);
+	}
+	m_indexes.clear();
+	while (in.peek() != EOF) {
+		IndexBlock index;
+		in.read(reinterpret_cast<char*>(&index), sizeof(IndexBlock));
+		if (in.gcount() < sizeof(IndexBlock)) break;
+		m_indexes.push_back(index);
+	}
+	in.close();
+}
+
+void Table::addIndex(const IndexBlock& index)
+{
+	IndexBlock newIndex = index;
+	// 添加到索引列表
+	m_indexes.push_back(newIndex);
+	// 更新时间戳
+	m_lastModifyTime = std::time(nullptr);
+	// 保存到索引文件和元数据文件
+	saveIndex();
+	saveMetadataBinary();
+}
+void Table::dropIndex(const std::string indexName)
+{
+	auto it = std::remove_if(m_indexes.begin(), m_indexes.end(), [&](const IndexBlock& index) {
+		return index.name == indexName;
+		});
+	m_indexes.erase(it, m_indexes.end());
+	saveIndex();
+	saveMetadataBinary();
+}
+
+void Table::updateIndex(const std::string indexName, const IndexBlock& updatedIndex)
+{
+    // 查找索引
+    auto it = std::find_if(m_indexes.begin(), m_indexes.end(), [&](const IndexBlock& index) {
+        return index.name == indexName;
+        });
+    if (it != m_indexes.end()) {
+        *it = updatedIndex;
+        saveIndex(); // 保存到索引文件
+        m_lastModifyTime = std::time(nullptr); // 更新时间戳
+        saveMetadataBinary();
+    }
+}
 
 //检验表是否存在√
 bool Table::isTableExist() const {

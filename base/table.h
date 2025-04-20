@@ -10,6 +10,7 @@
 #include"tableBlock.h"
 #include"fieldBlock.h"
 #include"constraintBlock.h"
+#include"indexBlock.h"
 using namespace std;
 
 
@@ -83,8 +84,12 @@ public:
     void updateRecord(std::vector<FieldBlock>& fields);
 
     //表索引文件
-    bool saveIndex()const;
-    bool loadIndex();
+    void saveIndex();
+    void loadIndex();
+	void addIndex(const IndexBlock& index);
+	void dropIndex(const std::string indexName);
+	void updateIndex(const std::string indexName, const IndexBlock& updatedIndex);
+
 
 
 	// 判断表是否存在
@@ -109,6 +114,7 @@ private:
 
 	vector<FieldBlock> m_fields; // 存储表的字段信息
 	vector<ConstraintBlock> m_constraints; // 存储表的完整性约束信息
+	vector<IndexBlock> m_indexes; // 存储表的索引信息
 
     // 辅助方法：将时间戳转为字符串格式
     string timeToString(time_t time) const;

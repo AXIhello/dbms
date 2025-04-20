@@ -121,15 +121,18 @@
     <ClCompile Include="parse_DQL.cpp">
       <Filter>manager\parse</Filter>
     </ClCompile>
+    <ClCompile Include="base\BTree.cpp">
+      <Filter>base</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="tableBlock.h">
       <Filter>base</Filter>
     </ClInclude>
-    <ClInclude Include="databaseBlock.h">
+    <ClInclude Include="manager\databaseBlock.h">
       <Filter>base</Filter>
     </ClInclude>
-    <ClInclude Include="fieldBlock.h">
+    <ClInclude Include="base\fieldBlock.h">
       <Filter>base</Filter>
     </ClInclude>
     <ClInclude Include="debug.h">
@@ -143,6 +146,12 @@
     </ClInclude>
     <ClInclude Include="manager\parse.h">
       <Filter>manager\parse</Filter>
+    </ClInclude>
+    <ClInclude Include="base\BTree.h">
+      <Filter>base</Filter>
+    </ClInclude>
+    <ClInclude Include="base\indexBlock.h">
+      <Filter>base</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

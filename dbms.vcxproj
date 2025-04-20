@@ -40,12 +40,12 @@
     <QtBuildConfig>debug</QtBuildConfig>
     <QtInstall>6.2.13_msvc2019_64</QtInstall>
     <QtInstall>6.2.13_msvc2019_64</QtInstall>
-    <QtInstall>6.2.13_msvc2019_64</QtInstall>
+    <QtInstall>6.5.3_msvc2019_64</QtInstall>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)' == 'Release|x64'" Label="QtSettings">
     <QtModules>core;gui;widgets</QtModules>
     <QtBuildConfig>release</QtBuildConfig>
-    <QtInstall>6.7.0_msvc2019_64</QtInstall>
+    <QtInstall>6.5.3_msvc2019_64</QtInstall>
   </PropertyGroup>
   <Target Name="QtMsBuildNotFound" BeforeTargets="CustomBuild;ClCompile" Condition="!Exists('$(QtMsBuild)\qt.targets') or !Exists('$(QtMsBuild)\qt.props')">
     <Message Importance="High" Text="QtMsBuild: could not locate qt.targets, qt.props; project may not build correctly." />
@@ -108,6 +108,7 @@
     <ClCompile Include="base\record\record_insert.cpp" />
     <ClCompile Include="base\record\record_select.cpp" />
     <ClCompile Include="base\record\record_update.cpp" />
+    <ClCompile Include="base\BTree.cpp" />
     <ClCompile Include="debug.cpp" />
     <ClCompile Include="manager\dbManager.cpp" />
     <ClCompile Include="base\record\record_check.cpp" />
@@ -134,10 +135,12 @@
     <QtMoc Include="ui\login.h" />
     <ClInclude Include="base\database.h" />
     <QtMoc Include="ui\mainWindow.h" />
+    <ClInclude Include="base\BTree.h" />
+    <ClInclude Include="base\indexBlock.h" />
     <ClInclude Include="constraintBlock.h" />
-    <ClInclude Include="databaseBlock.h" />
+    <ClInclude Include="manager\databaseBlock.h" />
     <ClInclude Include="debug.h" />
-    <ClInclude Include="fieldBlock.h" />
+    <ClInclude Include="base\fieldBlock.h" />
     <ClInclude Include="manager\dbManager.h" />
     <ClInclude Include="tableBlock.h" />
     <ClInclude Include="ui\output.h" />
