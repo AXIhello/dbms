@@ -14,7 +14,44 @@ MainWindow::MainWindow(QWidget* parent)
     , ui(new Ui::MainWindow)// 初始化 UI
 {
     ui->setupUi(this);  // 让 UI 组件和窗口关联
+    // 设置样式表
+    QString styleSheet = R"(
+        /* 设置整个应用程序的字体 */
+        * {
+            font-size: 13pt;
+            font-family: "Arial";
+        }
 
+        /* 设置菜单栏的字体 */
+        QMenuBar {
+            font-size: 11pt;
+            font-weight: bold;
+        }
+
+        /* 设置菜单项的字体 */
+        QMenu {
+            font-size: 12pt;
+        }
+
+        /* 设置按钮的字体 */
+        QPushButton {
+            font-size: 12pt;
+            font-weight: bold;
+        }
+
+        /* 设置文本框的字体 */
+        QTextEdit {
+            font-size: 14pt;
+        }
+
+        /* 设置状态栏的字体 */
+        QStatusBar {
+            font-size: 12pt;
+        }
+    )";
+    ui->inputEdit->setInputMethodHints(Qt::ImhPreferLatin); // 设置为英文输入
+
+    this->setStyleSheet(styleSheet);
     // 设置 stackedWidget 默认显示第一页（inputEdit页）
     ui->displayStack->setCurrentIndex(0);
 
@@ -50,9 +87,10 @@ MainWindow::MainWindow(QWidget* parent)
     ioSplitter->setStretchFactor(2, 3);  // 输出框占较少空间
 
     // 左侧导航栏使用 DockWidget
-    QDockWidget* dockWidget = new QDockWidget("Navigation", this);
+    QDockWidget* dockWidget = new QDockWidget("数据库资源管理器", this);
     dockWidget->setWidget(ui->treeWidget);
     dockWidget->setAllowedAreas(Qt::LeftDockWidgetArea | Qt::RightDockWidgetArea);
+ 
 
     // 主内容区水平分割
     QSplitter* mainSplitter = new QSplitter(Qt::Horizontal);

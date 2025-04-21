@@ -6,6 +6,9 @@ login::login(QDialog *parent)
 	: QDialog(parent)
 {
 	ui.setupUi(this);
+
+	ui.usrLineEdit->setInputMethodHints(Qt::ImhPreferLatin);
+	ui.pwdLineEdit->setInputMethodHints(Qt::ImhPreferLatin);
 }
 
 login::~login()
@@ -16,6 +19,8 @@ void login::on_loginBtn_clicked()
 	
 	QString username = ui.usrLineEdit->text();
 	QString password = ui.pwdLineEdit->text();
+
+
 	if (authenticate(username, password))
 	{
 		emit acceptedLogin();
