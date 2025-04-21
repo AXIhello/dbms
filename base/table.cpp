@@ -294,7 +294,7 @@ void Table::saveDefineBinary() {
         // 填充必要的字段信息
         field.order = i; // 设置字段的顺序
         field.mtime = std::time(nullptr); // 设置最后修改时间为当前时间
-        field.integrities = 0; //无用的参数。 全部设置 0
+        field.integrities = 0; //
 
         // 将当前字段块写入文件
         out.write(reinterpret_cast<const char*>(&field), sizeof(FieldBlock));
@@ -361,7 +361,39 @@ void Table::addField(const FieldBlock& field) {
 
 //待实现。不管有没有值，都直接删
 void Table::dropField(const std::string fieldName) {
+    //先查找是否有该字段
+    auto colNames = getColNames();
+    if (std::find(colNames.begin(), colNames.end(), fieldName) == colNames.end()) {
+        throw std::runtime_error("字段 '" + fieldName + "' 不存在。");
+    }
+    // 检查完整性约束；只有 NOT NULL / DEFAULT / 无约束 情况下才能删
+    for (const auto& f : m_fields) {
+        if (f.name == fieldName) {
+            switch (f.integrities) {
+			case 0:  // 无约束
+				break;
+            case 5:  // NOT NULL
+                break;
+            case 6:  // DEFAULT
+                break;
+            case 7: //自增
+                break;
+            case 1:
+                throw std::runtime_error("字段 '" + fieldName + "' 受主键约束影响，不能删除。");
+            case 2:
+				throw std::runtime_error("字段 '" + fieldName + "' 受外键约束影响，不能删除。");
+            case 3:
+				throw std::runtime_error("字段 '" + fieldName + "' 受CHECK约束影响，不能删除。");
+            case 4:
+				throw std::runtime_error("字段 '" + fieldName + "' 受UNIQUE约束影响，不能删除。");
+            default:
+                throw std::runtime_error("字段 '" + fieldName + "' 受约束影响，不能删除。");
+            }
+            break;  // 找到字段后结束外层循环
+        }
+    }
 
+    saveDefineBinary(); // 保存到定义文件
 }
 
 void Table::updateField(const std::string fieldName, const FieldBlock& updatedField) {

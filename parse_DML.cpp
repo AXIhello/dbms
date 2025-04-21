@@ -2,15 +2,17 @@
 
 void Parse::handleInsertInto(const std::smatch& m) {
     std::string table_name = m[1];
-    std::string cols = m[2];
+    std::string cols = m[2];  // 可能为空
     std::string vals = m[3];
 
-    if (cols.front() == '(' && cols.back() == ')') {
-        cols = cols.substr(1, cols.length() - 2);
-    }
-    if (vals.front() == '(' && vals.back() == ')') {
-        vals = vals.substr(1, vals.length() - 2);
-    }
+    // 安全地去除括号（如果存在）
+    auto trimParens = [](std::string& s) {
+        if (!s.empty() && s.front() == '(' && s.back() == ')') {
+            s = s.substr(1, s.length() - 2);
+        }
+        };
+    trimParens(cols);
+    trimParens(vals);
 
     try {
         std::string table_path = dbManager::getInstance().getCurrentDatabase()->getDBPath() + "/" + table_name;
@@ -22,6 +24,7 @@ void Parse::handleInsertInto(const std::smatch& m) {
         Output::printError(outputEdit, QString::fromStdString(e.what()));
     }
 }
+
 
 
 void Parse::handleUpdate(const std::smatch& m) {

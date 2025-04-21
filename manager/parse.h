@@ -51,7 +51,8 @@ private:
     std::vector<std::string> splitDefinition(const std::string& input);
     std::string toUpper(const std::string& str);
     std::string toLower(const std::string& input);
-    void parseFieldAndConstraints(const std::string& def, std::vector<FieldBlock>& fields, std::vector<ConstraintBlock>& constraints, int& fieldIndex);
+    std::string toUpperPreserveQuoted(const std::string& input);
+    //void parseFieldAndConstraints(const std::string& def, std::vector<FieldBlock>& fields, std::vector<ConstraintBlock>& constraints, int& fieldIndex);
     std::vector<std::string> split(const std::string& str, char delimiter);
     int getTypeFromString(const std::string& columnType);//类型转换函数
 
