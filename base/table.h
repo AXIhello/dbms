@@ -94,6 +94,7 @@ public:
     //表索引文件
     void saveIndex();
     void loadIndex();
+    void createIndex(const IndexBlock& index);
 	void addIndex(const IndexBlock& index);
 	void dropIndex(const std::string indexName);
 	void updateIndex(const std::string indexName, const IndexBlock& updatedIndex);

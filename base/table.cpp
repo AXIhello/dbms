@@ -355,23 +355,23 @@ void Table::addConstraint(const std::string& constraintName,
     // 保存约束到文件
     saveIntegrityBinary();  // 保存到完整性文件
     m_lastModifyTime = std::time(nullptr);  // 更新时间戳
-	savemetadataBinary(); // 保存定义文件和元数据文件
+	saveMetadataBinary(); // 保存定义文件和元数据文件
 }
 
 
-//void Table::addConstraint(const ConstraintBlock& constraint) {
-//    // 将约束添加到表的约束列表中
-//    m_constraints.push_back(constraint);
-//
-//    // 更新时间戳
-//    m_lastModifyTime = std::time(nullptr);
-//    // 将所有约束保存到 .tic 文件中
-//    saveIntegrityBinary();
-//
-//    // 保存定义文件和元数据文件
-//    /*saveDefineBinary();
-//    saveMetadataBinary();*/
-//}
+void Table::addConstraint(const ConstraintBlock& constraint) {
+    // 将约束添加到表的约束列表中
+    m_constraints.push_back(constraint);
+
+    // 更新时间戳
+    m_lastModifyTime = std::time(nullptr);
+    // 将所有约束保存到 .tic 文件中
+    saveIntegrityBinary();
+
+    // 保存定义文件和元数据文件
+    /*saveDefineBinary();
+    saveMetadataBinary();*/
+}
 
 void Table::dropConstraint(const std::string constraintName) {
 	auto it = std::remove_if(m_constraints.begin(), m_constraints.end(), [&](const ConstraintBlock& constraint) {
@@ -1004,8 +1004,52 @@ void Table::loadIndex() {
 	in.close();
 }
 
+// 为指定字段创建 B 树索引
+//void Table::createIndex(const IndexBlock& index) {
+//    // 1. 查找字段
+//	std::string fieldName = index.
+//        //先查找是否有该字段
+//        auto colNames = getColNames();
+//    if (std::find(colNames.begin(), colNames.end(), fieldName) == colNames.end()) {
+//        throw std::runtime_error("字段 '" + fieldName + "' 不存在。");
+//    }
+//    // 检查完整性约束；只有 NOT NULL / DEFAULT / 无约束 情况下才能删
+//
+//    FieldBlock* field = findFieldByName(fieldName);
+//
+//    for (const auto& f : m_fields) {
+//        if (f.name == fieldName) {
+//        }
+//    }
+//    if (!field) {
+//        throw std::runtime_error("字段 " + fieldName + " 不存在！");
+//    }
+//
+//    // 2. 创建 BTree 对象
+//    BTree* btree = new BTree(m_index);
+//
+//    // 3. 将字段值插入 B 树（假设我们将所有记录的字段插入到 B 树）
+//    for (const auto& record : m_records) {
+//        // 假设每个记录都有一个 FieldBlock 类型的字段
+//        FieldBlock fieldBlock;
+//        fieldBlock.name = field->name;
+//        fieldBlock.value = record.getFieldValue(fieldName);
+//
+//        // 将字段插入到 B 树中
+//        btree->insert(fieldBlock);
+//    }
+//
+//    // 4. 保存 B 树到文件
+//    btree->saveBTreeIndex();
+//	// 5. 将索引信息保存到索引文件
+//
+//    std::cout << "为字段 " << fieldName << " 创建索引成功！" << std::endl;
+//}
+
 void Table::addIndex(const IndexBlock& index)
 {
+	createIndex(index); 
+    // 创建索引
 	IndexBlock newIndex = index;
 	// 添加到索引列表
 	m_indexes.push_back(newIndex);
@@ -1015,6 +1059,7 @@ void Table::addIndex(const IndexBlock& index)
 	saveIndex();
 	saveMetadataBinary();
 }
+
 void Table::dropIndex(const std::string indexName)
 {
 	auto it = std::remove_if(m_indexes.begin(), m_indexes.end(), [&](const IndexBlock& index) {
