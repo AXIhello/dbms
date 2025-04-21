@@ -155,6 +155,8 @@
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
-    <QtUic Include="login.ui" />
+    <QtUic Include="login.ui">
+      <Filter>ui</Filter>
+    </QtUic>
   </ItemGroup>
 </Project>

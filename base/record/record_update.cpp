@@ -13,7 +13,7 @@
 #include <unordered_map>
 #include <algorithm>
 
-void Record::update(const std::string& tableName, const std::string& setClause, const std::string& condition) {
+int Record::update(const std::string& tableName, const std::string& setClause, const std::string& condition) {
     this->table_name = tableName;
 
     if (!table_exists(tableName)) throw std::runtime_error("表 '" + table_name + "' 不存在。");
@@ -102,7 +102,7 @@ void Record::update(const std::string& tableName, const std::string& setClause, 
         throw std::runtime_error("无法重命名临时文件");
     }
 
-    std::cout << "成功更新了 " << updated << " 条记录。" << std::endl;
+    return updated;
 }
 
 
