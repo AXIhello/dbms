@@ -125,8 +125,8 @@ void Parse::execute(const QString& sql_qt) {
     QString cleanedSQL = cleanSQL(sql_qt);  // 使用 cleanSQL 来处理输入
     std::string sql = cleanedSQL.toStdString();  // 转为 std::string 类型
 
-    // 2. 转换为大写
-    std::string upperSQL = toUpper(sql);
+	// 2. 转换为大写（除引号内的内容不变）
+    std::string upperSQL = toUpperPreserveQuoted(sql);
 
     // 3. 遍历所有正则模式并匹配
     for (const auto& p : patterns) {

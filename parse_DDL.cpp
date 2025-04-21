@@ -43,6 +43,7 @@ void Parse::handleDropTable(const std::smatch& match) {
 
 void Parse::handleCreateTable(const std::smatch& match) {
     std::string tableName = match[1];
+
     std::string rawDefinition = match[2];
 
     Database* db = nullptr;
@@ -80,10 +81,10 @@ void Parse::handleCreateTable(const std::smatch& match) {
     }
 
     for (const std::string& def : definitions) {
-        std::string upperDef = toUpper(def);
+        //std::string upperDef = toUpper(def);
 
         // === 表级约束 ===
-        if (upperDef.find("PRIMARY KEY") == 0) {
+        if (def.find("PRIMARY KEY") == 0) {
             size_t start = def.find('(');
             size_t end = def.find(')');
             if (start != std::string::npos && end != std::string::npos && end > start) {
@@ -103,7 +104,7 @@ void Parse::handleCreateTable(const std::smatch& match) {
             continue;
         }
 
-        if (upperDef.find("CHECK") == 0) {
+        if (def.find("CHECK") == 0) {
             size_t start = def.find('(');
             size_t end = def.rfind(')');
             if (start != std::string::npos && end != std::string::npos && end > start) {
@@ -120,7 +121,7 @@ void Parse::handleCreateTable(const std::smatch& match) {
             continue;
         }
 
-        if (upperDef.find("FOREIGN KEY") == 0) {
+        if (def.find("FOREIGN KEY") == 0) {
             std::regex tableLevelFKRegex(R"(FOREIGN\s+KEY\s*\(\s*(\w+)\s*\)\s+REFERENCES\s+(\w+)\s*\(\s*(\w+)\s*\))", std::regex::icase);
             std::smatch match;
             if (std::regex_search(def, match, tableLevelFKRegex)) {
@@ -140,7 +141,7 @@ void Parse::handleCreateTable(const std::smatch& match) {
             continue;
         }
 
-        if (upperDef.find("UNIQUE") == 0) {
+        if (def.find("UNIQUE") == 0) {
             size_t start = def.find('(');
             size_t end = def.find(')');
             if (start != std::string::npos && end != std::string::npos && end > start) {
@@ -201,7 +202,7 @@ void Parse::handleCreateTable(const std::smatch& match) {
             return;
         }
 
-        std::string rest = toUpper(def.substr(fieldMatch[0].length()));
+        std::string rest = def.substr(fieldMatch[0].length());
 
         if (rest.find("PRIMARY KEY") != std::string::npos) {
             ConstraintBlock cb{};
@@ -323,7 +324,7 @@ void Parse::handleAddColumn(const std::smatch& m) {
     }
 
     // 处理约束部分
-    std::string rest = toUpper(optionalConstraint);
+    std::string rest = optionalConstraint;
 
     // 处理 PRIMARY KEY 约束
     if (rest.find("PRIMARY KEY") != std::string::npos) {
