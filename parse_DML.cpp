@@ -33,10 +33,13 @@ void Parse::handleUpdate(const std::smatch& m) {
     std::cout << "SET 子句: " << setClause << std::endl;
     std::cout << "WHERE 条件: " << condition << std::endl;
 
+        
+
     // 创建 Record 对象来执行更新操作
     Record record;
     try {
-        record.update(tableName, setClause, condition);
+        std::string table_path = dbManager::getInstance().getCurrentDatabase()->getDBPath() + "/" + tableName;
+        record.update(table_path, setClause, condition);
 
         Output::printMessage(outputEdit, QString::fromStdString("UPDATE 执行成功。"));
     }
@@ -59,7 +62,7 @@ void Parse::handleDelete(const std::smatch& m) {
         std::string table_path = dbManager::getInstance().getCurrentDatabase()->getDBPath() + "/" + table_name;
 
         Record r;
-        r.delete_(table_name, condition);
+        r.delete_(table_path, condition);
 
         Output::printMessage(outputEdit, QString::fromStdString("DELETE FROM 执行成功。"));
     }
