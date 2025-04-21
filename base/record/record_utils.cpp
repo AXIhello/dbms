@@ -505,7 +505,7 @@ bool Record::matches_condition(const std::unordered_map<std::string, std::string
 }
 
 // 从.trd文件读取记录
-std::vector<std::unordered_map<std::string, std::string>> Record::read_records(const std:: string table_name) {
+std::vector<std::unordered_map<std::string, std::string>> Record::read_records(const std::string table_name) {
     std::vector<std::unordered_map<std::string, std::string>> records;
     std::string trd_filename = table_name + ".trd";
     std::ifstream file(trd_filename, std::ios::binary);
@@ -514,35 +514,31 @@ std::vector<std::unordered_map<std::string, std::string>> Record::read_records(c
         return records; // 如果文件不存在，返回空记录集
     }
 
-    // 读取表结构以获取字段信息
     std::vector<FieldBlock> fields = read_field_blocks(table_name);
 
-    // 读取文件中的每条记录
     while (file.peek() != EOF) {
         std::unordered_map<std::string, std::string> record_data;
 
         for (const auto& field : fields) {
-            // 读取NULL标志
             char null_flag;
             file.read(&null_flag, sizeof(char));
+            if (file.eof()) break;
+
             size_t bytes_read = sizeof(char);
 
             if (null_flag == 1) {
-                // 是NULL值
                 record_data[field.name] = "NULL";
 
-                // 计算若有值时应读取的字节数
                 switch (field.type) {
-                case 1: bytes_read += sizeof(int); break;
-                case 2: bytes_read += sizeof(double); break;
-                case 3: bytes_read += field.param; break;
-                case 4: bytes_read += sizeof(char); break;
-                case 5: bytes_read += sizeof(std::time_t); break;
+                case 1: bytes_read += sizeof(int); file.seekg(sizeof(int), std::ios::cur); break;
+                case 2: bytes_read += sizeof(double); file.seekg(sizeof(double), std::ios::cur); break;
+                case 3: bytes_read += field.param; file.seekg(field.param, std::ios::cur); break;
+                case 4: bytes_read += sizeof(char); file.seekg(sizeof(char), std::ios::cur); break;
+                case 5: bytes_read += sizeof(std::time_t); file.seekg(sizeof(std::time_t), std::ios::cur); break;
                 default: break;
                 }
             }
             else {
-                // 非NULL值，根据类型读取
                 switch (field.type) {
                 case 1: { // INTEGER
                     int int_val;
@@ -558,23 +554,23 @@ std::vector<std::unordered_map<std::string, std::string>> Record::read_records(c
                     bytes_read += sizeof(double);
                     break;
                 }
-                case 3: {
-                    char* buffer = new char[field.param];
-                    file.read(buffer, field.param);
-                    record_data[field.name] = std::string(buffer);
-                    delete[] buffer;
+                case 3: { // VARCHAR
+                    std::vector<char> buffer(field.param);
+                    file.read(buffer.data(), field.param);
+                    record_data[field.name] = std::string(buffer.data(), field.param);
+                    bytes_read += field.param;
                     break;
                 }
                 case 4: { // BOOL
                     char b;
                     file.read(&b, sizeof(char));
                     record_data[field.name] = (b == 1) ? "1" : "0";
+                    bytes_read += sizeof(char);
                     break;
                 }
                 case 5: { // DATETIME
                     std::time_t time_val;
                     file.read(reinterpret_cast<char*>(&time_val), sizeof(std::time_t));
-                    // 将时间戳转换为字符串
                     char time_str[30];
                     std::strftime(time_str, sizeof(time_str), "%Y-%m-%d %H:%M:%S", std::localtime(&time_val));
                     record_data[field.name] = "'" + std::string(time_str) + "'";
@@ -586,18 +582,20 @@ std::vector<std::unordered_map<std::string, std::string>> Record::read_records(c
                 }
             }
 
-            // 跳过填充字节
             size_t padding = (4 - (bytes_read % 4)) % 4;
             if (padding > 0) {
                 file.seekg(padding, std::ios::cur);
             }
         }
 
-        records.push_back(record_data);
+        if (!record_data.empty()) {
+            records.push_back(record_data);
+        }
     }
 
     return records;
 }
+
 bool Record::read_single_record(std::ifstream& file, const std::vector<FieldBlock>& fields,
     std::unordered_map<std::string, std::string>& record_data) {
     record_data.clear();
