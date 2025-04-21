@@ -457,17 +457,6 @@ bool Record::matches_condition(const std::unordered_map<std::string, std::string
         std::string clean_field_value = field_value;
         std::string clean_condition_value = condition_value;
 
-        // 去除可能存在的引号
-        /*auto remove_quotes = [](std::string& s) {
-            if ((s.front() == '\'' && s.back() == '\'') ||
-                (s.front() == '\"' && s.back() == '\"')) {
-                s = s.substr(1, s.length() - 2);
-            }
-            };
-        
-        remove_quotes(clean_field_value);
-        remove_quotes(clean_condition_value);*/
-
         if (condition_operator == "=") return clean_field_value == clean_condition_value;
         if (condition_operator == "!=") return clean_field_value != clean_condition_value;
         if (condition_operator == ">") return clean_field_value > clean_condition_value;

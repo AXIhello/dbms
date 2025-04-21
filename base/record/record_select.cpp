@@ -157,10 +157,12 @@ std::vector<Record> Record::select(
     for (const auto& row : result) {
         Record rec;
         rec.set_table_name(table_name);
-        for (const auto& [col, val] : row) {
+        for (const auto& col : selected_cols) {
             rec.add_column(col);
-            rec.add_value(val);
+            auto it = row.find(col);
+            rec.add_value(it != row.end() ? it->second : "NULL");
         }
+
         records.push_back(rec);
     }
 
