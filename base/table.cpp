@@ -294,7 +294,7 @@ void Table::saveDefineBinary() {
         // 填充必要的字段信息
         field.order = i; // 设置字段的顺序
         field.mtime = std::time(nullptr); // 设置最后修改时间为当前时间
-        field.integrities = 0; //无用的参数。 全部设置 0
+        field.integrities = 0; //
 
         // 将当前字段块写入文件
         out.write(reinterpret_cast<const char*>(&field), sizeof(FieldBlock));
