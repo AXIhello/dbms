@@ -304,31 +304,74 @@ void Table::saveDefineBinary() {
 }
 
 void Table::addConstraint(const std::string& constraintName,
-	const std::string& fieldName,
-	const std::string& param) {
-	
-	//先查找是否有该字段
+    const std::string& constraintType,
+    const std::string& constraintBody) {
+    // 先查找是否有该字段
+    auto field_it = std::find_if(m_fields.begin(), m_fields.end(), [&](const FieldBlock& field) {
+        return field.name == constraintName;
+        });
 
+    if (field_it == m_fields.end()) {
+        throw std::runtime_error("字段 '" + constraintName + "' 不存在，无法添加约束。");
+    }
+
+    // 创建一个约束对象
     ConstraintBlock cb{};
-	
+    strncpy(cb.name, constraintName.c_str(), sizeof(cb.name) - 1);
+    strncpy(cb.field, constraintName.c_str(), sizeof(cb.field) - 1);
 
-	saveIntegrityBinary(); // 保存到完整性文件
-	m_lastModifyTime = std::time(nullptr); // 更新时间戳
-}
+    // 解析约束类型并设置约束参数
+    if (constraintType == "PRIMARY KEY") {
+        cb.type = 1;
+    }
+    else if (constraintType == "FOREIGN KEY") {
+        cb.type = 2;
+        strncpy(cb.param, constraintBody.c_str(), sizeof(cb.param) - 1);
+    }
+    else if (constraintType == "CHECK") {
+        cb.type = 3;
+        strncpy(cb.param, constraintBody.c_str(), sizeof(cb.param) - 1);
+    }
+    else if (constraintType == "UNIQUE") {
+        cb.type = 4;
+    }
+    else if (constraintType == "NOT NULL") {
+        cb.type = 5;
+    }
+    else if (constraintType == "DEFAULT") {
+        cb.type = 6;
+        strncpy(cb.param, constraintBody.c_str(), sizeof(cb.param) - 1); // 假设 constraintBody 是默认值
+    }
+    else if (constraintType == "AUTO_INCREMENT") {
+        cb.type = 7;
+    }
+    else {
+        throw std::runtime_error("未知约束类型 '" + constraintType + "'。");
+    }
 
-void Table::addConstraint(const ConstraintBlock& constraint) {
     // 将约束添加到表的约束列表中
-    m_constraints.push_back(constraint);
+    m_constraints.push_back(cb);
 
-    // 更新时间戳
-    m_lastModifyTime = std::time(nullptr);
-    // 将所有约束保存到 .tic 文件中
-    saveIntegrityBinary();
-
-    // 保存定义文件和元数据文件
-    /*saveDefineBinary();
-    saveMetadataBinary();*/
+    // 保存约束到文件
+    saveIntegrityBinary();  // 保存到完整性文件
+    m_lastModifyTime = std::time(nullptr);  // 更新时间戳
+	savemetadataBinary(); // 保存定义文件和元数据文件
 }
+
+
+//void Table::addConstraint(const ConstraintBlock& constraint) {
+//    // 将约束添加到表的约束列表中
+//    m_constraints.push_back(constraint);
+//
+//    // 更新时间戳
+//    m_lastModifyTime = std::time(nullptr);
+//    // 将所有约束保存到 .tic 文件中
+//    saveIntegrityBinary();
+//
+//    // 保存定义文件和元数据文件
+//    /*saveDefineBinary();
+//    saveMetadataBinary();*/
+//}
 
 void Table::dropConstraint(const std::string constraintName) {
 	auto it = std::remove_if(m_constraints.begin(), m_constraints.end(), [&](const ConstraintBlock& constraint) {
@@ -590,7 +633,7 @@ void Table::updateRecord(std::vector<FieldBlock>& fields) {
         throw std::runtime_error("表 '" + m_tableName + "' 不存在。");
     }
 
-    // 打开.trd文件
+    // 打开 .trd 文件
     std::fstream file(m_trd, std::ios::in | std::ios::out | std::ios::binary);
     if (!file) {
         throw std::runtime_error("无法打开表文件 '" + m_tableName + ".trd' 进行更新。");
@@ -649,7 +692,7 @@ void Table::updateRecord(std::vector<FieldBlock>& fields) {
     // 遍历 fields 和 m_fields，进行字段的删除、新增和更新操作
     for (auto& record : all_records) {
         // 删除字段：检查 fields 中的字段是否不在 m_fields 中
-        for (size_t i = 0; i < fields.size(); ++i) {
+        for (int i = fields.size() - 1; i >= 0; --i) {  // 倒序遍历
             FieldBlock& field = fields[i];
 
             // 如果 fields 中的字段在 m_fields 中找不到，删除该字段
@@ -661,7 +704,6 @@ void Table::updateRecord(std::vector<FieldBlock>& fields) {
                 // 删除对应的字段值
                 record.erase(record.begin() + i);
                 m_fields.erase(m_fields.begin() + i); // 删除 m_fields 中的字段
-                --i; // 确保删除后继续检查当前索引
             }
         }
 
@@ -758,7 +800,6 @@ void Table::updateRecord(std::vector<FieldBlock>& fields) {
                 }
             }
         }
-
     }
 
     // 清空原文件并重新写入所有更新后的记录
@@ -822,6 +863,7 @@ void Table::updateRecord(std::vector<FieldBlock>& fields) {
     file.close();
     std::cout << "记录更新成功。" << std::endl;
 }
+
 
 
 //lzl疑似已写
