@@ -59,6 +59,18 @@ void Parse::registerPatterns() {
       [this](const std::smatch& m) { handleModifyColumn(m); }
         });
 
+    //
+    patterns.push_back({
+    std::regex(R"(ALTER\s+TABLE\s+(\w+)\s+ADD\s+CONSTRAINT\s+(\w+)\s+(.*);)", std::regex::icase),
+    [this](const std::smatch& m) { handleAddConstraint(m); }
+        });
+    
+    //
+    patterns.push_back({
+    std::regex(R"(ALTER\s+TABLE\s+(\w+)\s+DROP\s+CONSTRAINT\s+(\w+);)", std::regex::icase),
+    [this](const std::smatch& m) { handleDropConstraint(m); }
+        });
+
 
 
     /*  DML  */

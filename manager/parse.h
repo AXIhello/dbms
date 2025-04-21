@@ -75,6 +75,9 @@ private:
     void handleDropColumn(const std::smatch& m);
     void handleModifyColumn(const std::smatch& m);
 
+    void handleAddConstraint(const std::smatch& m);
+    void handleDropConstraint(const std::smatch& m);
+
     //DML
     void handleInsertInto(const std::smatch& m);
     void handleUpdate(const std::smatch& m);

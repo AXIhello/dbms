@@ -303,6 +303,19 @@ void Table::saveDefineBinary() {
     out.close();
 }
 
+void Table::addConstraint(const std::string& constraintName,
+	const std::string& fieldName,
+	const std::string& param) {
+	
+	//先查找是否有该字段
+
+    ConstraintBlock cb{};
+	
+
+	saveIntegrityBinary(); // 保存到完整性文件
+	m_lastModifyTime = std::time(nullptr); // 更新时间戳
+}
+
 void Table::addConstraint(const ConstraintBlock& constraint) {
     // 将约束添加到表的约束列表中
     m_constraints.push_back(constraint);

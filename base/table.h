@@ -73,7 +73,12 @@ public:
 
 
     //表完整性文件
-    void addConstraint(const ConstraintBlock& constraint);
+    void addConstraint(const std::string& constraintName,
+                       const std::string& constraintType,
+                       const std::string& constraintBody);
+
+	void addConstraint(const ConstraintBlock& constraint);//原增加完整性约束方法（建表时用）
+
 	void dropConstraint(const std::string constraintName);
 	void updateConstraint(const std::string constraintName, const ConstraintBlock& updatedConstraint);
     void saveIntegrityBinary();
