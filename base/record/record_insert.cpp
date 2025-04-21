@@ -25,7 +25,20 @@ void Record::insert_record(const std::string& table_name, const std::string& col
         validate_types();
     }
     else {
-        throw std::invalid_argument("Invalid SQL insert statement.");
+        // 没有指定列名，自动使用所有字段
+            std::vector<FieldBlock> fields = read_field_blocks(table_name);
+        columns.clear();
+        for (const auto& field : fields) {
+            columns.push_back(field.name);
+        }
+
+        parse_values(vals);
+
+        if (columns.size() != values.size()) {
+            throw std::runtime_error("插入值数量与表字段数量不匹配");
+        }
+
+        validate_types();
     }
     insert_into();
 }

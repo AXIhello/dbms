@@ -162,7 +162,6 @@ std::vector<Record> Record::select(
             auto it = row.find(col);
             rec.add_value(it != row.end() ? it->second : "NULL");
         }
-
         records.push_back(rec);
     }
 
