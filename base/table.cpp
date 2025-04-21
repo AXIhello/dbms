@@ -357,7 +357,6 @@ void Table::addField(const FieldBlock& field) {
     // 保存到定义文件和元数据文件
     saveDefineBinary();
     saveMetadataBinary();
-    //loadRecord(); //
 }
 
 //待实现。不管有没有值，都直接删

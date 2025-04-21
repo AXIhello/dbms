@@ -62,18 +62,19 @@ void Parse::registerPatterns() {
 
 
     /*  DML  */
+    //√
     patterns.push_back({
         std::regex(R"(^INSERT\s+INTO\s+(\w+)\s*\(([^)]+)\)\s*VALUES\s*\(([^)]+)\);$)", std::regex::icase),
         [this](const std::smatch& m) { handleInsertInto(m); }
         });
 
-    //
+    //√
     patterns.push_back({
         std::regex(R"(^UPDATE\s+(\w+)\s+SET\s+(.+?)(?:\s+WHERE\s+(.+))?$)", std::regex::icase),
         [this](const std::smatch& m) { handleUpdate(m); }
         });
 
-    //
+    //√
     patterns.push_back({
         std::regex(R"(^DELETE\s+FROM\s+(\w+)\s*(?:WHERE\s+(.+))?\s*;$)", std::regex::icase),
         [this](const std::smatch& m) { handleDelete(m); }
@@ -101,9 +102,11 @@ void Parse::registerPatterns() {
 
     //√ (匹配 select * )
     patterns.push_back({
-        std::regex(R"(^SELECT\s+\*\s+FROM\s+(\w+)(?:\s+WHERE\s+(.+))?;$)", std::regex::icase),
-        [this](const std::smatch& m) { handleSelect(m); }
+    std::regex(R"(^SELECT\s+(\*|[\w\s\(\)\*,]+)\s+FROM\s+(\w+)(?:\s+WHERE\s+(.+?))?(?:\s+GROUP\s+BY\s+(.+?))?(?:\s+ORDER\s+BY\s+(.+?))?\s*;$)", std::regex::icase),
+    [this](const std::smatch& m) { handleSelect(m); }
         });
+
+
 
 
 
