@@ -37,9 +37,9 @@ void Parse::handleUpdate(const std::smatch& m) {
     Record record;
     try {
         std::string table_path = dbManager::getInstance().getCurrentDatabase()->getDBPath() + "/" + tableName;
-        record.update(table_path, setClause, condition);
+        int num=record.update(table_path, setClause, condition);
 
-        Output::printMessage(outputEdit, QString::fromStdString("UPDATE 执行成功。"));
+        Output::printMessage(outputEdit, QString::fromStdString("UPDATE 执行成功：已更新"+to_string(num)+"条记录。"));
     }
     catch (const std::exception& e) {
         Output::printError(outputEdit, QString::fromStdString(e.what()));
@@ -60,9 +60,9 @@ void Parse::handleDelete(const std::smatch& m) {
         std::string table_path = dbManager::getInstance().getCurrentDatabase()->getDBPath() + "/" + table_name;
 
         Record r;
-        r.delete_(table_path, condition);
+        int num=r.delete_(table_path, condition);
 
-        Output::printMessage(outputEdit, QString::fromStdString("DELETE FROM 执行成功。"));
+        Output::printMessage(outputEdit, QString::fromStdString("DELETE FROM 执行成功：已删除"+to_string(num)+"条记录。"));
     }
     catch (const std::exception& e) {
         Output::printError(outputEdit, QString::fromStdString(e.what()));

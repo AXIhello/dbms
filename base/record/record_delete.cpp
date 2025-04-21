@@ -13,7 +13,7 @@
 #include <unordered_map>
 #include <algorithm>
 
-void Record::delete_(const std::string& tableName, const std::string& condition) {
+int Record::delete_(const std::string& tableName, const std::string& condition) {
     this->table_name = tableName;
 
     if (!table_exists(this->table_name)) {
@@ -53,5 +53,5 @@ void Record::delete_(const std::string& tableName, const std::string& condition)
     std::remove((table_name + ".trd").c_str());
     std::rename((table_name + ".tmp").c_str(), (table_name + ".trd").c_str());
 
-    std::cout << "成功删除了 " << deleted << " 条记录。" << std::endl;
+    return deleted;
 }
