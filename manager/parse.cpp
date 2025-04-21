@@ -70,9 +70,10 @@ void Parse::registerPatterns() {
 
     //√
     patterns.push_back({
-        std::regex(R"(^UPDATE\s+(\w+)\s+SET\s+(.+?)(?:\s+WHERE\s+(.+))?$)", std::regex::icase),
-        [this](const std::smatch& m) { handleUpdate(m); }
+    std::regex(R"(^UPDATE\s+(\w+)\s+SET\s+(.+?)(?:\s+WHERE\s+(.+?))?\s*;$)", std::regex::icase),
+    [this](const std::smatch& m) { handleUpdate(m); }
         });
+
 
     //√
     patterns.push_back({
