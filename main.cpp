@@ -10,8 +10,8 @@ int main(int argc, char *argv[])
     QApplication a(argc, argv);
 	//debug::printDB(dbManager::basePath + "/ruanko.db");
 	//debug::printTB(dbManager::basePath + "/data/1/1.tb");
-	debug::printTDF(dbManager::basePath + "/data/3/TEST2.tdf");
-    debug::printTIC(dbManager::basePath + "/data/3/TEST2.tic"); 
+	debug::printTDF(dbManager::basePath + "/data/20/TEST1.tdf");
+    //debug::printTIC(dbManager::basePath + "/data/21/TEST2.tic"); 
 
     MainWindow w;
     dbManager& db = dbManager::getInstance();
