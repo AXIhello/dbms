@@ -31,9 +31,12 @@ void Parse::handleUpdate(const std::smatch& m) {
 
     std::string table_path = dbManager::getInstance().getCurrentDatabase()->getDBPath() + "/" + tableName;
 
+        
+
     // 创建 Record 对象来执行更新操作
     Record record;
     try {
+        std::string table_path = dbManager::getInstance().getCurrentDatabase()->getDBPath() + "/" + tableName;
         record.update(table_path, setClause, condition);
 
         Output::printMessage(outputEdit, QString::fromStdString("UPDATE 执行成功。"));

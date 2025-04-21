@@ -420,7 +420,7 @@ bool Record::matches_condition(const std::unordered_map<std::string, std::string
     std::string field_type = table_structure.at(condition_field);
 
     // 数值型比较
-    if (field_type == "INT" || field_type == "FLOAT" || field_type == "DOUBLE") {
+    if (field_type == "INTEGER" || field_type == "FLOAT" || field_type == "DOUBLE") {
         try {
             // 将字符串转换为数值进行比较
             double record_val = std::stod(field_value);
@@ -458,15 +458,15 @@ bool Record::matches_condition(const std::unordered_map<std::string, std::string
         std::string clean_condition_value = condition_value;
 
         // 去除可能存在的引号
-        auto remove_quotes = [](std::string& s) {
+        /*auto remove_quotes = [](std::string& s) {
             if ((s.front() == '\'' && s.back() == '\'') ||
                 (s.front() == '\"' && s.back() == '\"')) {
                 s = s.substr(1, s.length() - 2);
             }
             };
-
+        
         remove_quotes(clean_field_value);
-        remove_quotes(clean_condition_value);
+        remove_quotes(clean_condition_value);*/
 
         if (condition_operator == "=") return clean_field_value == clean_condition_value;
         if (condition_operator == "!=") return clean_field_value != clean_condition_value;

@@ -16,12 +16,13 @@
 void Record::update(const std::string& tableName, const std::string& setClause, const std::string& condition) {
     this->table_name = tableName;
 
-    if (!table_exists(tableName)) throw std::runtime_error("表不存在");
+    if (!table_exists(tableName)) throw std::runtime_error("表 '" + table_name + "' 不存在。");
 
     std::vector<FieldBlock> fields = read_field_blocks(table_name);
     this->table_structure = read_table_structure_static(table_name);
     if (!condition.empty()) parse_condition(condition);
 
+    // 解析 setClause
     std::unordered_map<std::string, std::string> updates;
     std::istringstream ss(setClause);
     std::string pair;
@@ -52,18 +53,18 @@ void Record::update(const std::string& tableName, const std::string& setClause, 
     int updated = 0;
 
     while (read_single_record(infile, fields, record_data)) {
-        bool should_update = condition.empty() || matches_condition(record_data);
+        std::unordered_map<std::string, std::string> updated_record = record_data;
 
-        if (should_update) {
-            // 应用更新
+        if (condition.empty() || matches_condition(record_data)) {
             for (const auto& [col, val] : updates) {
-                record_data[col] = val;
+                updated_record[col] = val;
             }
 
+            // 约束检查
             std::vector<std::string> cols, vals;
-            for (const auto& [k, v] : record_data) {
-                cols.push_back(k);
-                vals.push_back(v);
+            for (const auto& field : fields) {
+                cols.push_back(field.name);
+                vals.push_back(updated_record[field.name]);
             }
 
             std::vector<ConstraintBlock> constraints = read_constraints(table_name);
@@ -71,17 +72,22 @@ void Record::update(const std::string& tableName, const std::string& setClause, 
                 throw std::runtime_error("违反表约束");
             }
 
-            // 重要：将约束检查后可能修改的值同步回record_data
+            // 覆盖更新后的值（可能被默认值或自增更新过）
             for (size_t i = 0; i < cols.size(); ++i) {
-                record_data[cols[i]] = vals[i];
+                updated_record[cols[i]] = vals[i];
             }
 
             updated++;
         }
 
-        // 写入记录（原始的或更新后的）
+        // 写入：无论是否更新，只写入 updated_record
         for (const auto& field : fields) {
-            write_field(outfile, field, record_data[field.name]);
+            if (updated_record.find(field.name) == updated_record.end()) {
+                write_field(outfile, field, "NULL");
+            }
+            else {
+                write_field(outfile, field, updated_record[field.name]);
+            }
         }
     }
 
@@ -98,4 +104,5 @@ void Record::update(const std::string& tableName, const std::string& setClause, 
 
     std::cout << "成功更新了 " << updated << " 条记录。" << std::endl;
 }
+
 
