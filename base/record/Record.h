@@ -21,6 +21,7 @@ private:
     std::string condition_field;   // 条件中的字段名
     std::string condition_operator; // 条件中的操作符
     std::string condition_value;    // 条件中的值
+    std::string full_condition;
     void parse_condition(const std::string& condition);
     bool matches_condition(const std::unordered_map<std::string, std::string>& record_data) const;
 
