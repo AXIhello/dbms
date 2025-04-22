@@ -22,22 +22,22 @@
     <Filter Include="manager\parse">
       <UniqueIdentifier>{3246e29c-38c8-4a70-b0c7-91d21c7d57e5}</UniqueIdentifier>
     </Filter>
+    <Filter Include="base\block">
+      <UniqueIdentifier>{b329f63e-a990-4318-93c4-bd766b14d0c1}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="base\table">
+      <UniqueIdentifier>{a5f4181a-8651-4e4a-a4bc-2b9ef1a210b9}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <!-- base -->
     <ClCompile Include="base\database.cpp">
       <Filter>base</Filter>
     </ClCompile>
-    <ClCompile Include="base\table.cpp">
-      <Filter>base</Filter>
-    </ClCompile>
     <ClCompile Include="base\user.cpp">
       <Filter>base</Filter>
     </ClCompile>
     <ClInclude Include="base\database.h">
-      <Filter>base</Filter>
-    </ClInclude>
-    <ClInclude Include="base\table.h">
       <Filter>base</Filter>
     </ClInclude>
     <ClInclude Include="base\user.h">
@@ -124,25 +124,28 @@
     <ClCompile Include="base\BTree.cpp">
       <Filter>base</Filter>
     </ClCompile>
+    <ClCompile Include="base\table\table_tdf.cpp">
+      <Filter>base\table</Filter>
+    </ClCompile>
+    <ClCompile Include="base\table\table_tic.cpp">
+      <Filter>base\table</Filter>
+    </ClCompile>
+    <ClCompile Include="base\table\table_tid.cpp">
+      <Filter>base\table</Filter>
+    </ClCompile>
+    <ClCompile Include="base\table\table_trd.cpp">
+      <Filter>base\table</Filter>
+    </ClCompile>
+    <ClCompile Include="base\table\table.cpp">
+      <Filter>base\table</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="tableBlock.h">
-      <Filter>base</Filter>
-    </ClInclude>
-    <ClInclude Include="manager\databaseBlock.h">
-      <Filter>base</Filter>
-    </ClInclude>
-    <ClInclude Include="base\fieldBlock.h">
-      <Filter>base</Filter>
-    </ClInclude>
     <ClInclude Include="debug.h">
       <Filter>debug</Filter>
     </ClInclude>
     <ClInclude Include="base\record\Record.h">
       <Filter>base\record</Filter>
-    </ClInclude>
-    <ClInclude Include="constraintBlock.h">
-      <Filter>base</Filter>
     </ClInclude>
     <ClInclude Include="manager\parse.h">
       <Filter>manager\parse</Filter>
@@ -150,8 +153,23 @@
     <ClInclude Include="base\BTree.h">
       <Filter>base</Filter>
     </ClInclude>
-    <ClInclude Include="base\indexBlock.h">
-      <Filter>base</Filter>
+    <ClInclude Include="manager\databaseBlock.h">
+      <Filter>base\block</Filter>
+    </ClInclude>
+    <ClInclude Include="base\block\constraintBlock.h">
+      <Filter>base\block</Filter>
+    </ClInclude>
+    <ClInclude Include="base\block\fieldBlock.h">
+      <Filter>base\block</Filter>
+    </ClInclude>
+    <ClInclude Include="base\block\indexBlock.h">
+      <Filter>base\block</Filter>
+    </ClInclude>
+    <ClInclude Include="base\block\tableBlock.h">
+      <Filter>base\block</Filter>
+    </ClInclude>
+    <ClInclude Include="base\table\table.h">
+      <Filter>base\table</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
