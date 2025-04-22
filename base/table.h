@@ -78,6 +78,11 @@ public:
                        const std::string& constraintBody);
 
 	void addConstraint(const ConstraintBlock& constraint);//原增加完整性约束方法（建表时用）
+    //新增约束时ForeignKey专用
+    void addForeignKey(const std::string& constraintName,
+        const std::string& foreignKeyField,
+        const std::string& referenceTable,
+        const std::string& referenceField);
 
 	void dropConstraint(const std::string constraintName);
 	void updateConstraint(const std::string constraintName, const ConstraintBlock& updatedConstraint);

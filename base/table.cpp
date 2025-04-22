@@ -1,6 +1,7 @@
 #include "table.h"
 #include <iostream>
 #include <ctime>
+#include "manager/parse.h"
 #include <cstring>
 #include <iomanip>
 #include"manager/dbManager.h"
@@ -303,53 +304,152 @@ void Table::saveDefineBinary() {
     out.close();
 }
 
+void Table::addForeignKey(const std::string& constraintName,
+    const std::string& foreignKeyField,
+    const std::string& referenceTable,
+    const std::string& referenceField) {
+    ConstraintBlock cb{};
+    cb.type = 2;  // 外键类型编号
+
+    // 设置约束名
+    strncpy_s(cb.name, constraintName.c_str(), sizeof(cb.name) - 1);
+
+    // 检查外键字段是否存在于当前表中
+    bool fieldExists = false;
+    for (const FieldBlock& f : m_fields) {
+        if (f.name == foreignKeyField) {
+            fieldExists = true;
+            break;
+        }
+    }
+    if (!fieldExists) {
+        throw std::runtime_error("外键字段不存在于当前表中: " + foreignKeyField);
+    }
+	//检查引用表和字段是否存在
+    
+
+
+    // 设置字段名
+    strncpy_s(cb.field, foreignKeyField.c_str(), sizeof(cb.field) - 1);
+
+    // 设置参数为 引用表.字段
+    std::string ref = referenceTable + "." + referenceField;
+    strncpy_s(cb.param, ref.c_str(), sizeof(cb.param) - 1);
+
+    // 添加约束
+    m_constraints.push_back(cb);
+
+    // 保存约束和元数据
+    saveIntegrityBinary();
+    m_lastModifyTime = std::time(nullptr);
+    saveMetadataBinary();
+}
+
+
+//仅处理表级check, priamry key, unique约束
 void Table::addConstraint(const std::string& constraintName,
     const std::string& constraintType,
     const std::string& constraintBody) {
-    // 先查找是否有该字段
-    auto field_it = std::find_if(m_fields.begin(), m_fields.end(), [&](const FieldBlock& field) {
-        return field.name == constraintName;
-        });
-
-    if (field_it == m_fields.end()) {
-        throw std::runtime_error("字段 '" + constraintName + "' 不存在，无法添加约束。");
-    }
-
-    // 创建一个约束对象
+   
     ConstraintBlock cb{};
-    strncpy(cb.name, constraintName.c_str(), sizeof(cb.name) - 1);
-    strncpy(cb.field, constraintName.c_str(), sizeof(cb.field) - 1);
+    strncpy_s(cb.name, constraintName.c_str(), sizeof(cb.name) - 1);
 
     // 解析约束类型并设置约束参数
     if (constraintType == "PRIMARY KEY") {
         cb.type = 1;
+
+        //检验字段是否存在；先分割（如果多个）
+        std::vector<std::string> fields;
+        std::istringstream ss(constraintBody);
+        std::string field;
+        while (std::getline(ss, field, ',')) {
+            field = Parse::trim(field);  // 去除空格
+            fields.push_back(field);
+        }
+
+        for (const std::string& f : fields) {
+            bool fieldExists = false;
+            for (const FieldBlock& field : m_fields) {
+                if (field.name == f) {
+                    fieldExists = true;
+                    break;
+                }
+            }
+            if (!fieldExists) {
+                throw std::runtime_error("字段不存在于表中: " + f);
+            }
+        }
+        //field中先存着吧
+        strncpy_s(cb.field, constraintBody.c_str(), sizeof(cb.param) - 1);
+        strncpy_s(cb.param, constraintBody.c_str(), sizeof(cb.param) - 1);
+
     }
-    else if (constraintType == "FOREIGN KEY") {
-        cb.type = 2;
-        strncpy(cb.param, constraintBody.c_str(), sizeof(cb.param) - 1);
-    }
+  
     else if (constraintType == "CHECK") {
         cb.type = 3;
-        strncpy(cb.param, constraintBody.c_str(), sizeof(cb.param) - 1);
+        
+        std::string trimmedBody = Parse::trim(constraintBody);
+
+        // 2. 查找所有可能的字段
+        std::vector<std::string> fields;
+
+        // 正则表达式匹配字段名，假设字段名是由字母、数字或下划线组成
+        std::regex fieldRegex(R"(\b([a-zA-Z_][a-zA-Z0-9_]*)\b)");
+
+        auto wordsBegin = std::sregex_iterator(trimmedBody.begin(), trimmedBody.end(), fieldRegex);
+        auto wordsEnd = std::sregex_iterator();
+
+        // 提取所有字段名
+        for (std::sregex_iterator i = wordsBegin; i != wordsEnd; ++i) {
+            std::string field = i->str();
+            field = Parse::trim(field);  // 去除字段前后的空格
+            if (!field.empty()) {
+                fields.push_back(field);
+            }
+        }
+
+        // 3. 检查字段是否存在于表中
+        for (const std::string& field : fields) {
+            bool fieldExists = false;
+            for (const FieldBlock& fb : m_fields) {
+                if (fb.name == field) {
+                    fieldExists = true;
+                    break;
+                }
+            }
+            if (!fieldExists) {
+                throw std::runtime_error("字段不存在于表中: " + field);
+            }
+        }
+
+        strncpy_s(cb.param, trimmedBody.c_str(), sizeof(cb.param) - 1);
+
     }
     else if (constraintType == "UNIQUE") {
         cb.type = 4;
-    }
-    else if (constraintType == "NOT NULL") {
-        cb.type = 5;
-    }
-    else if (constraintType == "DEFAULT") {
-        cb.type = 6;
-        strncpy(cb.param, constraintBody.c_str(), sizeof(cb.param) - 1); // 假设 constraintBody 是默认值
-    }
-    else if (constraintType == "AUTO_INCREMENT") {
-        cb.type = 7;
+        std::string field = Parse::trim(constraintBody);  // 只有一个字段
+
+        // 检查字段是否存在于表中
+        bool fieldExists = false;
+        for (const FieldBlock& f : m_fields) {
+            if (f.name == field) {
+                fieldExists = true;
+                break;
+            }
+        }
+        if (!fieldExists) {
+            throw std::runtime_error("字段不存在于表中: " + field);
+        }
+        //向tic文件中检查是否已有约束？
+
+        strncpy_s(cb.field, constraintBody.c_str(), sizeof(cb.param) - 1);
+        strncpy_s(cb.param, constraintBody.c_str(), sizeof(cb.param) - 1);
     }
     else {
         throw std::runtime_error("未知约束类型 '" + constraintType + "'。");
     }
 
-    // 将约束添加到表的约束列表中
+   
     m_constraints.push_back(cb);
 
     // 保存约束到文件
@@ -1004,6 +1104,8 @@ void Table::loadIndex() {
 	in.close();
 }
 
+void Table::createIndex(const IndexBlock& index)
+{ }
 // 为指定字段创建 B 树索引
 //void Table::createIndex(const IndexBlock& index) {
 //    // 1. 查找字段

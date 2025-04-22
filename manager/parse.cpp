@@ -59,11 +59,17 @@ void Parse::registerPatterns() {
       [this](const std::smatch& m) { handleModifyColumn(m); }
         });
 
-    //
+    //仅支持primary key, unique和check的表级约束
     patterns.push_back({
-    std::regex(R"(ALTER\s+TABLE\s+(\w+)\s+ADD\s+CONSTRAINT\s+(\w+)\s+(.*);)", std::regex::icase),
+    std::regex(R"(ALTER\s+TABLE\s+(\w+)\s+ADD\s+CONSTRAINT\s+(\w+)\s+(PRIMARY\s+KEY|UNIQUE|CHECK)\s*(.*);)", std::regex::icase),
     [this](const std::smatch& m) { handleAddConstraint(m); }
         });
+
+    //对foreign key 特别设置的表级约束
+	patterns.push_back({ 
+    std::regex(R"(ALTER\s+TABLE\s+(\w+)\s+ADD\s+CONSTRAINT\s+(\w+)\s+FOREIGN\s+KEY\s*\((\w+)\)\s+REFERENCES\s+(\w+)\s*\((\w+)\);)", std::regex::icase),
+	[this](const std::smatch& m) { handleAddForeignKey(m); }
+		});
     
     //
     patterns.push_back({

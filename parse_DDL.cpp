@@ -498,25 +498,39 @@ void Parse::handleModifyColumn(const std::smatch& match) {
 void Parse::handleAddConstraint(const std::smatch& m) {
     std::string tableName = m[1];  // 表名
     std::string constraintName = m[2];  // 约束名
-    std::string constraintType = m[3];  // 约束类型：PRIMARY KEY, UNIQUE, CHECK, FOREIGN KEY
+    std::string constraintType = m[3];  // 约束类型：PRIMARY KEY, UNIQUE, CHECK,
     std::string constraintBody = m[4];  // 约束内容：字段名、表达式等
 
-    // 获取外键引用表和字段（如果存在）
-    std::string refTable = m[5];  // 引用表名（如果存在）
-    std::string refField = m[6];  // 引用字段（如果存在）
+    if (!constraintBody.empty() && constraintBody.front() == '(' && constraintBody.back() == ')') {
+        constraintBody = constraintBody.substr(1, constraintBody.length() - 2);
+    } //去除括号
+
 
     // 调用 Table::addConstraint 处理约束
     try {
         Table* table = dbManager::getInstance().getCurrentDatabase()->getTable(tableName);
 
-        // 处理 PRIMARY KEY, UNIQUE, CHECK, FOREIGN KEY
+        // 处理 PRIMARY KEY, UNIQUE, CHECK表级约束
         table->addConstraint(constraintName, constraintType, constraintBody);
 
-        // 如果是外键约束，处理外键引用
-        if (!refTable.empty() && !refField.empty()) {
-            // 外键约束额外处理：添加引用信息
-            table->addConstraint(constraintName, "FOREIGN KEY", constraintBody + " REFERENCES " + refTable + "(" + refField + ")");
-        }
+        Output::printMessage(outputEdit, QString::fromStdString("ALTER TABLE 添加约束成功"));
+    }
+    catch (const std::exception& e) {
+        Output::printError(outputEdit, QString::fromStdString(e.what()));
+    }
+}
+
+void Parse::handleAddForeignKey(const std::smatch& m) {
+    std::string tableName = m[1];          // 表名
+    std::string constraintName = m[2];     // 约束名
+    std::string foreignKeyField = m[3];    // 外键字段
+    std::string referenceTable = m[4];     // 引用表
+    std::string referenceField = m[5];     // 引用字段
+    try {
+        Table* table = dbManager::getInstance().getCurrentDatabase()->getTable(tableName);
+
+        // 处理 ForeignKey
+        table->addForeignKey(constraintName, foreignKeyField,referenceTable,referenceField);
 
         Output::printMessage(outputEdit, QString::fromStdString("ALTER TABLE 添加约束成功"));
     }

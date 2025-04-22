@@ -29,8 +29,11 @@ class Parse {
 public:
     Parse(QTextEdit* outputEdit, MainWindow* mainWindow = nullptr);
     void execute(const QString& sql);
-   
+    
     Parse(Database* database);
+
+    //util
+    static std::string trim(const std::string& s);
     
 private:
 	QTextEdit* outputEdit;  // 输出编辑器指针
@@ -47,7 +50,7 @@ private:
     //utility
     QString cleanSQL(const QString& sql);//清理sql结构，去除多余空格/制表符等
     
-    std::string trim(const std::string& s); 
+    
     std::vector<std::string> splitDefinition(const std::string& input);
     std::string toUpper(const std::string& str);
     std::string toLower(const std::string& input);
@@ -76,6 +79,9 @@ private:
     void handleModifyColumn(const std::smatch& m);
 
     void handleAddConstraint(const std::smatch& m);
+    //专门处理foreign key
+	void handleAddForeignKey(const std::smatch& m);
+
     void handleDropConstraint(const std::smatch& m);
 
     //DML
