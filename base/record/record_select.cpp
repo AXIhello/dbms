@@ -103,41 +103,66 @@ std::vector<Record> Record::select(
     auto eval_having = [&](const std::unordered_map<std::string, std::string>& row) -> bool {
         if (having.empty()) return true;
 
-        std::regex pattern(R"(\s*(\w+\(.*\)|\w+)\s*(=|!=|>|<|>=|<=)\s*(\S+))");
-        std::smatch match;
-        if (!std::regex_match(having, match, pattern)) return true;
+        std::regex cond_regex(R"((\w+\(.*?\)|\w+)\s*(=|!=|>=|<=|>|<)\s*('[^']*'|\d+(\.\d+)?|0|1))");
+        std::regex logic_split(R"(\s+(AND|OR)\s+)", std::regex::icase);
 
-        std::string col = match[1];
-        std::string op = match[2];
-        std::string rhs = match[3];
-        if (rhs.front() == '\'' && rhs.back() == '\'') {
-            rhs = rhs.substr(1, rhs.length() - 2);
+        std::sregex_token_iterator cond_it(having.begin(), having.end(), cond_regex), cond_end;
+        std::sregex_token_iterator logic_it(having.begin(), having.end(), logic_split, 1);
+
+        std::vector<std::string> conditions;
+        std::vector<std::string> logic_ops;
+
+        for (; cond_it != cond_end; ++cond_it) conditions.push_back(cond_it->str());
+        for (; logic_it != cond_end; ++logic_it) logic_ops.push_back(logic_it->str());
+
+        auto eval_single = [&](const std::string& cond) -> bool {
+            std::smatch m;
+            if (!std::regex_match(cond, m, cond_regex)) return false;
+
+            std::string field = m[1];
+            std::string op = m[2];
+            std::string val = m[3];
+
+            if (!row.count(field)) return false;
+            std::string left = row.at(field);
+            std::string right = val;
+
+            // 不去除引号，只按原样比较
+            try {
+                double l = std::stod(left), r = std::stod(right);
+                if (op == "=") return l == r;
+                if (op == "!=") return l != r;
+                if (op == ">") return l > r;
+                if (op == "<") return l < r;
+                if (op == ">=") return l >= r;
+                if (op == "<=") return l <= r;
+            }
+            catch (...) {
+                if (op == "=") return left == right;
+                if (op == "!=") return left != right;
+                if (op == ">") return left > right;
+                if (op == "<") return left < right;
+                if (op == ">=") return left >= right;
+                if (op == "<=") return left <= right;
+            }
+            return false;
+            };
+
+        if (conditions.empty()) return true;
+        bool result = eval_single(conditions[0]);
+
+        for (size_t i = 0; i < logic_ops.size(); ++i) {
+            std::string logic = logic_ops[i];
+            std::transform(logic.begin(), logic.end(), logic.begin(), ::toupper);
+            bool next = eval_single(conditions[i + 1]);
+
+            if (logic == "AND") result = result && next;
+            else if (logic == "OR") result = result || next;
         }
 
-        if (!row.count(col)) return false;
-        std::string lhs = row.at(col);
-
-        try {
-            double lnum = std::stod(lhs);
-            double rnum = std::stod(rhs);
-            if (op == "=") return lnum == rnum;
-            if (op == "!=") return lnum != rnum;
-            if (op == ">") return lnum > rnum;
-            if (op == "<") return lnum < rnum;
-            if (op == ">=") return lnum >= rnum;
-            if (op == "<=") return lnum <= rnum;
-        }
-        catch (...) {
-            if (op == "=") return lhs == rhs;
-            if (op == "!=") return lhs != rhs;
-            if (op == ">") return lhs > rhs;
-            if (op == "<") return lhs < rhs;
-            if (op == ">=") return lhs >= rhs;
-            if (op == "<=") return lhs <= rhs;
-        }
-
-        return true;
+        return result;
         };
+
 
     std::vector<std::string> selected_cols;
     if (columns == "*") {

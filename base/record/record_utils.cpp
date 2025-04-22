@@ -274,7 +274,7 @@ bool Record::validate_field_block(const std::string& value, const FieldBlock& fi
     }
 }
 
-void Record::validate_types_without_columns() {
+/*void Record::validate_types_without_columns() {
     // 按表结构中的列顺序验证值的类型
     size_t i = 0;
     for (const auto& column : columns) {
@@ -290,7 +290,7 @@ void Record::validate_types_without_columns() {
             ++i;
         }
     }
-}
+}*/
 
 // 解析列名列表
 std::vector<std::string> Record::parse_column_list(const std::string& columns) {
@@ -338,160 +338,93 @@ const std::vector<std::string>& Record::get_values() const {
     return values;
 }
 
-// 实现条件解析方法
 void Record::parse_condition(const std::string& condition) {
-    // 清除之前的条件数据
-    condition_field = "";
-    condition_operator = "";
-    condition_value = "";
-
-    // 如果条件为空则跳过
-    if (condition.empty()) {
-        return;
-    }
-
-    // 用于匹配不同比较运算符的正则表达式
-    std::regex eq_regex("\\s*(\\w+)\\s*=\\s*([^\\s]+)\\s*");   // 字段 = 值
-    std::regex neq_regex("\\s*(\\w+)\\s*!=\\s*([^\\s]+)\\s*"); // 字段 != 值
-    std::regex gt_regex("\\s*(\\w+)\\s*>\\s*([^\\s]+)\\s*");   // 字段 > 值
-    std::regex lt_regex("\\s*(\\w+)\\s*<\\s*([^\\s]+)\\s*");   // 字段 < 值
-    std::regex gte_regex("\\s*(\\w+)\\s*>=\\s*([^\\s]+)\\s*"); // 字段 >= 值
-    std::regex lte_regex("\\s*(\\w+)\\s*<=\\s*([^\\s]+)\\s*"); // 字段 <= 值
-
-    std::smatch matches;
-
-    // 尝试匹配每种操作符模式
-    if (std::regex_match(condition, matches, eq_regex)) {
-        condition_field = matches[1];
-        condition_operator = "=";
-        condition_value = matches[2];
-    }
-    else if (std::regex_match(condition, matches, neq_regex)) {
-        condition_field = matches[1];
-        condition_operator = "!=";
-        condition_value = matches[2];
-    }
-    else if (std::regex_match(condition, matches, gt_regex)) {
-        condition_field = matches[1];
-        condition_operator = ">";
-        condition_value = matches[2];
-    }
-    else if (std::regex_match(condition, matches, lt_regex)) {
-        condition_field = matches[1];
-        condition_operator = "<";
-        condition_value = matches[2];
-    }
-    else if (std::regex_match(condition, matches, gte_regex)) {
-        condition_field = matches[1];
-        condition_operator = ">=";
-        condition_value = matches[2];
-    }
-    else if (std::regex_match(condition, matches, lte_regex)) {
-        condition_field = matches[1];
-        condition_operator = "<=";
-        condition_value = matches[2];
-    }
-    else {
-        throw std::runtime_error("无效的条件格式：" + condition);
-    }
-
-    // 验证字段是否存在于表中
-    if (!table_structure.empty() && table_structure.find(condition_field) == table_structure.end()) {
-        throw std::runtime_error("字段 '" + condition_field + "' 不存在于表 '" + table_name + "' 中。");
-    }
+    full_condition = condition;
 }
 
 // 实现条件匹配判断方法
 bool Record::matches_condition(const std::unordered_map<std::string, std::string>& record_data) const {
-    // 如果没有条件，则所有记录都匹配
-    if (condition_field.empty() || condition_operator.empty()) {
-        return true;
-    }
+    if (full_condition.empty()) return true;
 
-    // 检查记录中是否包含条件字段
-    if (record_data.find(condition_field) == record_data.end()) {
-        return false; // 字段不存在，不匹配
-    }
+    // 正则分割 AND / OR 表达式并提取子句
+    std::regex logic_split(R"(\s+(AND|OR)\s+)", std::regex::icase);
+    std::sregex_token_iterator token_iter(full_condition.begin(), full_condition.end(), logic_split, { -1, 1 });
+    std::sregex_token_iterator end;
 
-    // 获取记录中对应字段的值
-    std::string field_value = record_data.at(condition_field);
+    std::vector<std::string> expressions;
+    std::vector<std::string> logic_ops;
 
-    // 根据字段类型进行比较
-    std::string field_type = table_structure.at(condition_field);
-
-    // 数值型比较
-    if (field_type == "INTEGER" || field_type == "FLOAT" || field_type == "DOUBLE") {
-        try {
-            // 将字符串转换为数值进行比较
-            double record_val = std::stod(field_value);
-            double condition_val = std::stod(condition_value);
-
-            if (condition_operator == "=") return record_val == condition_val;
-            if (condition_operator == "!=") return record_val != condition_val;
-            if (condition_operator == ">") return record_val > condition_val;
-            if (condition_operator == "<") return record_val < condition_val;
-            if (condition_operator == ">=") return record_val >= condition_val;
-            if (condition_operator == "<=") return record_val <= condition_val;
+    bool is_logic = false;
+    for (; token_iter != end; ++token_iter) {
+        std::string token = token_iter->str();
+        if (is_logic) {
+            std::transform(token.begin(), token.end(), token.begin(), ::toupper);
+            logic_ops.push_back(token);
         }
-        catch (const std::exception& e) {
-            // 转换失败，按字符串比较
-            std::cerr << "数值转换失败，按字符串比较: " << e.what() << std::endl;
+        else {
+            expressions.push_back(token);
         }
-    }
-    // 布尔型比较（0或1作为字符串）
-    if (field_type == "BOOL") {
-        if (condition_value != "0" && condition_value != "1") {
-            throw std::runtime_error("布尔类型条件值必须是 '0' 或 '1'");
-        }
-
-        if (condition_operator == "=") return field_value == condition_value;
-        if (condition_operator == "!=") return field_value != condition_value;
-        throw std::runtime_error("布尔类型只支持 '=' 和 '!=' 比较");
+        is_logic = !is_logic;
     }
 
-    // 字符串比较（或数值转换失败的情况）
-    if (field_type == "VARCHAR" ||  field_type == "TEXT" ||
-        condition_operator == "=" || condition_operator == "!=") {
+    auto evaluate_single = [&](const std::string& cond) -> bool {
+        std::regex expr_regex(R"(^\s*(\w+)\s*(=|!=|>=|<=|>|<)\s*(.+?)\s*$)");
+        std::smatch m;
+        if (!std::regex_match(cond, m, expr_regex)) return false;
 
-        // 处理引号
-        std::string clean_field_value = field_value;
-        std::string clean_condition_value = condition_value;
+        std::string field = m[1];
+        std::string op = m[2];
+        std::string value = m[3];
 
-        if (condition_operator == "=") return clean_field_value == clean_condition_value;
-        if (condition_operator == "!=") return clean_field_value != clean_condition_value;
-        if (condition_operator == ">") return clean_field_value > clean_condition_value;
-        if (condition_operator == "<") return clean_field_value < clean_condition_value;
-        if (condition_operator == ">=") return clean_field_value >= clean_condition_value;
-        if (condition_operator == "<=") return clean_field_value <= clean_condition_value;
-    }
+        if (record_data.find(field) == record_data.end()) return false;
+        std::string field_val = record_data.at(field);
+        std::string field_type = table_structure.at(field);
 
-    // 日期比较 (简单实现，可能需要更复杂的日期解析)
-    if (field_type == "DATE" || field_type == "DATETIME") {
-        // 去除引号后直接比较字符串（因为ISO格式日期字符串可以直接比较）
-        std::string clean_field_value = field_value;
-        std::string clean_condition_value = condition_value;
-
-        auto remove_quotes = [](std::string& s) {
-            if ((s.front() == '\'' && s.back() == '\'') ||
-                (s.front() == '\"' && s.back() == '\"')) {
-                s = s.substr(1, s.length() - 2);
+        // 不去除引号，支持带引号字符串比较
+        if (field_type == "INTEGER" || field_type == "FLOAT" || field_type == "DOUBLE") {
+            try {
+                double a = std::stod(field_val);
+                double b = std::stod(value);
+                if (op == "=") return a == b;
+                if (op == "!=") return a != b;
+                if (op == ">") return a > b;
+                if (op == "<") return a < b;
+                if (op == ">=") return a >= b;
+                if (op == "<=") return a <= b;
             }
-            };
+            catch (...) { return false; }
+        }
+        else if (field_type == "BOOL") {
+            return (op == "=") ? (field_val == value)
+                : (op == "!=") ? (field_val != value)
+                : false;
+        }
+        else {
+            // 字符串比较，包括带引号
+            if (op == "=") return field_val == value;
+            if (op == "!=") return field_val != value;
+            if (op == ">") return field_val > value;
+            if (op == "<") return field_val < value;
+            if (op == ">=") return field_val >= value;
+            if (op == "<=") return field_val <= value;
+        }
 
-        remove_quotes(clean_field_value);
-        remove_quotes(clean_condition_value);
+        return false;
+        };
 
-        if (condition_operator == "=") return clean_field_value == clean_condition_value;
-        if (condition_operator == "!=") return clean_field_value != clean_condition_value;
-        if (condition_operator == ">") return clean_field_value > clean_condition_value;
-        if (condition_operator == "<") return clean_field_value < clean_condition_value;
-        if (condition_operator == ">=") return clean_field_value >= clean_condition_value;
-        if (condition_operator == "<=") return clean_field_value <= clean_condition_value;
+    if (expressions.empty()) return true;
+
+    // 执行布尔逻辑
+    bool result = evaluate_single(expressions[0]);
+    for (size_t i = 0; i < logic_ops.size(); ++i) {
+        bool next_result = evaluate_single(expressions[i + 1]);
+        if (logic_ops[i] == "AND") result = result && next_result;
+        else if (logic_ops[i] == "OR") result = result || next_result;
     }
 
-    // 默认返回false
-    return false;
+    return result;
 }
+
 
 // 从.trd文件读取记录
 std::vector<std::unordered_map<std::string, std::string>> Record::read_records(const std::string table_name) {
