@@ -49,6 +49,15 @@ void Table::saveDefineBinary() {
     out.close();
 }
 
+FieldBlock* Table::getFieldByName(const std::string& fieldName) const{
+    for (const auto& field : m_fields) {
+        if (field.name == fieldName) {
+			FieldBlock* fieldPtr = new FieldBlock(field);
+            return fieldPtr;
+        }
+    }
+    throw std::runtime_error("字段 " + fieldName + " 不存在！");
+}
 //字段操作
 void Table::addField(const FieldBlock& field) {
     FieldBlock newField = field;
