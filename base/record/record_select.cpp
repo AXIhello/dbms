@@ -15,7 +15,8 @@ std::vector<Record> Record::select(
     const std::string& table_name,
     const std::string& condition,
     const std::string& group_by,
-    const std::string& order_by) {
+    const std::string& order_by,
+    const std::string& having) {
 
     std::vector<Record> records;
 
@@ -99,6 +100,45 @@ std::vector<Record> Record::select(
         return "";
         };
 
+    auto eval_having = [&](const std::unordered_map<std::string, std::string>& row) -> bool {
+        if (having.empty()) return true;
+
+        std::regex pattern(R"(\s*(\w+\(.*\)|\w+)\s*(=|!=|>|<|>=|<=)\s*(\S+))");
+        std::smatch match;
+        if (!std::regex_match(having, match, pattern)) return true;
+
+        std::string col = match[1];
+        std::string op = match[2];
+        std::string rhs = match[3];
+        if (rhs.front() == '\'' && rhs.back() == '\'') {
+            rhs = rhs.substr(1, rhs.length() - 2);
+        }
+
+        if (!row.count(col)) return false;
+        std::string lhs = row.at(col);
+
+        try {
+            double lnum = std::stod(lhs);
+            double rnum = std::stod(rhs);
+            if (op == "=") return lnum == rnum;
+            if (op == "!=") return lnum != rnum;
+            if (op == ">") return lnum > rnum;
+            if (op == "<") return lnum < rnum;
+            if (op == ">=") return lnum >= rnum;
+            if (op == "<=") return lnum <= rnum;
+        }
+        catch (...) {
+            if (op == "=") return lhs == rhs;
+            if (op == "!=") return lhs != rhs;
+            if (op == ">") return lhs > rhs;
+            if (op == "<") return lhs < rhs;
+            if (op == ">=") return lhs >= rhs;
+            if (op == "<=") return lhs <= rhs;
+        }
+
+        return true;
+        };
+
     std::vector<std::string> selected_cols;
     if (columns == "*") {
         for (const auto& field : fields) {
@@ -117,7 +157,9 @@ std::vector<Record> Record::select(
                 if (col == group_by) continue;
                 row[col] = apply_aggregates(col, group_records);
             }
-            result.push_back(row);
+            if (eval_having(row)) {
+                result.push_back(row);
+            }
         }
     }
     else if (std::any_of(selected_cols.begin(), selected_cols.end(), [](const std::string& c) {
@@ -127,7 +169,9 @@ std::vector<Record> Record::select(
         for (const auto& col : selected_cols) {
             row[col] = apply_aggregates(col, filtered);
         }
-        result.push_back(row);
+        if (eval_having(row)) {
+            result.push_back(row);
+        }
     }
     else {
         for (const auto& rec : filtered) {
@@ -159,11 +203,11 @@ std::vector<Record> Record::select(
         rec.set_table_name(table_name);
         for (const auto& col : selected_cols) {
             rec.add_column(col);
-            auto it = row.find(col);
-            rec.add_value(it != row.end() ? it->second : "NULL");
+            rec.add_value(row.count(col) ? row.at(col) : "NULL");
         }
         records.push_back(rec);
     }
 
     return records;
 }
+

@@ -78,7 +78,8 @@ public:
         const std::string& table_name,
         const std::string& condition,
         const std::string& group_by,
-        const std::string& order_by);
+        const std::string& order_by,
+        const std::string& having);
     int update(const std::string& tableName, const std::string& setClause, const std::string& condition);
     int delete_(const std::string& tableName, const std::string& condition);
     // 辅助函数
