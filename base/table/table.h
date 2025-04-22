@@ -7,6 +7,7 @@
 #include <vector>
 #include <ctime>
 #include <sstream>
+#include"base/BTree.h"
 #include"base/block/tableBlock.h"
 #include"base/block/fieldBlock.h"
 #include"base/block/constraintBlock.h"
@@ -57,6 +58,7 @@ public:
 		return m_fields;
 	}
 
+    FieldBlock* getFieldByName(const std::string& fieldName) const;
     //获取列名
     vector<string> getFieldNames() const {
         vector<string> fieldNames;
@@ -65,6 +67,7 @@ public:
         }
         return fieldNames;
     }
+
     void addField(const FieldBlock& field);
     void dropField(const std::string fieldName);
 	void updateField(const std::string fieldName, const FieldBlock& updatedField);
@@ -99,7 +102,7 @@ public:
     void saveIndex();
     void loadIndex();
     void createIndex(const IndexBlock& index);
-	void addIndex(const IndexBlock& index);
+    void addIndex(const IndexBlock& index);
 	void dropIndex(const std::string indexName);
 	void updateIndex(const std::string indexName, const IndexBlock& updatedIndex);
 
