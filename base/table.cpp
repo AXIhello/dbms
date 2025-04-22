@@ -325,9 +325,27 @@ void Table::addForeignKey(const std::string& constraintName,
     if (!fieldExists) {
         throw std::runtime_error("外键字段不存在于当前表中: " + foreignKeyField);
     }
-	//检查引用表和字段是否存在
-    
+	//检查引用表和字段是否存在(字段检查未完成）
+    Database* db = dbManager::getInstance().getCurrentDatabase();
+    // 确保引用表已加载到内存中
+    Table* refTable = db->getTable(referenceTable);
+    if (!refTable) {
+        throw std::runtime_error("无法加载引用表: " + referenceTable);
+    }
 
+    // 检查引用字段是否存在
+    std::vector<std::string> refColNames = refTable->getColNames();
+    bool m_fieldExists = false;
+    for (const std::string& colName : refColNames) {
+        if (colName == referenceField) {
+            m_fieldExists = true;
+            break;
+        }
+    }
+
+    if (!m_fieldExists) {
+        throw std::runtime_error("引用字段不存在于表 " + referenceTable + ": " + referenceField);
+    }
 
     // 设置字段名
     strncpy_s(cb.field, foreignKeyField.c_str(), sizeof(cb.field) - 1);
