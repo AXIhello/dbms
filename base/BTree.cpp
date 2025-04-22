@@ -10,7 +10,7 @@
 BTreeNode::BTreeNode(bool isLeaf) : isLeaf(isLeaf) {}
 
 // B树构造函数
-BTree::BTree(IndexBlock* indexBlock) : m_index(indexBlock) {
+BTree::BTree(const IndexBlock* indexBlock) : m_index(indexBlock) {
     root = new BTreeNode(true);  // 默认创建一个叶子节点作为根节点
 }
 
@@ -35,9 +35,8 @@ BTree::~BTree() {
     }
 }
 
-
 // 插入字段到B树
-void BTree::insert(const FieldBlock& field) {
+void BTree::insert(const std::string& fieldValue) {
     BTreeNode* rootNode = root;
 
     // 如果根节点已满，则需要分裂
@@ -48,12 +47,12 @@ void BTree::insert(const FieldBlock& field) {
         root = newRoot;
     }
 
-    insertNonFull(root, field);
+    insertNonFull(root, fieldValue);
 }
 
 // 查找字段
-FieldBlock* BTree::find(const std::string& name) {
-    return findInNode(root, name);
+std::string* BTree::find(const std::string& fieldValue) {
+    return findInNode(root, fieldValue);
 }
 
 // 保存B树索引到文件
@@ -136,7 +135,6 @@ void BTree::loadBTreeIndex() {
     root = nodePointers[0];
 }
 
-
 // 分裂子节点
 void BTree::splitChild(BTreeNode* parent, int index) {
     BTreeNode* fullNode = parent->children[index];
@@ -163,45 +161,45 @@ void BTree::splitChild(BTreeNode* parent, int index) {
 }
 
 // 向非满节点插入字段
-void BTree::insertNonFull(BTreeNode* node, const FieldBlock& field) {
+void BTree::insertNonFull(BTreeNode* node, const std::string& fieldValue) {
     int i = node->fields.size() - 1;
 
     if (node->isLeaf) {
         // 找到插入位置并插入
-        while (i >= 0 && node->fields[i].name > field.name) {
+        while (i >= 0 && node->fields[i] > fieldValue) {
             i--;
         }
-        node->fields.insert(node->fields.begin() + i + 1, field);
+        node->fields.insert(node->fields.begin() + i + 1, fieldValue);
     }
     else {
         // 找到子节点并递归插入
-        while (i >= 0 && node->fields[i].name > field.name) {
+        while (i >= 0 && node->fields[i] > fieldValue) {
             i--;
         }
         i++;
         if (node->children[i]->fields.size() == degree - 1) {
             splitChild(node, i);
-            if (field.name > node->fields[i].name) {
+            if (fieldValue > node->fields[i]) {
                 i++;
             }
         }
-        insertNonFull(node->children[i], field);
+        insertNonFull(node->children[i], fieldValue);
     }
 }
 
 // 在节点中查找字段
-FieldBlock* BTree::findInNode(BTreeNode* node, const std::string& name) {
+std::string* BTree::findInNode(BTreeNode* node, const std::string& fieldValue) {
     int i = 0;
-    while (i < node->fields.size() && node->fields[i].name < name) {
+    while (i < node->fields.size() && node->fields[i] < fieldValue) {
         i++;
     }
-    if (i < node->fields.size() && node->fields[i].name == name) {
+    if (i < node->fields.size() && node->fields[i] == fieldValue) {
         return &node->fields[i];
     }
     if (node->isLeaf) {
         return nullptr;
     }
     else {
-        return findInNode(node->children[i], name);
+        return findInNode(node->children[i], fieldValue);
     }
 }

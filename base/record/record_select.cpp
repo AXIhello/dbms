@@ -15,7 +15,8 @@ std::vector<Record> Record::select(
     const std::string& table_name,
     const std::string& condition,
     const std::string& group_by,
-    const std::string& order_by) {
+    const std::string& order_by,
+    const std::string& having) {
 
     std::vector<Record> records;
 
@@ -99,6 +100,70 @@ std::vector<Record> Record::select(
         return "";
         };
 
+    auto eval_having = [&](const std::unordered_map<std::string, std::string>& row) -> bool {
+        if (having.empty()) return true;
+
+        std::regex cond_regex(R"((\w+\(.*?\)|\w+)\s*(=|!=|>=|<=|>|<)\s*('[^']*'|\d+(\.\d+)?|0|1))");
+        std::regex logic_split(R"(\s+(AND|OR)\s+)", std::regex::icase);
+
+        std::sregex_token_iterator cond_it(having.begin(), having.end(), cond_regex), cond_end;
+        std::sregex_token_iterator logic_it(having.begin(), having.end(), logic_split, 1);
+
+        std::vector<std::string> conditions;
+        std::vector<std::string> logic_ops;
+
+        for (; cond_it != cond_end; ++cond_it) conditions.push_back(cond_it->str());
+        for (; logic_it != cond_end; ++logic_it) logic_ops.push_back(logic_it->str());
+
+        auto eval_single = [&](const std::string& cond) -> bool {
+            std::smatch m;
+            if (!std::regex_match(cond, m, cond_regex)) return false;
+
+            std::string field = m[1];
+            std::string op = m[2];
+            std::string val = m[3];
+
+            if (!row.count(field)) return false;
+            std::string left = row.at(field);
+            std::string right = val;
+
+            // 不去除引号，只按原样比较
+            try {
+                double l = std::stod(left), r = std::stod(right);
+                if (op == "=") return l == r;
+                if (op == "!=") return l != r;
+                if (op == ">") return l > r;
+                if (op == "<") return l < r;
+                if (op == ">=") return l >= r;
+                if (op == "<=") return l <= r;
+            }
+            catch (...) {
+                if (op == "=") return left == right;
+                if (op == "!=") return left != right;
+                if (op == ">") return left > right;
+                if (op == "<") return left < right;
+                if (op == ">=") return left >= right;
+                if (op == "<=") return left <= right;
+            }
+            return false;
+            };
+
+        if (conditions.empty()) return true;
+        bool result = eval_single(conditions[0]);
+
+        for (size_t i = 0; i < logic_ops.size(); ++i) {
+            std::string logic = logic_ops[i];
+            std::transform(logic.begin(), logic.end(), logic.begin(), ::toupper);
+            bool next = eval_single(conditions[i + 1]);
+
+            if (logic == "AND") result = result && next;
+            else if (logic == "OR") result = result || next;
+        }
+
+        return result;
+        };
+
+
     std::vector<std::string> selected_cols;
     if (columns == "*") {
         for (const auto& field : fields) {
@@ -117,7 +182,9 @@ std::vector<Record> Record::select(
                 if (col == group_by) continue;
                 row[col] = apply_aggregates(col, group_records);
             }
-            result.push_back(row);
+            if (eval_having(row)) {
+                result.push_back(row);
+            }
         }
     }
     else if (std::any_of(selected_cols.begin(), selected_cols.end(), [](const std::string& c) {
@@ -127,7 +194,9 @@ std::vector<Record> Record::select(
         for (const auto& col : selected_cols) {
             row[col] = apply_aggregates(col, filtered);
         }
-        result.push_back(row);
+        if (eval_having(row)) {
+            result.push_back(row);
+        }
     }
     else {
         for (const auto& rec : filtered) {
@@ -159,11 +228,11 @@ std::vector<Record> Record::select(
         rec.set_table_name(table_name);
         for (const auto& col : selected_cols) {
             rec.add_column(col);
-            auto it = row.find(col);
-            rec.add_value(it != row.end() ? it->second : "NULL");
+            rec.add_value(row.count(col) ? row.at(col) : "NULL");
         }
         records.push_back(rec);
     }
 
     return records;
 }
+

@@ -5,7 +5,7 @@
 #include <functional>
 #include <vector>
 #include"base/record/Record.h"
-#include "base/table.h"
+#include "base/table/table.h"
 #include "base/database.h"
 #include <string>
 #include "ui/output.h"
@@ -15,8 +15,8 @@
 #include "base/record/Record.h"
 #include "base/user.h"
 #include "base/database.h"
-#include "base/fieldBlock.h"
-#include "constraintBlock.h"
+#include "base/block/fieldBlock.h"
+#include "base/block/constraintBlock.h"
 #include <QRegularExpression>
 #include <QStringList>
 #include <iostream>

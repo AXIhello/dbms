@@ -7,10 +7,11 @@
 #include <vector>
 #include <ctime>
 #include <sstream>
-#include"tableBlock.h"
-#include"fieldBlock.h"
-#include"constraintBlock.h"
-#include"indexBlock.h"
+#include"base/BTree.h"
+#include"base/block/tableBlock.h"
+#include"base/block/fieldBlock.h"
+#include"base/block/constraintBlock.h"
+#include"base/block/indexBlock.h"
 using namespace std;
 
 
@@ -28,16 +29,6 @@ public:
     string getTableName() const {
         return m_tableName;
     }
-
-    //获取列名
-	vector<string> getColNames() const {
-		vector<string> colNames;
-		for (const auto& col : m_fields) {
-			colNames.push_back(col.name);
-		}
-		return colNames;
-	}
-
 
     // 打印表的元数据
     void printTableMetadata() const;
@@ -66,6 +57,17 @@ public:
 	vector<FieldBlock> getFields() const {
 		return m_fields;
 	}
+
+    FieldBlock* getFieldByName(const std::string& fieldName) const;
+    //获取列名
+    vector<string> getFieldNames() const {
+        vector<string> fieldNames;
+        for (const auto& col : m_fields) {
+            fieldNames.push_back(col.name);
+        }
+        return fieldNames;
+    }
+
     void addField(const FieldBlock& field);
     void dropField(const std::string fieldName);
 	void updateField(const std::string fieldName, const FieldBlock& updatedField);
@@ -100,7 +102,7 @@ public:
     void saveIndex();
     void loadIndex();
     void createIndex(const IndexBlock& index);
-	void addIndex(const IndexBlock& index);
+    void addIndex(const IndexBlock& index);
 	void dropIndex(const std::string indexName);
 	void updateIndex(const std::string indexName, const IndexBlock& updatedIndex);
 
