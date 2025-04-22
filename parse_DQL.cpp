@@ -61,8 +61,13 @@ void Parse::handleSelect(const std::smatch& m) {
             order_by = m[5].str();
         }
 
+        std::string having;
+        if (m.size() > 6 && m[6].matched) {
+            having = m[6].str();
+        }
+
         // 调用封装了 where 逻辑的 Record::select
-        auto records = Record::select(columns, table_path, condition, group_by, order_by,"");
+        auto records = Record::select(columns, table_path, condition, group_by, order_by, having);
 
         // 显示查询结果
         Output::printSelectResult(outputEdit, records);
