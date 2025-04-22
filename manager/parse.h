@@ -67,6 +67,9 @@ private:
     void handleSelectDatabase();
     void handleShowColumns(const std::smatch& m);
 
+    void handleCreateIndex(const std::smatch& m);
+    void handleDropIndex(const std::smatch& m);
+
     //DDL
     void handleCreateDatabase(const std::smatch& m);
     void handleDropDatabase(const std::smatch& m);
@@ -79,6 +82,8 @@ private:
     void handleModifyColumn(const std::smatch& m);
 
     void handleAddConstraint(const std::smatch& m);
+
+
     //专门处理foreign key
 	void handleAddForeignKey(const std::smatch& m);
 
