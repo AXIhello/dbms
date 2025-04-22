@@ -18,9 +18,6 @@ private:
     std::unordered_map<std::string, std::string> table_structure; // 列名 -> 数据类型
     static std::vector<FieldBlock> read_field_blocks(const std::string& table_name);
     // 条件解析相关
-    std::string condition_field;   // 条件中的字段名
-    std::string condition_operator; // 条件中的操作符
-    std::string condition_value;    // 条件中的值
     std::string full_condition;
     void parse_condition(const std::string& condition);
     bool matches_condition(const std::unordered_map<std::string, std::string>& record_data) const;
