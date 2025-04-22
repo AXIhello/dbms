@@ -493,8 +493,10 @@ void Table::addConstraint(const ConstraintBlock& constraint) {
 
 void Table::dropConstraint(const std::string constraintName) {
 	auto it = std::remove_if(m_constraints.begin(), m_constraints.end(), [&](const ConstraintBlock& constraint) {
+
 		return constraint.name == constraintName;
 		});
+    saveIntegrityBinary();
 }
 
 void Table::updateConstraint(const std::string constraintName, const ConstraintBlock& updatedConstraint) {

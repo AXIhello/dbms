@@ -540,6 +540,16 @@ void Parse::handleAddForeignKey(const std::smatch& m) {
 }
 
 void Parse::handleDropConstraint(const std::smatch& m) {
+	std::string tableName = m[1];  // 表名
+	std::string constraintName = m[2];  // 约束名
+    try {
+		Table* table = dbManager::getInstance().getCurrentDatabase()->getTable(tableName);
+		table->dropConstraint(constraintName);  // 调用 Table 的 dropConstraint 方法
+        Output::printMessage(outputEdit, QString::fromStdString("ALTER TABLE 删除约束成功"));
+    }
+    catch (const std::exception& e) {
+        Output::printError(outputEdit, QString::fromStdString(e.what()));
+    }
 }
 
 
