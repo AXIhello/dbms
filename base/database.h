@@ -3,7 +3,7 @@
 #ifndef DATABASE_H
 #define DATABASE_H
 
-#include <base/table.h>
+#include <base/table/table.h>
 #include <string>
 #include <map>
 #include <fstream>
@@ -22,7 +22,7 @@ public:
    // void createTable(const std::string& table_name);
 	// 创建表（带字段定义）
     void createTable(const std::string& table_name, const std::vector<FieldBlock>& fields, const std::vector<ConstraintBlock>& constraints);
-	bool tableExistsOnDisk(const std::string& table_name) const;
+	 bool tableExistsOnDisk(const std::string& table_name) const ;
 
 
     // 删除表

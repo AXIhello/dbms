@@ -40,12 +40,12 @@
     <QtBuildConfig>debug</QtBuildConfig>
     <QtInstall>6.2.13_msvc2019_64</QtInstall>
     <QtInstall>6.2.13_msvc2019_64</QtInstall>
-    <QtInstall>Qt 6.2.12 MSVC</QtInstall>
+    <QtInstall>6.5.3_msvc2019_64</QtInstall>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)' == 'Release|x64'" Label="QtSettings">
     <QtModules>core;gui;widgets</QtModules>
     <QtBuildConfig>release</QtBuildConfig>
-    <QtInstall>Qt 6.2.12 MSVC</QtInstall>
+    <QtInstall>6.5.3_msvc2019_64</QtInstall>
   </PropertyGroup>
   <Target Name="QtMsBuildNotFound" BeforeTargets="CustomBuild;ClCompile" Condition="!Exists('$(QtMsBuild)\qt.targets') or !Exists('$(QtMsBuild)\qt.props')">
     <Message Importance="High" Text="QtMsBuild: could not locate qt.targets, qt.props; project may not build correctly." />
@@ -109,6 +109,7 @@
     <ClCompile Include="base\record\record_select.cpp" />
     <ClCompile Include="base\record\record_update.cpp" />
     <ClCompile Include="base\BTree.cpp" />
+    <ClCompile Include="base\table\table.cpp" />
     <ClCompile Include="debug.cpp" />
     <ClCompile Include="manager\dbManager.cpp" />
     <ClCompile Include="base\record\record_check.cpp" />
@@ -117,12 +118,15 @@
     <ClCompile Include="parse_DML.cpp" />
     <ClCompile Include="parse_DQL.cpp" />
     <ClCompile Include="parse_util.cpp" />
+    <ClCompile Include="base\table\table_tdf.cpp" />
+    <ClCompile Include="base\table\table_tic.cpp" />
+    <ClCompile Include="base\table\table_tid.cpp" />
+    <ClCompile Include="base\table\table_trd.cpp" />
     <ClCompile Include="ui\login.cpp" />
     <ClCompile Include="base\database.cpp" />
     <ClCompile Include="ui\mainWindow.cpp" />
     <ClCompile Include="ui\output.cpp" />
     <ClCompile Include="manager\parse.cpp" />
-    <ClCompile Include="base\table.cpp" />
     <ClCompile Include="base\record\record_utils.cpp" />
     <ClCompile Include="base\user.cpp" />
     <QtRcc Include="dbms.qrc" />
@@ -134,20 +138,20 @@
   </ItemGroup>
   <ItemGroup>
     <QtMoc Include="ui\login.h" />
+    <ClInclude Include="base\block\constraintBlock.h" />
+    <ClInclude Include="base\block\fieldBlock.h" />
+    <ClInclude Include="base\block\indexBlock.h" />
+    <ClInclude Include="base\block\tableBlock.h" />
     <ClInclude Include="base\database.h" />
     <QtMoc Include="ui\mainWindow.h" />
     <ClInclude Include="base\BTree.h" />
-    <ClInclude Include="base\indexBlock.h" />
-    <ClInclude Include="constraintBlock.h" />
+    <ClInclude Include="base\table\table.h" />
     <ClInclude Include="manager\databaseBlock.h" />
     <ClInclude Include="debug.h" />
-    <ClInclude Include="base\fieldBlock.h" />
     <ClInclude Include="manager\dbManager.h" />
-    <ClInclude Include="tableBlock.h" />
     <ClInclude Include="ui\output.h" />
     <ClInclude Include="manager\parse.h" />
     <ClInclude Include="base\record\Record.h" />
-    <ClInclude Include="base\table.h" />
     <ClInclude Include="base\user.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />

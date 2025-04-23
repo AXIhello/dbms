@@ -5,7 +5,7 @@
 #include <functional>
 #include <vector>
 #include"base/record/Record.h"
-#include "base/table.h"
+#include "base/table/table.h"
 #include "base/database.h"
 #include <string>
 #include "ui/output.h"
@@ -15,8 +15,8 @@
 #include "base/record/Record.h"
 #include "base/user.h"
 #include "base/database.h"
-#include "base/fieldBlock.h"
-#include "constraintBlock.h"
+#include "base/block/fieldBlock.h"
+#include "base/block/constraintBlock.h"
 #include <QRegularExpression>
 #include <QStringList>
 #include <iostream>
@@ -29,8 +29,11 @@ class Parse {
 public:
     Parse(QTextEdit* outputEdit, MainWindow* mainWindow = nullptr);
     void execute(const QString& sql);
-   
+    
     Parse(Database* database);
+
+    //util
+    static std::string trim(const std::string& s);
     
 private:
 	QTextEdit* outputEdit;  // 输出编辑器指针
@@ -47,7 +50,7 @@ private:
     //utility
     QString cleanSQL(const QString& sql);//清理sql结构，去除多余空格/制表符等
     
-    std::string trim(const std::string& s); 
+    
     std::vector<std::string> splitDefinition(const std::string& input);
     std::string toUpper(const std::string& str);
     std::string toLower(const std::string& input);
@@ -64,6 +67,9 @@ private:
     void handleSelectDatabase();
     void handleShowColumns(const std::smatch& m);
 
+    void handleCreateIndex(const std::smatch& m);
+    void handleDropIndex(const std::smatch& m);
+
     //DDL
     void handleCreateDatabase(const std::smatch& m);
     void handleDropDatabase(const std::smatch& m);
@@ -74,6 +80,14 @@ private:
     void handleAddColumn(const std::smatch& m);
     void handleDropColumn(const std::smatch& m);
     void handleModifyColumn(const std::smatch& m);
+
+    void handleAddConstraint(const std::smatch& m);
+
+
+    //专门处理foreign key
+	void handleAddForeignKey(const std::smatch& m);
+
+    void handleDropConstraint(const std::smatch& m);
 
     //DML
     void handleInsertInto(const std::smatch& m);

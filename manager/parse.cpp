@@ -59,6 +59,35 @@ void Parse::registerPatterns() {
       [this](const std::smatch& m) { handleModifyColumn(m); }
         });
 
+    //仅支持primary key, unique和check的表级约束
+    patterns.push_back({
+    std::regex(R"(ALTER\s+TABLE\s+(\w+)\s+ADD\s+CONSTRAINT\s+(\w+)\s+(PRIMARY\s+KEY|UNIQUE|CHECK)\s*(.*);)", std::regex::icase),
+    [this](const std::smatch& m) { handleAddConstraint(m); }
+        });
+
+    //对foreign key 特别设置的表级约束
+	patterns.push_back({ 
+    std::regex(R"(ALTER\s+TABLE\s+(\w+)\s+ADD\s+CONSTRAINT\s+(\w+)\s+FOREIGN\s+KEY\s*\((\w+)\)\s+REFERENCES\s+(\w+)\s*\((\w+)\);)", std::regex::icase),
+	[this](const std::smatch& m) { handleAddForeignKey(m); }
+		});
+    
+    //
+    patterns.push_back({
+    std::regex(R"(ALTER\s+TABLE\s+(\w+)\s+DROP\s+CONSTRAINT\s+(\w+);)", std::regex::icase),
+    [this](const std::smatch& m) { handleDropConstraint(m); }
+        });
+
+    
+    patterns.push_back({
+    std::regex(R"(CREATE\s+INDEX\s+(\w+)\s+ON\s+(\w+)\s*\(\s*(\w+)(?:\s*,\s*(\w+))?\s*\);?)", std::regex::icase),
+    [this](const std::smatch& m) { handleCreateIndex(m); }
+        });
+
+  
+    patterns.push_back({
+    std::regex(R"(DROP\s+INDEX\s+(\w+)\s+ON\s+(\w+);?)", std::regex::icase),
+    [this](const std::smatch& m) { handleCreateIndex(m); }
+        });
 
 
     /*  DML  */
@@ -106,11 +135,9 @@ void Parse::registerPatterns() {
 
     //√ (匹配 select * )
     patterns.push_back({
-    std::regex(R"(^SELECT\s+(\*|[\w\s\(\)\*,]+)\s+FROM\s+(\w+)(?:\s+WHERE\s+(.+?))?(?:\s+GROUP\s+BY\s+(.+?))?(?:\s+ORDER\s+BY\s+(.+?))?\s*;$)", std::regex::icase),
+    std::regex(R"(^SELECT\s+(\*|[\w\s\(\)\*,]+)\s+FROM\s+(\w+)(?:\s+WHERE\s+(.+?))?(?:\s+GROUP\s+BY\s+(.+?))?(?:\s+ORDER\s+BY\s+(.+?))?(?:\s+HAVING\s+(.+?))?\s*;$)", std::regex::icase),
     [this](const std::smatch& m) { handleSelect(m); }
         });
-
-
 
 
 

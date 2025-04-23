@@ -3,9 +3,9 @@
 #include <QDataStream>
 #include <QDebug>
 #include <QString>
-#include "base/fieldBlock.h"
-#include "constraintBlock.h"
-#include "tableBlock.h"
+#include "base/block/fieldBlock.h"
+#include "base/block/constraintBlock.h"
+#include "base/block/tableBlock.h"
 #include"manager/databaseBlock.h"
 
 #include <ctime>
