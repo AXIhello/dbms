@@ -1,7 +1,7 @@
 #include "manager/parse.h"
 
 void Parse::handleCreateDatabase(const std::smatch& m) {
-    try { dbManager::getInstance().createUserDatabase(m[1]); }
+    try { dbManager::getInstance().create_user_db(m[1]); }
     catch (const std::exception& e) {
         Output::printError(outputEdit, "数据库创建失败: " + QString::fromStdString(e.what()));
         return;
@@ -12,7 +12,7 @@ void Parse::handleCreateDatabase(const std::smatch& m) {
 
 
 void Parse::handleDropDatabase(const std::smatch& m) {
-    try { dbManager::getInstance().dropDatabase(m[1]); }
+    try { dbManager::getInstance().delete_user_db(m[1]); }
     catch (const std::exception& e) {
         Output::printError(outputEdit, "数据库删除失败: " + QString::fromStdString(e.what()));
         return;

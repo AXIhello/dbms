@@ -11,7 +11,7 @@ void Parse::handleSelectDatabase() {
 }
 
 void Parse::handleShowDatabases(const std::smatch& m) {
-    auto dbs = dbManager::getInstance().getDatabaseList();
+    auto dbs = dbManager::getInstance().get_database_list_by_db();
 
     Output::printDatabaseList(outputEdit, dbs);
 }
