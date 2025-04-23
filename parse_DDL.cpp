@@ -7,7 +7,7 @@ void Parse::handleCreateDatabase(const std::smatch& m) {
         return;
     }
     Output::printMessage(outputEdit, "数据库 '" + QString::fromStdString(m[1]) + "' 创建成功！");
-    mainWindow->refreshDatabaseList();
+    mainWindow->refreshTree();
 }
 
 
@@ -18,6 +18,7 @@ void Parse::handleDropDatabase(const std::smatch& m) {
         return;
     }
     Output::printMessage(outputEdit, "数据库 '" + QString::fromStdString(m[1]) + "' 删除成功！");
+    mainWindow->refreshTree();
 
 }
 
@@ -38,6 +39,7 @@ void Parse::handleDropTable(const std::smatch& match) {
     // 输出删除成功信息
     QString message = "表 " + QString::fromStdString(tableName) + " 删除成功";
     Output::printMessage(outputEdit, message);
+    mainWindow->refreshTree();
 }
 
 
@@ -302,6 +304,7 @@ if (def.find("UNIQUE") == 0) {
     }
 
     Output::printMessage(outputEdit, "表 " + QString::fromStdString(tableName) + " 创建成功");
+    mainWindow->refreshTree();
 }
 
 

@@ -8,6 +8,7 @@
 #include"ui/output.h"
 #include "manager/parse.h" 
 #include "manager/dbManager.h"
+#include <QGroupBox>
 
 MainWindow::MainWindow(QWidget* parent)
     : QMainWindow(parent)
@@ -64,7 +65,6 @@ MainWindow::MainWindow(QWidget* parent)
 
     // 设置菜单栏的样式
     menuBar()->setStyleSheet("QMenuBar { background-color: lightgray; }");
-    ui->dockWidget->setMinimumWidth(200);
     ui->outputEdit->setReadOnly(true);
 
     // 设置按钮的宽度
@@ -77,6 +77,10 @@ MainWindow::MainWindow(QWidget* parent)
     buttonLayout->addWidget(ui->runButton);
     buttonWidget->setLayout(buttonLayout);
 
+    ui->treeWidget->setHeaderHidden(true); // 隐藏表头
+    ui->treeWidget->setMinimumWidth(200);  // 设置宽度
+
+
     // 输入框和输出框使用垂直分割
     QSplitter* ioSplitter = new QSplitter(Qt::Vertical);
     ioSplitter->addWidget(ui->inputEdit);  // 输入框
@@ -86,16 +90,27 @@ MainWindow::MainWindow(QWidget* parent)
     ioSplitter->setStretchFactor(1, 1);  // 按钮占较少空间
     ioSplitter->setStretchFactor(2, 3);  // 输出框占较少空间
 
-    // 左侧导航栏使用 DockWidget
-    QDockWidget* dockWidget = new QDockWidget("数据库资源管理器", this);
-    dockWidget->setWidget(ui->treeWidget);
-    dockWidget->setAllowedAreas(Qt::LeftDockWidgetArea | Qt::RightDockWidgetArea);
- 
+    // ===== 创建左侧：数据库资源管理器 =====
+    QGroupBox* treeGroupBox = new QGroupBox("数据库资源管理器");
+    QVBoxLayout* treeLayout = new QVBoxLayout(treeGroupBox);
+    treeLayout->addWidget(ui->treeWidget);
+    treeGroupBox->setMinimumWidth(200);
+    treeGroupBox->setStyleSheet("QGroupBox { font-weight: bold; font-size: 14pt; }");
 
-    // 主内容区水平分割
+    // ===== 创建右侧：控制台区域 =====
+    QGroupBox* consoleGroupBox = new QGroupBox;
+    QVBoxLayout* consoleLayout = new QVBoxLayout(consoleGroupBox);
+    consoleLayout->addWidget(ioSplitter);  // ioSplitter 里包含输入框、按钮、输出框
+    consoleGroupBox->setStyleSheet("QGroupBox { font-weight: bold; font-size: 14pt; }");
+
+    // ===== 主内容区水平分割器 =====
     QSplitter* mainSplitter = new QSplitter(Qt::Horizontal);
-    mainSplitter->addWidget(ioSplitter);
-    mainSplitter->setStretchFactor(0, 3);  // 主要区域占较多空间
+    mainSplitter->addWidget(treeGroupBox);
+    mainSplitter->addWidget(consoleGroupBox);
+    mainSplitter->setStretchFactor(0, 1); // 左边占小
+    mainSplitter->setStretchFactor(1, 4); // 右边占大
+
+
 
     // 主窗口部件
     QWidget* centralWidget = new QWidget(this);
@@ -103,12 +118,11 @@ MainWindow::MainWindow(QWidget* parent)
     mainLayout->addWidget(mainSplitter);
     setCentralWidget(centralWidget);
 
-    // 将DockWidget添加到主窗口
-    addDockWidget(Qt::LeftDockWidgetArea, dockWidget);
-}
+    refreshTree(); }
 
 MainWindow::~MainWindow() {
     delete ui;  // 释放 UI 资源
+    dbManager::getInstance().clearCache();
 }
 
 void MainWindow::onRunButtonClicked() {
@@ -149,29 +163,35 @@ void MainWindow::refreshTree() {
     {
         ui->treeWidget->clear(); // 清空旧数据
 
-        //获取当前数据库和库名
-        Database* db = dbManager::getInstance().getCurrentDatabase();
-        if (!db) {
-            Output::printInfo(ui->outputEdit, "当前没有选中的数据库。");
-            return;
+        // 图标
+        QIcon dbIcon(":/image/icons_database.png");
+        QIcon tableIcon(":/image/icons_table.png");
+
+        //获取所有数据库和库名
+        const auto& dbList = dbManager::getInstance().getDatabaseList();
+        for (const std::string& dbName : dbList) {
+            // 加载数据库对象
+            Database* db = dbManager::getInstance().getDatabaseByName(dbName);
+            if (!db) continue;
+
+            // 顶层节点：数据库
+            QTreeWidgetItem* dbItem = new QTreeWidgetItem(ui->treeWidget);
+            dbItem->setText(0, QString::fromStdString(dbName));
+            dbItem->setIcon(0, dbIcon);
+
+            // 添加表作为子节点
+            std::vector<std::string> tableNames = db->getAllTableNames();
+            for (const std::string& tableName : tableNames) {
+                if (!tableName.empty()) {
+                    QTreeWidgetItem* tableItem = new QTreeWidgetItem();
+                    tableItem->setText(0, QString::fromStdString(tableName));
+                    tableItem->setIcon(0, tableIcon);
+                    dbItem->addChild(tableItem);
+                }
+            }
         }
-        std::string dbName = db->getDBName();
 
-        //添加顶层节点（当前数据库），挂到treeWidget上
-        QTreeWidgetItem* dbItem = new QTreeWidgetItem(ui->treeWidget);
-        dbItem->setText(0, QString::fromStdString(dbName));
-
-        //添加库下的所有表名为子节点
-        std::vector<std::string> tableNames = db->getAllTableNames();
-        for (const std::string& tableName : tableNames) {
-            if (!tableName.empty()) {
-                QTreeWidgetItem* tableItem = new QTreeWidgetItem();
-                tableItem->setText(0, QString::fromStdString(tableName));
-                dbItem->addChild(tableItem);
-            } // 将表名节点添加为数据库节点的子项
-        }
-
-        ui->treeWidget->expandAll(); // 展开所有
+        ui->treeWidget->expandAll(); // 展开全部
     }
     catch (const std::runtime_error& e) {
         Output::printError(ui->outputEdit, QString("运行时错误: ") + e.what());
