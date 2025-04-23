@@ -186,20 +186,6 @@ std::vector<std::string> dbManager::get_database_list_by_db()
 
 }
 
-//从数据库文件夹下获取列表（物理层）
-std::vector<std::string> dbManager::get_database_list_by_file() {
-    std::vector<std::string> databases;
-	
-    for (const auto& entry : fs::directory_iterator(basePath + "/data")) {
-        if (fs::is_directory(entry.path())) {
-            databases.push_back(entry.path().filename().string());
-        }
-    }
-
-    return databases;
-}
-
-
 
 
 // 创建数据库文件夹
@@ -240,7 +226,7 @@ dbManager& dbManager::getInstance() {
 }
 
 void dbManager::useDatabase(const std::string& db_name) {
-    if (!database_exists_on_disk(db_name)) {
+    if (!database_exists_in_db(db_name)) {
         throw std::runtime_error("数据库 '" + db_name + "' 不存在！");
     }
 
@@ -253,7 +239,7 @@ void dbManager::useDatabase(const std::string& db_name) {
 }
 
 
-Database* dbManager::getCurrentDatabase() {
+Database* dbManager::get_current_database() {
     if (!currentDB) {
         throw std::runtime_error("当前未选择数据库");
     }

@@ -22,11 +22,9 @@ class dbManager {
 public:
     static dbManager& getInstance(); // 获取全局唯一实例
 
-    Database* getCurrentDatabase();
+    Database* get_current_database();
 
-    //通过文件夹来获取当前的数据库
-    std::vector<std::string> get_database_list_by_file();
-
+    //通过文件夹来获取当前的数据
 	std::vector<std::string> get_database_list_by_db(); // 通过数据库文件获取数据库列表
 
     //

@@ -2,7 +2,7 @@
 
 void Parse::handleSelectDatabase() {
     try {
-        std::string dbName = dbManager::getInstance().getCurrentDatabase()->getDBName();
+        std::string dbName = dbManager::getInstance().get_current_database()->getDBName();
         Output::printMessage(outputEdit, "当前数据库为： " + QString::fromStdString(dbName));
     }
     catch (const std::exception& e) {
@@ -19,7 +19,7 @@ void Parse::handleShowDatabases(const std::smatch& m) {
 
 void Parse::handleShowTables(const std::smatch& m) {
     try {
-        Database* db = dbManager::getInstance().getCurrentDatabase();
+        Database* db = dbManager::getInstance().get_current_database();
         std::vector<std::string> tableNames = db->getAllTableNames();
 
         Output::printTableList(outputEdit, tableNames);
@@ -37,7 +37,7 @@ void Parse::handleShowTables(const std::smatch& m) {
 void Parse::handleSelect(const std::smatch& m) {
     std::string columns = m[1]; // 获取列名部分（可能是 '*' 或 'id, name'）
     std::string table_name = m[2];
-    std::string table_path = dbManager::getInstance().getCurrentDatabase()->getDBPath() + "/" + table_name;
+    std::string table_path = dbManager::getInstance().get_current_database()->getDBPath() + "/" + table_name;
 
     // 权限检查
     /* if (!user::hasPermission("select|" + table_name)) {
