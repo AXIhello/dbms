@@ -1,7 +1,7 @@
 #include "manager/parse.h"
 
 void Parse::handleCreateDatabase(const std::smatch& m) {
-    try { dbManager::getInstance().createUserDatabase(m[1]); }
+    try { dbManager::getInstance().create_user_db(m[1]); }
     catch (const std::exception& e) {
         Output::printError(outputEdit, "数据库创建失败: " + QString::fromStdString(e.what()));
         return;
@@ -12,7 +12,7 @@ void Parse::handleCreateDatabase(const std::smatch& m) {
 
 
 void Parse::handleDropDatabase(const std::smatch& m) {
-    try { dbManager::getInstance().dropDatabase(m[1]); }
+    try { dbManager::getInstance().delete_user_db(m[1]); }
     catch (const std::exception& e) {
         Output::printError(outputEdit, "数据库删除失败: " + QString::fromStdString(e.what()));
         return;
@@ -26,7 +26,7 @@ void Parse::handleDropTable(const std::smatch& match) {
     std::string tableName = match[1];
     // 获取当前数据库
     try {
-        Database* db = dbManager::getInstance().getCurrentDatabase();
+        Database* db = dbManager::getInstance().get_current_database();
         if (!db->getTable(tableName))
             throw std::runtime_error("表 '" + tableName + "' 不存在。");
         db->dropTable(tableName);
@@ -50,7 +50,7 @@ void Parse::handleCreateTable(const std::smatch& match) {
 
     Database* db = nullptr;
     try {
-        db = dbManager::getInstance().getCurrentDatabase();
+        db = dbManager::getInstance().get_current_database();
     }
     catch (const std::exception& e) {
         Output::printError(outputEdit, QString::fromStdString(e.what()));
@@ -424,7 +424,7 @@ void Parse::handleAddColumn(const std::smatch& m) {
 
     // 获取表并添加字段
     try {
-        Table* table = dbManager::getInstance().getCurrentDatabase()->getTable(tableName);
+        Table* table = dbManager::getInstance().get_current_database()->getTable(tableName);
         
 		std::vector<FieldBlock> fieldsCopy = table->getFields();
         table->addField(field);
@@ -511,7 +511,7 @@ void Parse::handleAddConstraint(const std::smatch& m) {
 
     // 调用 Table::addConstraint 处理约束
     try {
-        Table* table = dbManager::getInstance().getCurrentDatabase()->getTable(tableName);
+        Table* table = dbManager::getInstance().get_current_database()->getTable(tableName);
 
         // 处理 PRIMARY KEY, UNIQUE, CHECK表级约束
         table->addConstraint(constraintName, constraintType, constraintBody);
@@ -530,7 +530,7 @@ void Parse::handleAddForeignKey(const std::smatch& m) {
     std::string referenceTable = m[4];     // 引用表
     std::string referenceField = m[5];     // 引用字段
     try {
-        Table* table = dbManager::getInstance().getCurrentDatabase()->getTable(tableName);
+        Table* table = dbManager::getInstance().get_current_database()->getTable(tableName);
 
         // 处理 ForeignKey
         table->addForeignKey(constraintName, foreignKeyField,referenceTable,referenceField);
@@ -543,6 +543,16 @@ void Parse::handleAddForeignKey(const std::smatch& m) {
 }
 
 void Parse::handleDropConstraint(const std::smatch& m) {
+	std::string tableName = m[1];  // 表名
+	std::string constraintName = m[2];  // 约束名
+    try {
+		Table* table = dbManager::getInstance().get_current_database()->getTable(tableName);
+		table->dropConstraint(constraintName);  // 调用 Table 的 dropConstraint 方法
+        Output::printMessage(outputEdit, QString::fromStdString("ALTER TABLE 删除约束成功"));
+    }
+    catch (const std::exception& e) {
+        Output::printError(outputEdit, QString::fromStdString(e.what()));
+    }
 }
 
 
@@ -554,7 +564,7 @@ void Parse::handleCreateIndex(const std::smatch& m) {
     std::string column2 = m[4];       // 第二个字段（可选）
 
     try {
-        Table* table = dbManager::getInstance().getCurrentDatabase()->getTable(tableName);
+        Table* table = dbManager::getInstance().get_current_database()->getTable(tableName);
 
         IndexBlock index;
         strcpy_s(index.name, sizeof(index.name), indexName.c_str());
@@ -596,7 +606,7 @@ void Parse::handleDropIndex(const std::smatch& m) {
         std::string tableName = m[2].str();  // 表名
 
         // 获取当前数据库中的表
-        Table* table = dbManager::getInstance().getCurrentDatabase()->getTable(tableName);
+        Table* table = dbManager::getInstance().get_current_database()->getTable(tableName);
 
         if (!table) throw std::runtime_error("未选择表。");
 

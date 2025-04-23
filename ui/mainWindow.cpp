@@ -168,10 +168,10 @@ void MainWindow::refreshTree() {
         QIcon tableIcon(":/image/icons_table.png");
 
         //获取所有数据库和库名
-        const auto& dbList = dbManager::getInstance().getDatabaseList();
+        const auto& dbList = dbManager::getInstance().get_database_list_by_db();
         for (const std::string& dbName : dbList) {
             // 加载数据库对象
-            Database* db = dbManager::getInstance().getDatabaseByName(dbName);
+            Database* db = dbManager::getInstance().get_database_by_name(dbName);
             if (!db) continue;
 
             // 顶层节点：数据库
@@ -220,7 +220,7 @@ void MainWindow::onTreeItemClicked(QTreeWidgetItem* item, int column) {
 void MainWindow::refreshDatabaseList() {
     ui->treeWidget->clear();
 
-    const auto& dbList = dbManager::getInstance().getDatabaseList();
+    const auto& dbList = dbManager::getInstance().get_database_list_by_db();
     for (const auto& name : dbList) {
         QTreeWidgetItem* dbItem = new QTreeWidgetItem(ui->treeWidget);
         dbItem->setText(0, QString::fromStdString(name));

@@ -2,7 +2,7 @@
 
 void Parse::handleSelectDatabase() {
     try {
-        std::string dbName = dbManager::getInstance().getCurrentDatabase()->getDBName();
+        std::string dbName = dbManager::getInstance().get_current_database()->getDBName();
         Output::printMessage(outputEdit, "当前数据库为： " + QString::fromStdString(dbName));
     }
     catch (const std::exception& e) {
@@ -11,7 +11,7 @@ void Parse::handleSelectDatabase() {
 }
 
 void Parse::handleShowDatabases(const std::smatch& m) {
-    auto dbs = dbManager::getInstance().getDatabaseList();
+    auto dbs = dbManager::getInstance().get_database_list_by_db();
 
     Output::printDatabaseList(outputEdit, dbs);
 }
@@ -19,7 +19,7 @@ void Parse::handleShowDatabases(const std::smatch& m) {
 
 void Parse::handleShowTables(const std::smatch& m) {
     try {
-        Database* db = dbManager::getInstance().getCurrentDatabase();
+        Database* db = dbManager::getInstance().get_current_database();
         std::vector<std::string> tableNames = db->getAllTableNames();
 
         Output::printTableList(outputEdit, tableNames);
