@@ -177,4 +177,7 @@
       <Filter>ui</Filter>
     </QtUic>
   </ItemGroup>
+  <ItemGroup>
+    <QtRcc Include="Resource.qrc" />
+  </ItemGroup>
 </Project>

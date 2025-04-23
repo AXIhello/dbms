@@ -239,6 +239,38 @@ Database* dbManager::getCurrentDatabase() {
     return currentDB;
 }
 
+/**
+ * @brief用于客户端，获取指定名称的数据库对象（带缓存）.
+ * 
+ * 如果数据库已加载，则直接从缓存返回；
+ * 否则新建一个 Database 对象，存入缓存后返回。
+ * 若指定的数据库不存在，则返回 nullptr。
+ * 
+ * @param dbName 数据库名称
+ * @return Database* 对应的数据库对象指针；若数据库不存在，返回 nullptr
+ */
+Database* dbManager::getDatabaseByName(const std::string& dbName) {
+    if (!databaseExists(dbName)) return nullptr;
+
+    auto it = dbCache.find(dbName);
+    if (it != dbCache.end()) {
+        return it->second;
+    }
+
+    Database* newDB = new Database(dbName);
+    dbCache[dbName] = newDB;
+    return newDB;
+}
+
+//释放池资源
+void dbManager::clearCache() {
+    for (auto& pair : dbCache) {
+        delete pair.second;
+    }
+    dbCache.clear();
+}
+
+
 
 bool dbManager::databaseExists(const std::string& dbName) {
     std::string dbPath = basePath + "/data/" + dbName;

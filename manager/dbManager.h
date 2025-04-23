@@ -22,6 +22,9 @@ class dbManager {
 public:
     static dbManager& getInstance(); // 获取全局唯一实例
     Database* getCurrentDatabase();
+    std::vector<std::string> getDatabaseList();
+    Database* getDatabaseByName(const std::string& dbName);
+
 	static std::string basePath;  // 根目录
 
     void createDatabaseFolder(const std::string& db_name);  // 创建数据库文件夹
@@ -43,9 +46,10 @@ public:
     
     void useDatabase(const std::string& db_name);  // 切换数据库
 
-    //void listDatabases(); 
-    std::vector<std::string> getDatabaseList();
+    
     bool isConnected();//待扩展与实现；
+
+    void clearCache();
 
 
 private:
@@ -53,7 +57,7 @@ private:
     ~dbManager();
     dbManager(const dbManager&) = delete;
     dbManager& operator=(const dbManager&) = delete;
-
+    
    
 	
 private:
@@ -61,6 +65,8 @@ private:
     const std::string systemDBFile = "ruanko.db";  // 系统数据库文件名(后期可更改）
     Database* currentDB = nullptr;
     std::string currentDBName;
+
+    std::unordered_map<std::string, Database*> dbCache;  //缓存池
 
 };
 

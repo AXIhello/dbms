@@ -7,6 +7,11 @@
 #include "base/block/constraintBlock.h"
 #include <filesystem> 
 
+struct JoinInfo {
+    std::vector<std::string> tables;  // 表列表
+    std::vector<std::pair<std::string, std::string>> join_conditions;  // 每对字段连接条件
+};
+
 class Record {
 private:
     static std::vector<std::unordered_map<std::string, std::string>> read_records(const std::string table_name);
@@ -18,9 +23,6 @@ private:
     std::unordered_map<std::string, std::string> table_structure; // 列名 -> 数据类型
     static std::vector<FieldBlock> read_field_blocks(const std::string& table_name);
     // 条件解析相关
-    std::string condition_field;   // 条件中的字段名
-    std::string condition_operator; // 条件中的操作符
-    std::string condition_value;    // 条件中的值
     std::string full_condition;
     void parse_condition(const std::string& condition);
     bool matches_condition(const std::unordered_map<std::string, std::string>& record_data) const;
@@ -80,7 +82,8 @@ public:
         const std::string& condition,
         const std::string& group_by,
         const std::string& order_by,
-        const std::string& having);
+        const std::string& having,
+        const JoinInfo* join_info=nullptr);
     int update(const std::string& tableName, const std::string& setClause, const std::string& condition);
     int delete_(const std::string& tableName, const std::string& condition);
     // 辅助函数

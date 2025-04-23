@@ -7,7 +7,7 @@ void Parse::handleCreateDatabase(const std::smatch& m) {
         return;
     }
     Output::printMessage(outputEdit, "数据库 '" + QString::fromStdString(m[1]) + "' 创建成功！");
-    mainWindow->refreshDatabaseList();
+    mainWindow->refreshTree();
 }
 
 
@@ -18,6 +18,7 @@ void Parse::handleDropDatabase(const std::smatch& m) {
         return;
     }
     Output::printMessage(outputEdit, "数据库 '" + QString::fromStdString(m[1]) + "' 删除成功！");
+    mainWindow->refreshTree();
 
 }
 
@@ -38,6 +39,7 @@ void Parse::handleDropTable(const std::smatch& match) {
     // 输出删除成功信息
     QString message = "表 " + QString::fromStdString(tableName) + " 删除成功";
     Output::printMessage(outputEdit, message);
+    mainWindow->refreshTree();
 }
 
 
@@ -302,6 +304,7 @@ if (def.find("UNIQUE") == 0) {
     }
 
     Output::printMessage(outputEdit, "表 " + QString::fromStdString(tableName) + " 创建成功");
+    mainWindow->refreshTree();
 }
 
 
@@ -553,4 +556,72 @@ void Parse::handleDropConstraint(const std::smatch& m) {
 }
 
 
+
+void Parse::handleCreateIndex(const std::smatch& m) {
+    std::string indexName = m[1];     // 索引名
+    std::string tableName = m[2];     // 表名
+    std::string column1 = m[3];       // 第一个字段
+    std::string column2 = m[4];       // 第二个字段（可选）
+
+    try {
+        Table* table = dbManager::getInstance().getCurrentDatabase()->getTable(tableName);
+
+        IndexBlock index;
+        strcpy_s(index.name, sizeof(index.name), indexName.c_str());
+
+        index.field_num = (!m[4].str().empty() && m[4].matched) ? 2 : 1;
+
+        strncpy_s(index.field[0], sizeof(index.field[0]), column1.c_str(), 2);
+        index.field[0][1] = '\0'; // 手动加结尾，防止脏数据
+
+        if (index.field_num == 2) {
+            strncpy_s(index.field[1], sizeof(index.field[1]), column2.c_str(), 2);
+            index.field[1][1] = '\0';
+        }
+
+
+        std::string recordPath = "data/" + tableName + ".trd";
+        std::string indexPath = "data/" + tableName + "_" + indexName + ".idx";
+
+        strcpy_s(index.record_file, sizeof(index.record_file), recordPath.c_str());
+        strcpy_s(index.index_file, sizeof(index.index_file), indexPath.c_str());
+
+        index.unique = false;
+        index.asc = true;
+
+        table->createIndex(index);
+
+        Output::printMessage(outputEdit, QString::fromStdString("CREATE INDEX 创建索引成功"));
+    }
+    catch (const std::exception& e) {
+        Output::printError(outputEdit, QString::fromStdString(e.what()));
+    }
+}
+
+
+void Parse::handleDropIndex(const std::smatch& m) {
+    try {
+        // 获取表名和索引名
+        std::string indexName = m[1].str();  // 索引名
+        std::string tableName = m[2].str();  // 表名
+
+        // 获取当前数据库中的表
+        Table* table = dbManager::getInstance().getCurrentDatabase()->getTable(tableName);
+
+        if (!table) throw std::runtime_error("未选择表。");
+
+        // 确保索引名符合长度要求，截取前两个字符避免溢出
+        if (indexName.size() > 2) {
+            indexName = indexName.substr(0, 2);  // 保证索引名不超过2字符
+        }
+
+        // 删除索引
+        table->dropIndex(indexName);
+
+        Output::printMessage(outputEdit, "索引 '" + QString::fromStdString(indexName) + "' 删除成功！");
+    }
+    catch (const std::exception& e) {
+        Output::printError(outputEdit, "索引删除失败: " + QString::fromStdString(e.what()));
+    }
+}
 
