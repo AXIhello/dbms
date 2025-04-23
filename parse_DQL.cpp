@@ -35,11 +35,13 @@ void Parse::handleShowTables(const std::smatch& m) {
 }
 
 void Parse::handleSelect(const std::smatch& m) {
-    std::string columns = m[1]; // 获取列名
+
+    std::string columns = m[1]; // 获取列名（可能是 '*' 或 'id, name'）
     std::string from_clause = m[2]; // 可能是单表、多表，或带 JOIN 的部分
+
+    //std::string table_name = m[2];
     //std::string table_path = dbManager::getInstance().get_current_database()->getDBPath() + "/" + table_name;
-
-
+    
     // 权限检查
     /* if (!user::hasPermission("select|" + table_name)) {
         Output::printError(outputEdit, "无权限访问表 '" + QString::fromStdString(table_name) + "'。");
