@@ -20,8 +20,7 @@ void Parse::handleShowDatabases(const std::smatch& m) {
 
 void Parse::handleShowTables(const std::smatch& m) {
     try {
-        Database* db = dbManager::getInstance().get_current_database();
-        std::vector<std::string> tableNames = db->getAllTableNames();
+        std::vector<std::string> tableNames = dbManager::getInstance().get_current_database()->getAllTableNames();
 
         Output::printTableList(outputEdit, tableNames);
     }
@@ -71,9 +70,16 @@ void Parse::handleShowTables(const std::smatch& m) {
 
         // 调用封装了 where 逻辑的 Record::select
         auto records = Record::select(columns, table_path, condition, group_by, order_by, having);
+        
+        if (!records.empty())
+        {
+            Output::printSelectResult(outputEdit, records);
+            return;
+        }
+        //如果为空，显示表结构 向tdf中找:table类中提供根据表名找列名的方法（从tdf中读）
 
-        // 显示查询结果
-        Output::printSelectResult(outputEdit, records);
+		Table* table = dbManager::getInstance().get_current_database()->getTable(table_name);
+        Output::printSelectResultEmpty(outputEdit, table->getFieldNames());
     }
     catch (const std::exception& e) {
         Output::printError(outputEdit, "查询失败: " + QString::fromStdString(e.what()));

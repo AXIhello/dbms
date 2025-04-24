@@ -7,7 +7,7 @@ void Parse::handleCreateDatabase(const std::smatch& m) {
         return;
     }
     Output::printMessage(outputEdit, "数据库 '" + QString::fromStdString(m[1]) + "' 创建成功！");
-    mainWindow->refreshTree();
+  //  mainWindow->refreshTree();
 }
 
 
@@ -18,7 +18,7 @@ void Parse::handleDropDatabase(const std::smatch& m) {
         return;
     }
     Output::printMessage(outputEdit, "数据库 '" + QString::fromStdString(m[1]) + "' 删除成功！");
-    mainWindow->refreshTree();
+  //  mainWindow->refreshTree();
 
 }
 
@@ -39,7 +39,7 @@ void Parse::handleDropTable(const std::smatch& match) {
     // 输出删除成功信息
     QString message = "表 " + QString::fromStdString(tableName) + " 删除成功";
     Output::printMessage(outputEdit, message);
-    mainWindow->refreshTree();
+   // mainWindow->refreshTree();
 }
 
 
@@ -48,6 +48,14 @@ void Parse::handleCreateTable(const std::smatch& match) {
 
     std::string rawDefinition = match[2];
 
+    Database* db = nullptr;
+    try {
+        db = dbManager::getInstance().get_current_database();
+    }
+    catch (const std::exception& e) {
+        Output::printError(outputEdit, QString::fromStdString(e.what()));
+        return;
+    }
 
     std::vector<FieldBlock> fields;
     std::vector<ConstraintBlock> constraints;
@@ -86,31 +94,18 @@ if (def.find("PRIMARY KEY") == 0) {
     if (start != std::string::npos && end != std::string::npos && end > start) {
         std::string inside = def.substr(start + 1, end - start - 1);
         std::vector<std::string> keys = split(inside, ',');
-
-        // 联合主键，多个字段
-        ConstraintBlock cb{};
-        cb.type = 1;  // PRIMARY KEY 类型
-        std::string pkName = "PK_" + toUpper(tableName);  // 生成主键约束名称
-        strncpy_s(cb.name, pkName.c_str(), sizeof(cb.name));  // 存储约束名称
-
-        // 遍历每个字段，将它们加入到约束中
-        std::string allFields;
         for (const std::string& key : keys) {
+            ConstraintBlock cb{};
+            cb.type = 1;  // PRIMARY KEY 类型
             std::string field = toUpper(trim(key));  // 转大写处理字段名
-            if (!allFields.empty()) {
-                allFields += ", ";  // 字段之间用逗号分隔
-            }
-            allFields += field;
+            strncpy_s(cb.field, field.c_str(), sizeof(cb.field));  // 存储字段名称
 
-            // 存储字段名到 m_constraints.fieldName
-            strncpy_s(cb.field, allFields.c_str(), sizeof(cb.field));
+            std::string pkName = "PK_" + toUpper(tableName);  // 生成主键约束名称
+            strncpy_s(cb.name, pkName.c_str(), sizeof(cb.name));  // 存储约束名称
 
-            // 存储字段参数到 m_constraints.param
-            // 这里将字段名作为联合主键的参数
-            strncpy_s(cb.param, allFields.c_str(), sizeof(cb.param));
+            cb.param[0] = '\0';  // 无需参数，主键本身不附带参数
+            constraints.push_back(cb);  // 添加到约束列表
         }
-
-        constraints.push_back(cb);  // 添加到约束列表
     }
     continue;
 }
@@ -301,7 +296,8 @@ if (def.find("UNIQUE") == 0) {
     }
 
     try {
-		dbManager::getInstance().get_current_database()->createTable(tableName, fields, constraints);
+        db->createTable(tableName, fields, constraints);
+        db;
     }
     catch (const std::exception& e) {
         Output::printError(outputEdit, "表创建失败: " + QString::fromStdString(e.what()));
@@ -309,7 +305,7 @@ if (def.find("UNIQUE") == 0) {
     }
 
     Output::printMessage(outputEdit, "表 " + QString::fromStdString(tableName) + " 创建成功");
-    mainWindow->refreshTree();
+//    mainWindow->refreshTree();
 }
 
 
@@ -439,7 +435,6 @@ void Parse::handleAddColumn(const std::smatch& m) {
         }
 
         table->updateRecord(fieldsCopy);
-        table;
     }
     catch (const std::exception& e) {
         Output::printError(outputEdit, QString("添加字段失败: %1").arg(QString::fromStdString(e.what())));
@@ -455,9 +450,9 @@ void Parse::handleAddColumn(const std::smatch& m) {
 void Parse::handleDropColumn(const std::smatch& match) {
     std::string tableName = match[1];  // 获取表名
     std::string columnName = match[2];  // 获取列名
-	Database* db = dbManager::getInstance().get_current_database();
+
     try {
-        Table* table = db->getTable(tableName);  // 获取表对象
+        Table* table = dbManager::getInstance().get_current_database()->getTable(tableName);  // 获取表对象
         if (table) {
             table->dropField(columnName);  // 调用 Table 的 dropField 方法
 

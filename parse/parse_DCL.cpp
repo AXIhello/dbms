@@ -5,6 +5,7 @@ void Parse::handleUseDatabase(const std::smatch& m) {
     try {
         // 尝试切换数据库
         dbManager::getInstance().useDatabase(dbName);
+
         // 成功后输出信息
         Output::printMessage(outputEdit, "已成功切换到数据库 '" + QString::fromStdString(dbName) + "'.");
 

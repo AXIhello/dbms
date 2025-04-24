@@ -118,7 +118,8 @@ MainWindow::MainWindow(QWidget* parent)
     mainLayout->addWidget(mainSplitter);
     setCentralWidget(centralWidget);
 
-    refreshTree(); }
+    refreshTree(); 
+   }
 
 MainWindow::~MainWindow() {
     delete ui;  // 释放 UI 资源
@@ -136,26 +137,6 @@ void MainWindow::onRunButtonClicked() {
 
     Parse parser(ui->outputEdit,this);
     parser.execute(sql);
-
-   /* QString message;
-    if (sql.startsWith("SELECT", Qt::CaseInsensitive))
-    {
-        message = "解析结果：这是一个 SELECT 语句。";
-    }
-    else if (sql.startsWith("INSERT", Qt::CaseInsensitive) ||
-        sql.startsWith("UPDATE", Qt::CaseInsensitive) ||
-        sql.startsWith("DELETE", Qt::CaseInsensitive) ||
-        sql.startsWith("CREATE", Qt::CaseInsensitive) ||
-        sql.startsWith("DROP", Qt::CaseInsensitive))
-    {
-        message = "解析结果：这是一个 数据修改 语句。";
-    }
-    else
-    {
-        message = "解析结果：不支持的 SQL 语句！";
-    }
-
-    QMessageBox::information(this, "SQL 解析", message);*/
 }
 
 void MainWindow::refreshTree() {
@@ -171,6 +152,7 @@ void MainWindow::refreshTree() {
         const auto& dbList = dbManager::getInstance().get_database_list_by_db();
         for (const std::string& dbName : dbList) {
             // 加载数据库对象
+            //BUG；此时获取到的db不是最新的；createTable后尚未添加进去？
             Database* db = dbManager::getInstance().get_database_by_name(dbName);
             if (!db) continue;
 
