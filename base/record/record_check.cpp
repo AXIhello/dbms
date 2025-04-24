@@ -165,36 +165,36 @@ bool Record::check_check_constraint(const ConstraintBlock& constraint, const std
     std::regex gt_regex("\\s*>\\s*(\\d+)");
     std::smatch matches;
     if (std::regex_match(check_expr, matches, gt_regex)) {
-        int check_val = std::stoi(matches[1]);
+        int check_val = std::stod(matches[1]);
         try {
-            return std::stoi(clean_value) > check_val;
+            return std::stod(clean_value) > check_val;
         }
         catch (...) { return false; }
     }
 
     std::regex lt_regex("\\s*<\\s*(\\d+)");
     if (std::regex_match(check_expr, matches, lt_regex)) {
-        int check_val = std::stoi(matches[1]);
+        int check_val = std::stod(matches[1]);
         try {
-            return std::stoi(clean_value) < check_val;
+            return std::stod(clean_value) < check_val;
         }
         catch (...) { return false; }
     }
 
     std::regex gte_regex("\\s*>=\\s*(\\d+)");
     if (std::regex_match(check_expr, matches, gte_regex)) {
-        int check_val = std::stoi(matches[1]);
+        int check_val = std::stod(matches[1]);
         try {
-            return std::stoi(clean_value) >= check_val;
+            return std::stod(clean_value) >= check_val;
         }
         catch (...) { return false; }
     }
 
     std::regex lte_regex("\\s*<=\\s*(\\d+)");
     if (std::regex_match(check_expr, matches, lte_regex)) {
-        int check_val = std::stoi(matches[1]);
+        int check_val = std::stod(matches[1]);
         try {
-            return std::stoi(clean_value) <= check_val;
+            return std::stod(clean_value) <= check_val;
         }
         catch (...) { return false; }
     }
