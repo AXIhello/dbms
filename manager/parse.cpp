@@ -134,8 +134,8 @@ void Parse::registerPatterns() {
         });
 
     //√ (匹配 select * )
-    //patterns.push_back({
-    //std::regex(R"(^SELECT\s+(\*|[\w\s\(\)\*,]+)\s+FROM\s+(\w+)(?:\s+WHERE\s+(.+?))?(?:\s+GROUP\s+BY\s+(.+?))?(?:\s+ORDER\s+BY\s+(.+?))?(?:\s+HAVING\s+(.+?))?\s*;$)", std::regex::icase),
+   // patterns.push_back({
+     //std::regex(R"(^SELECT\s+(\*|[\w\s\(\)\*,]+)\s+FROM\s+(\w+)(?:\s+WHERE\s+(.+?))?(?:\s+GROUP\s+BY\s+(.+?))?(?:\s+ORDER\s+BY\s+(.+?))?(?:\s+HAVING\s+(.+?))?\s*;$)", std::regex::icase),
     //[this](const std::smatch& m) { handleSelect(m); }
       //});
 
@@ -144,8 +144,7 @@ void Parse::registerPatterns() {
         [this](const std::smatch& m) { handleSelect(m); }
         });
 
-
-
+   
     /*  DCL  */
     //√
     patterns.push_back({
