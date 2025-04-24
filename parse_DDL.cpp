@@ -86,18 +86,31 @@ if (def.find("PRIMARY KEY") == 0) {
     if (start != std::string::npos && end != std::string::npos && end > start) {
         std::string inside = def.substr(start + 1, end - start - 1);
         std::vector<std::string> keys = split(inside, ',');
+
+        // 联合主键，多个字段
+        ConstraintBlock cb{};
+        cb.type = 1;  // PRIMARY KEY 类型
+        std::string pkName = "PK_" + toUpper(tableName);  // 生成主键约束名称
+        strncpy_s(cb.name, pkName.c_str(), sizeof(cb.name));  // 存储约束名称
+
+        // 遍历每个字段，将它们加入到约束中
+        std::string allFields;
         for (const std::string& key : keys) {
-            ConstraintBlock cb{};
-            cb.type = 1;  // PRIMARY KEY 类型
             std::string field = toUpper(trim(key));  // 转大写处理字段名
-            strncpy_s(cb.field, field.c_str(), sizeof(cb.field));  // 存储字段名称
+            if (!allFields.empty()) {
+                allFields += ", ";  // 字段之间用逗号分隔
+            }
+            allFields += field;
 
-            std::string pkName = "PK_" + toUpper(tableName);  // 生成主键约束名称
-            strncpy_s(cb.name, pkName.c_str(), sizeof(cb.name));  // 存储约束名称
+            // 存储字段名到 m_constraints.fieldName
+            strncpy_s(cb.field, allFields.c_str(), sizeof(cb.field));
 
-            cb.param[0] = '\0';  // 无需参数，主键本身不附带参数
-            constraints.push_back(cb);  // 添加到约束列表
+            // 存储字段参数到 m_constraints.param
+            // 这里将字段名作为联合主键的参数
+            strncpy_s(cb.param, allFields.c_str(), sizeof(cb.param));
         }
+
+        constraints.push_back(cb);  // 添加到约束列表
     }
     continue;
 }
