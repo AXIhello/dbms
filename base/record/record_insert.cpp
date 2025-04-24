@@ -107,6 +107,7 @@ void Record::insert_into() {
     for (size_t i = 0; i < fields.size(); ++i) {
         const FieldBlock& field = fields[i];
         const std::string& value = record_values[i];
+        if (value == "NULL") continue;
         if (!is_valid_type(value, get_type_string(field.type))) {
             throw std::runtime_error("字段 '" + std::string(field.name) + "' 的值 '" + value + "' 不符合类型要求");
         }

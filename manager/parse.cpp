@@ -131,12 +131,15 @@ void Parse::registerPatterns() {
         });
 
     //√ (匹配 select * )
+   // patterns.push_back({
+     //std::regex(R"(^SELECT\s+(\*|[\w\s\(\)\*,]+)\s+FROM\s+(\w+)(?:\s+WHERE\s+(.+?))?(?:\s+GROUP\s+BY\s+(.+?))?(?:\s+ORDER\s+BY\s+(.+?))?(?:\s+HAVING\s+(.+?))?\s*;$)", std::regex::icase),
+    //[this](const std::smatch& m) { handleSelect(m); }
+      //});
+
     patterns.push_back({
-    std::regex(R"(^SELECT\s+(\*|[\w\s\(\)\*,]+)\s+FROM\s+(\w+)(?:\s+WHERE\s+(.+?))?(?:\s+GROUP\s+BY\s+(.+?))?(?:\s+ORDER\s+BY\s+(.+?))?(?:\s+HAVING\s+(.+?))?\s*;$)", std::regex::icase),
+    std::regex(R"(^SELECT\s+(\*|[\w\s\(\)\*,]+)\s+FROM\s+([\w\s,]+)(?:\s+WHERE\s+(.+?))?(?:\s+JOIN\s+(\w+)\s+ON\s+([\w\.]+)\s*=\s*([\w\.]+))?(?:\s+GROUP\s+BY\s+(.+?))?(?:\s+ORDER\s+BY\s+(.+?))?(?:\s+HAVING\s+(.+?))?\s*;$)", std::regex::icase),
     [this](const std::smatch& m) { handleSelect(m); }
         });
-
-
 
 
     /*  DCL  */
