@@ -116,3 +116,34 @@ void Output::printTableList(QTextEdit* outputEdit, const std::vector<std::string
 }
 
 
+void Output::printSelectResultEmpty(QTextEdit* outputEdit, const std::vector<std::string>& cols) {
+    // 如果 cols 为空，直接返回
+    if (cols.empty()) {
+        outputEdit->append("No columns to display.");
+        return;
+    }
+
+    // 创建 HTML 格式的字符串
+    QString html;
+    html += "<style>"
+        "table { border-collapse: collapse; width: 100%; font-family: Consolas, monospace; }"
+        "th, td { border: 1px solid #888; padding: 6px 10px; text-align: left; }"
+        "th { background-color: #f0f0f0; }"
+        "tr:nth-child(even) { background-color: #fafafa; }"
+        "</style>";
+
+    html += "<table>";
+
+    // 添加表头
+    html += "<tr>";
+    for (const auto& col : cols) {
+        html += "<th>" + QString::fromStdString(col) + "</th>";
+    }
+    html += "</tr>";
+
+    html += "</table>";
+
+    // 将 HTML 内容插入到 QTextEdit 中
+    outputEdit->setHtml(html);
+}
+

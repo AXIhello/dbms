@@ -7,7 +7,7 @@ void Parse::handleCreateDatabase(const std::smatch& m) {
         return;
     }
     Output::printMessage(outputEdit, "数据库 '" + QString::fromStdString(m[1]) + "' 创建成功！");
-    mainWindow->refreshTree();
+  //  mainWindow->refreshTree();
 }
 
 
@@ -18,7 +18,7 @@ void Parse::handleDropDatabase(const std::smatch& m) {
         return;
     }
     Output::printMessage(outputEdit, "数据库 '" + QString::fromStdString(m[1]) + "' 删除成功！");
-    mainWindow->refreshTree();
+  //  mainWindow->refreshTree();
 
 }
 
@@ -39,7 +39,7 @@ void Parse::handleDropTable(const std::smatch& match) {
     // 输出删除成功信息
     QString message = "表 " + QString::fromStdString(tableName) + " 删除成功";
     Output::printMessage(outputEdit, message);
-    mainWindow->refreshTree();
+   // mainWindow->refreshTree();
 }
 
 
@@ -48,6 +48,14 @@ void Parse::handleCreateTable(const std::smatch& match) {
 
     std::string rawDefinition = match[2];
 
+    Database* db = nullptr;
+    try {
+        db = dbManager::getInstance().get_current_database();
+    }
+    catch (const std::exception& e) {
+        Output::printError(outputEdit, QString::fromStdString(e.what()));
+        return;
+    }
 
     std::vector<FieldBlock> fields;
     std::vector<ConstraintBlock> constraints;
@@ -288,7 +296,8 @@ if (def.find("UNIQUE") == 0) {
     }
 
     try {
-		dbManager::getInstance().get_current_database()->createTable(tableName, fields, constraints);
+        db->createTable(tableName, fields, constraints);
+        db;
     }
     catch (const std::exception& e) {
         Output::printError(outputEdit, "表创建失败: " + QString::fromStdString(e.what()));
@@ -296,7 +305,7 @@ if (def.find("UNIQUE") == 0) {
     }
 
     Output::printMessage(outputEdit, "表 " + QString::fromStdString(tableName) + " 创建成功");
-    mainWindow->refreshTree();
+//    mainWindow->refreshTree();
 }
 
 
@@ -426,7 +435,6 @@ void Parse::handleAddColumn(const std::smatch& m) {
         }
 
         table->updateRecord(fieldsCopy);
-        table;
     }
     catch (const std::exception& e) {
         Output::printError(outputEdit, QString("添加字段失败: %1").arg(QString::fromStdString(e.what())));
@@ -442,9 +450,9 @@ void Parse::handleAddColumn(const std::smatch& m) {
 void Parse::handleDropColumn(const std::smatch& match) {
     std::string tableName = match[1];  // 获取表名
     std::string columnName = match[2];  // 获取列名
-	Database* db = dbManager::getInstance().get_current_database();
+
     try {
-        Table* table = db->getTable(tableName);  // 获取表对象
+        Table* table = dbManager::getInstance().get_current_database()->getTable(tableName);  // 获取表对象
         if (table) {
             table->dropField(columnName);  // 调用 Table 的 dropField 方法
 

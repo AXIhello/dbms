@@ -5,7 +5,10 @@
 Parse::Parse(QTextEdit* outputEdit, MainWindow* mainWindow) : outputEdit(outputEdit), mainWindow(mainWindow) {
     registerPatterns();
 }
+Parse::Parse(Database* database)
+    : db(database) {  // 初始化 db 指针
 
+}
 
 
 

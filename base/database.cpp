@@ -105,9 +105,7 @@ void Database::createTable(const std::string& table_name, const std::vector<Fiel
 
     // 将新表添加到表集合中
     m_tables[table_name] = new_table;
-
-    // 输出成功信息
-    std::cout << "表 " << table_name << " 创建成功" << std::endl;
+    m_tables;
 }
 
 

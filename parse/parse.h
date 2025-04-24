@@ -30,6 +30,8 @@ public:
     Parse(QTextEdit* outputEdit, MainWindow* mainWindow = nullptr);
     void execute(const QString& sql);
     
+    Parse(Database* database);
+
     //util
     static std::string trim(const std::string& s);
     
@@ -41,6 +43,7 @@ private:
         std::function<void(const std::smatch&)> action;
     };
 
+    Database* db;
     std::vector<SqlPattern> patterns;
     void registerPatterns();
 

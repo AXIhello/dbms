@@ -226,12 +226,13 @@ dbManager& dbManager::getInstance() {
 }
 
 void dbManager::useDatabase(const std::string& db_name) {
+    //std::lock_guard<std::mutex> lock(dbMutex);  // 互斥锁，独占访问
     if (!database_exists_in_db(db_name)) {
         throw std::runtime_error("数据库 '" + db_name + "' 不存在！");
     }
 
     if (currentDB) {
-        delete currentDB; //卸载再加载
+        delete currentDB;  // 卸载当前数据库
     }
 
     currentDB = new Database(db_name);  // Database 构造时自动加载
@@ -239,7 +240,9 @@ void dbManager::useDatabase(const std::string& db_name) {
 }
 
 
+
 Database* dbManager::get_current_database() {
+    std::shared_lock<std::shared_mutex> lock(dbSharedMutex);  // 读锁，允许并发读取
     if (!currentDB) {
         throw std::runtime_error("当前未选择数据库");
     }
@@ -257,7 +260,7 @@ Database* dbManager::get_current_database() {
  * @return Database* 对应的数据库对象指针；若数据库不存在，返回 nullptr
  */
 Database* dbManager::get_database_by_name(const std::string& dbName) {
-    if (!database_exists_on_disk(dbName)) return nullptr;
+    if (!database_exists_in_db(dbName)) return nullptr;
 
     auto it = dbCache.find(dbName);
     if (it != dbCache.end()) {

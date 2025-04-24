@@ -11,7 +11,8 @@
 #include"databaseBlock.h"
 #include <unordered_map>
 #include <unordered_set>
-
+#include <shared_mutex>
+#include <mutex>
 
 
 namespace fs = std::filesystem;
@@ -21,8 +22,15 @@ namespace fs = std::filesystem;
 class dbManager {
 public:
     static dbManager& getInstance(); // 获取全局唯一实例
+	
+    // 禁用拷贝构造函数和赋值运算符
+    dbManager(const dbManager&) = delete;
+    dbManager& operator=(const dbManager&) = delete;
+
 
     Database* get_current_database();
+    std::mutex dbMutex;             // 互斥锁用于保护数据库切换（写操作）
+    std::shared_mutex dbSharedMutex; // 读写锁用于保护数据库读取（读操作）
 
     //通过文件夹来获取当前的数据
 	std::vector<std::string> get_database_list_by_db(); // 通过数据库文件获取数据库列表
@@ -61,8 +69,7 @@ public:
 private:
     dbManager();  // DBMS_ROOT根目录
     ~dbManager();
-    dbManager(const dbManager&) = delete;
-    dbManager& operator=(const dbManager&) = delete;
+    
     
    
 	
@@ -73,8 +80,9 @@ private:
     Database* currentDB = nullptr;
     
     std::string currentDBName;
-
+    
     std::unordered_map<std::string, Database*> dbCache;  //缓存池
+
 
 };
 
