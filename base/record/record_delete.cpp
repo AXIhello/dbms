@@ -15,25 +15,20 @@
 
 int Record::delete_(const std::string& tableName, const std::string& condition) {
     this->table_name = tableName;
-
     if (!table_exists(this->table_name)) {
         throw std::runtime_error("表 '" + this->table_name + "' 不存在。");
     }
-
     std::vector<FieldBlock> fields = read_field_blocks(table_name);
     this->table_structure = read_table_structure_static(table_name);
-
     if (!condition.empty()) parse_condition(condition);
-
+    // 首先读取所有不需要删除的记录
     std::ifstream infile(table_name + ".trd", std::ios::binary);
-    std::ofstream outfile(table_name + ".tmp", std::ios::binary);
-    if (!infile || !outfile) {
+    if (!infile) {
         throw std::runtime_error("无法打开数据文件进行删除操作。");
     }
-
     int deleted_count = 0;
     std::unordered_map<std::string, std::string> record_data;
-
+    std::vector<std::unordered_map<std::string, std::string>> records_to_keep;
     while (read_single_record(infile, fields, record_data)) {
         if (condition.empty() || matches_condition(record_data, false)) {
             if (!check_references_before_delete(table_name, record_data)) {
@@ -42,19 +37,23 @@ int Record::delete_(const std::string& tableName, const std::string& condition) 
             deleted_count++;
             continue;
         }
-
+        // 保存需要保留的记录
+        records_to_keep.push_back(record_data);
+    }
+    infile.close();
+    // 直接清空并重写文件
+    std::ofstream outfile(table_name + ".trd", std::ios::binary | std::ios::trunc);
+    if (!outfile) {
+        throw std::runtime_error("无法打开数据文件进行写入操作。");
+    }
+    // 写入保留的记录
+    for (const auto& record : records_to_keep) {
         for (const auto& field : fields) {
-            write_field(outfile, field, record_data[field.name]);
+            // 将 char[128] 转换为 std::string 以用作键
+            std::string field_name(field.name);
+            write_field(outfile, field, record.at(field_name));
         }
     }
-
-    infile.close();
     outfile.close();
-
-    std::remove((table_name + ".trd").c_str());
-    if (std::rename((table_name + ".tmp").c_str(), (table_name + ".trd").c_str()) != 0) {
-        throw std::runtime_error("无法替换原数据文件。");
-    }
-
     return deleted_count;
 }
