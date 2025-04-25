@@ -84,13 +84,7 @@ void Record::parse_values(const std::string& vals) {
 }
 
 void Record::insert_into() {
-    std::vector<ConstraintBlock> constraints = read_constraints(table_name);
-    if (!check_constraints(columns, values, constraints)) {
-        throw std::runtime_error("插入数据违反表约束");
-    }
-
     std::vector<FieldBlock> fields = read_field_blocks(table_name);
-    std::vector<bool> is_null(fields.size(), true);
     std::unordered_map<std::string, size_t> field_indices;
     for (size_t i = 0; i < fields.size(); ++i) {
         field_indices[fields[i].name] = i;
@@ -100,10 +94,21 @@ void Record::insert_into() {
     for (size_t i = 0; i < columns.size(); ++i) {
         size_t idx = field_indices[columns[i]];
         record_values[idx] = values[i];
-        is_null[idx] = false;
     }
 
+    // 使用完整字段名和值检查约束（在设置 record_values 后）
+    std::vector<std::string> all_columns, all_values;
+    for (const auto& field : fields) {
+        all_columns.push_back(field.name);
+    }
+    all_values = record_values;
 
+    std::vector<ConstraintBlock> constraints = read_constraints(table_name);
+    if (!check_constraints(all_columns, all_values, constraints)) {
+        throw std::runtime_error("插入数据违反表约束");
+    }
+
+    // 校验类型（已修复：跳过 NULL）
     for (size_t i = 0; i < fields.size(); ++i) {
         const FieldBlock& field = fields[i];
         const std::string& value = record_values[i];
@@ -113,6 +118,7 @@ void Record::insert_into() {
         }
     }
 
+    // 写入数据
     std::string file_name = this->table_name + ".trd";
     std::ofstream file(file_name, std::ios::app | std::ios::binary);
     if (!file) {
@@ -126,3 +132,4 @@ void Record::insert_into() {
     file.close();
     std::cout << "记录插入表 " << this->table_name << " 成功。" << std::endl;
 }
+
