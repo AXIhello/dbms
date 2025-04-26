@@ -7,11 +7,13 @@
 #include <vector>
 #include <ctime>
 #include <sstream>
+#include <unordered_map>
 #include"base/BTree.h"
 #include"base/block/tableBlock.h"
 #include"base/block/fieldBlock.h"
 #include"base/block/constraintBlock.h"
 #include"base/block/indexBlock.h"
+
 using namespace std;
 
 
@@ -92,6 +94,7 @@ public:
     void addRecord(const string& recordData);
     void deleteRecord(int recordID);
     string getDefaultValue(const std::string& fieldName) const;
+    void print_records(const std::vector<std::unordered_map<std::string, std::string>>& records);
     //void updateRecord(std::vector<FieldBlock>& fields);
     void updateRecord_add(FieldBlock& field);
     void updateRecord_delete(const std::string& fieldName);
@@ -119,6 +122,7 @@ private:
     string m_tableName;     // 表名
     int m_recordCount;      // 表记录数
     int m_fieldCount;       // 表字段数
+
     string m_tb;            //表描述文件路径 
     string m_tdf;           // 表定义文件路径
     string m_tic;           // 表格完整性文件路径
