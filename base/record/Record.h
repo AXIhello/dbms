@@ -7,10 +7,17 @@
 #include "base/block/constraintBlock.h"
 #include <filesystem> 
 
-struct JoinInfo {
-    std::vector<std::string> tables;  // 表列表
-    std::vector<std::pair<std::string, std::string>> join_conditions;  // 每对字段连接条件
+struct JoinPair {
+    std::string left_table;
+    std::string right_table;
+    std::vector<std::pair<std::string, std::string>> conditions; // 这一对表的连接条件
 };
+
+struct JoinInfo {
+    std::vector<std::string> tables;
+    std::vector<JoinPair> joins;       // 变成多组条件
+};
+
 
 class Record {
 private:
