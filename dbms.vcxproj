@@ -39,7 +39,7 @@
     <QtModules>core;gui;widgets</QtModules>
     <QtBuildConfig>debug</QtBuildConfig>
     <QtInstall>6.2.13_msvc2019_64</QtInstall>
-    <QtInstall>6.5.3_msvc2019_64</QtInstall>
+    <QtInstall>6.2.13_msvc2019_64</QtInstall>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)' == 'Release|x64'" Label="QtSettings">
     <QtModules>core;gui;widgets</QtModules>
@@ -129,7 +129,7 @@
     <ClCompile Include="base\record\record_utils.cpp" />
     <ClCompile Include="base\user.cpp" />
     <QtRcc Include="dbms.qrc" />
-    <QtRcc Include="Resource.qrc" />
+    <QtRcc Include="resource\Resource.qrc" />
     <QtUic Include="login.ui" />
     <QtUic Include="ui\dbms.ui" />
     <ClCompile Include="main.cpp" />

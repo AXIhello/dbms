@@ -178,6 +178,6 @@
     </QtUic>
   </ItemGroup>
   <ItemGroup>
-    <QtRcc Include="Resource.qrc" />
+    <QtRcc Include="resource\Resource.qrc" />
   </ItemGroup>
 </Project>
