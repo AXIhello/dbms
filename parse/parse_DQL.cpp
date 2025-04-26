@@ -111,7 +111,7 @@ void Parse::handleSelect(const std::smatch& m) {
                     });
 
                 if (it_pair != join_info.joins.end()) {
-                    it_pair->conditions.push_back({ left_col, right_col });
+                    //it_pair->conditions.push_back({ left_col, right_col });
                 }
                 else {
                     JoinPair jp;
