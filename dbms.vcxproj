@@ -40,7 +40,7 @@
     <QtBuildConfig>debug</QtBuildConfig>
     <QtInstall>6.2.13_msvc2019_64</QtInstall>
     <QtInstall>6.2.13_msvc2019_64</QtInstall>
-    <QtInstall>Qt 6.2.12 MSVC</QtInstall>
+    <QtInstall>6.2.13_msvc2019_64</QtInstall>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)' == 'Release|x64'" Label="QtSettings">
     <QtModules>core;gui;widgets</QtModules>

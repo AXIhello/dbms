@@ -210,16 +210,14 @@ void MainWindow::onTreeItemClicked(QTreeWidgetItem* item, int column) {
     ui->inputEdit->setPlainText(sql);
     QString dbName = parent->text(0);
 
-    const auto& dbList = dbManager::getInstance().get_database_list_by_db();
-    for (const auto& name : dbList) {
-        QTreeWidgetItem* dbItem = new QTreeWidgetItem(ui->treeWidget);
-        dbItem->setText(0, QString::fromStdString(name));
-        try {
-            Parse parser(ui->outputEdit, this);
-            parser.execute(sql);
-        }
-        catch (const std::exception& e) {
-            Output::printError(ui->outputEdit, QString("加载表失败: ") + e.what());
-        }
+    dbManager::getInstance().useDatabase(dbName.toStdString());
+
+    try {
+        Parse parser(ui->outputEdit, this);
+        parser.execute(sql);
     }
+    catch (const std::exception& e) {
+        Output::printError(ui->outputEdit, QString("加载表失败: ") + e.what());
+    }
+
 }
