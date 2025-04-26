@@ -4,7 +4,7 @@
 #include "manager/parse.h"
 #include <cstring>
 #include <iomanip>
-#include"manager/dbManager.h"
+
 
 // 构造函数，初始化表的相关信息√
 Table::Table(const std::string& dbName, const std::string& tableName)
@@ -51,7 +51,7 @@ void Table::save() {
 }
 
 void Table::initializeNew() {
-    std::string fullPath = dbManager::basePath + "/data/" + m_db_name + "/" + m_tableName;
+    string fullPath = dbManager::basePath + "/data/" + m_db_name + "/" + m_tableName;
     std::vector<std::string> filesToCreate = {
         fullPath + ".tic",
         fullPath + ".trd",

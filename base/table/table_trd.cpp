@@ -16,6 +16,20 @@ std::string Table::getDefaultValue(const std::string& fieldName) const {
     return "NULL"; // 没找到，返回"NULL"
 }
 
+// 辅助函数：打印所有记录内容
+void Table::print_records(const std::vector<std::unordered_map<std::string, std::string>>& records) {
+    std::cout << "\n====== 当前读取到的记录内容 ======" << std::endl;
+    size_t index = 0;
+    for (const auto& record : records) {
+        std::cout << "记录 " << index++ << ": { ";
+        for (const auto& [key, value] : record) {
+            std::cout << key << ": " << value << ", ";
+        }
+        std::cout << " }" << std::endl;
+    }
+    std::cout << "====== 记录总数: " << records.size() << " ======" << std::endl;
+}
+
 //void Table::updateRecord(std::vector<FieldBlock>& fields) {
 //    // 检查表是否存在
 //    if (!isTableExist()) {
@@ -267,11 +281,13 @@ void Table::updateRecord_add(FieldBlock& new_field) {
     // 2. 检查原表数据是否能正确读取
     std::vector<std::unordered_map<std::string, std::string>> records;
     try {
-        records = Record::read_records(m_tableName);
+        records = Record::read_records(dbManager::basePath + "/data/" + m_db_name + "/" + m_tableName);
     }
+
     catch (const std::exception& e) {
         throw std::runtime_error("读取表记录失败：" + std::string(e.what()));
     }
+	print_records(records);
 
     if (records.empty()) {
         throw std::runtime_error("警告：读取到的记录为空，可能是表本身就没有数据。");
@@ -291,7 +307,12 @@ void Table::updateRecord_add(FieldBlock& new_field) {
         if (record.empty()) {
             throw std::runtime_error("发现空的记录，数据可能损坏！");
         }
-        record[std::string(new_field.name)] = default_value;
+        //record[std::string(new_field.name)] = default_value;
+        auto result = record.insert({ std::string(new_field.name), default_value });
+        if (!result.second) {
+            throw std::runtime_error("字段已存在，不能插入！");
+        }
+
     }
 
     // 5. 准备更新后的字段列表（注意：不改 m_fields）

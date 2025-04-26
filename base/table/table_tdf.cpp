@@ -68,9 +68,6 @@ void Table::addField(const FieldBlock& field) {
     // 设置最后修改时间
     newField.mtime = std::time(nullptr);
 
-    // 更新记录
-	updateRecord_add(newField); 
-
     // 添加到字段列表
     m_fields.push_back(newField);
 
@@ -83,6 +80,9 @@ void Table::addField(const FieldBlock& field) {
     // 保存到定义文件和元数据文件
     saveDefineBinary();
     saveMetadataBinary();
+    // 更新记录
+	updateRecord_add(newField); 
+
 }
 
 //待实现。不管有没有值，都直接删
