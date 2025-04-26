@@ -61,8 +61,6 @@ private:
         const std::unordered_map<std::string, std::string>& record_data);
     // 计算数据本体的大小（不含null标志）
     static size_t get_field_data_size(int type, int param);
-    // 写入一个字段，包括 null_flag + 数据 + padding
-    static void write_field(std::ofstream& out, const FieldBlock& field, const std::string& value);
     // 读取一个字段，返回字符串值（带 null 判断）
     //static std::string read_field(std::ifstream& in, const FieldBlock& field);
 
@@ -75,6 +73,9 @@ public:
     // 表操作相关函数
     static std::vector<std::unordered_map<std::string, std::string>> read_records(const std::string table_name);
     void insert_record(const std::string& table_name, const std::string& cols, const std::string& vals);
+
+    // 写入一个字段，包括 null_flag + 数据 + padding
+    static void write_field(std::ofstream& out, const FieldBlock& field, const std::string& value);
     void insert_into();
     static std::vector<Record> select(
         const std::string& columns,
