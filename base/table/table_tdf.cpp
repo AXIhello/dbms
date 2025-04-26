@@ -69,7 +69,7 @@ void Table::addField(const FieldBlock& field) {
     newField.mtime = std::time(nullptr);
 
     // 更新记录
-	updateRecord_add(newField); 
+	//updateRecord_add(newField); 
 
     // 添加到字段列表
     m_fields.push_back(newField);
