@@ -53,13 +53,10 @@ MainWindow::MainWindow(QWidget* parent)
     ui->inputEdit->setInputMethodHints(Qt::ImhPreferLatin); // 设置为英文输入
 
     this->setStyleSheet(styleSheet);
-    // 设置 stackedWidget 默认显示第一页（inputEdit页）
-    ui->displayStack->setCurrentIndex(0);
 
     // 连接按钮点击事件到槽函数
-    connect(ui->runButton, &QPushButton::clicked, this,&MainWindow::onRunButtonClicked);
+    connect(ui->runButton, &QPushButton::clicked, this, &MainWindow::onRunButtonClicked);
     connect(ui->treeWidget, &QTreeWidget::itemClicked, this, &MainWindow::onTreeItemClicked);
-    //refreshTree();
     setWindowTitle("My Database Client"); // 设置窗口标题
     setGeometry(100, 100, 1000, 600);  // 设置窗口大小
 
@@ -126,7 +123,8 @@ MainWindow::~MainWindow() {
 }
 
 void MainWindow::onRunButtonClicked() {
-    QString sql = ui->inputEdit->toPlainText().trimmed(); // 获取 SQL 语句
+    //QString sql = ui->inputEdit->toPlainText().trimmed(); // 获取 SQL 语句
+    QString sql = ui->inputEdit->toPlainText().split('\n', Qt::SkipEmptyParts).last().trimmed();//只获取最后一行的语句
 
     if (sql.isEmpty())
     {
@@ -137,25 +135,6 @@ void MainWindow::onRunButtonClicked() {
     Parse parser(ui->outputEdit,this);
     parser.execute(sql);
 
-   /* QString message;
-    if (sql.startsWith("SELECT", Qt::CaseInsensitive))
-    {
-        message = "解析结果：这是一个 SELECT 语句。";
-    }
-    else if (sql.startsWith("INSERT", Qt::CaseInsensitive) ||
-        sql.startsWith("UPDATE", Qt::CaseInsensitive) ||
-        sql.startsWith("DELETE", Qt::CaseInsensitive) ||
-        sql.startsWith("CREATE", Qt::CaseInsensitive) ||
-        sql.startsWith("DROP", Qt::CaseInsensitive))
-    {
-        message = "解析结果：这是一个 数据修改 语句。";
-    }
-    else
-    {
-        message = "解析结果：不支持的 SQL 语句！";
-    }
-
-    QMessageBox::information(this, "SQL 解析", message);*/
 }
 
 void MainWindow::refreshTree() {
@@ -204,25 +183,36 @@ void MainWindow::refreshTree() {
 }
 
 void MainWindow::onTreeItemClicked(QTreeWidgetItem* item, int column) {
-    QString itemText = item->text(0);
+    QTreeWidgetItem* parent = item->parent();
 
-    // 判断是否是数据库名节点
-    if (item->parent() == nullptr) {
-        if (itemText.toLower() == "console") {
-            ui->displayStack->setCurrentIndex(0); // 切回日志输出框
-        }
+    if (!parent) {
+        // === 点击数据库节点 ===
+        QString dbName = item->text(0);
+        std::string dbNameStr = dbName.toStdString();
+
+        // 设置当前数据库（视你的实现而定）
+        dbManager::getInstance().useDatabase(dbNameStr);
+
+        // 显示 SQL 并执行
+        QString sql = "USE " + dbName + ";\n";
+        ui->inputEdit->setPlainText(sql);
+        
+
+        Output::printInfo(ui->outputEdit, "已切换数据库：" + dbName);
         return;
     }
 
-}
+    // === 点击表节点 ===
+    QString tableName = item->text(0);
+    QString sql = "SELECT * FROM " + tableName + ";\n";
+    ui->inputEdit->setPlainText(sql);
+    QString dbName = parent->text(0);
 
-//针对建数据库，只把数据库挂上去
-void MainWindow::refreshDatabaseList() {
-    ui->treeWidget->clear();
-
-    const auto& dbList = dbManager::getInstance().getDatabaseList();
-    for (const auto& name : dbList) {
-        QTreeWidgetItem* dbItem = new QTreeWidgetItem(ui->treeWidget);
-        dbItem->setText(0, QString::fromStdString(name));
+    try {
+        Parse parser(ui->outputEdit, this);
+        parser.execute(sql);
+    }
+    catch (const std::exception& e) {
+        Output::printError(ui->outputEdit, QString("加载表失败: ") + e.what());
     }
 }

@@ -37,40 +37,6 @@
      <string>run</string>
     </property>
    </widget>
-   <widget class="QStackedWidget" name="displayStack">
-    <property name="geometry">
-     <rect>
-      <x>-1</x>
-      <y>19</y>
-      <width>941</width>
-      <height>381</height>
-     </rect>
-    </property>
-    <widget class="QWidget" name="page">
-     <widget class="QTextEdit" name="inputEdit">
-      <property name="geometry">
-       <rect>
-        <x>0</x>
-        <y>0</y>
-        <width>941</width>
-        <height>381</height>
-       </rect>
-      </property>
-     </widget>
-    </widget>
-    <widget class="QWidget" name="page_2">
-     <widget class="QTableWidget" name="tableWidget">
-      <property name="geometry">
-       <rect>
-        <x>0</x>
-        <y>0</y>
-        <width>941</width>
-        <height>381</height>
-       </rect>
-      </property>
-     </widget>
-    </widget>
-   </widget>
    <widget class="QTreeWidget" name="treeWidget">
     <property name="geometry">
      <rect>
@@ -85,6 +51,16 @@
       <string notr="true">1</string>
      </property>
     </column>
+   </widget>
+   <widget class="QTextEdit" name="inputEdit">
+    <property name="geometry">
+     <rect>
+      <x>1250</x>
+      <y>60</y>
+      <width>941</width>
+      <height>381</height>
+     </rect>
+    </property>
    </widget>
   </widget>
   <widget class="QMenuBar" name="menubar">
