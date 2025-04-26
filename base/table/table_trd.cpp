@@ -258,42 +258,42 @@ std::string Table::getDefaultValue(const std::string& fieldName) const {
 //    std::cout << "记录更新成功。" << std::endl;
 //}
 
-void Table::updateRecord_add(FieldBlock& field) {
+void Table::updateRecord_add(FieldBlock& new_field) {
     // 检查表是否存在
     if (!isTableExist()) {
         throw std::runtime_error("表 '" + m_tableName + "' 不存在。");
     }
 
-    // 读取现有记录
-    std::vector<std::unordered_map<std::string, std::string>> records;
-    records = Record::read_records(m_tableName);
+    // 读取现有记录（使用原来的字段m_fields来读）
+    std::vector<std::unordered_map<std::string, std::string>> records = Record::read_records(m_tableName);
 
-    // 找默认值（如果有的话）
-    std::string default_value = "NULL";
+    // 找默认值
+    std::string default_value = "";
     for (const auto& constraint : m_constraints) {
-        if (constraint.type == 6 && constraint.field == field.name) { // type 6: DEFAULT
+        if (constraint.type == 6 && constraint.field == new_field.name) { // DEFAULT约束
             default_value = constraint.param;
             break;
         }
     }
 
-    // 给每条记录加上新字段
+    // 先把每条记录加上新字段（值是默认值）
     for (auto& record : records) {
-        record[field.name] = default_value;
+        record[std::string(new_field.name)] = default_value;
     }
 
-    // 更新 m_fields
-    m_fields.push_back(field);
+    // 重要！！保存一份当前fields，并且加上新字段
+    std::vector<FieldBlock> updated_fields = m_fields;
+    updated_fields.push_back(new_field);
 
-    // 重新写回文件
+    // 打开文件，清空后重新写
     std::ofstream file(m_trd, std::ios::binary | std::ios::trunc);
     if (!file) {
         throw std::runtime_error("无法重新打开表文件 '" + m_tableName + ".trd' 进行写入。");
     }
 
     for (const auto& record : records) {
-        for (const auto& fieldBlock : m_fields) {
-            auto it = record.find(fieldBlock.name);
+        for (const auto& fieldBlock : updated_fields) {
+            auto it = record.find(std::string(fieldBlock.name));
             if (it == record.end()) {
                 throw std::runtime_error("字段 '" + std::string(fieldBlock.name) + "' 缺失对应值。");
             }
@@ -301,10 +301,10 @@ void Table::updateRecord_add(FieldBlock& field) {
             Record::write_field(file, fieldBlock, value);
         }
     }
-
     file.close();
-    std::cout << "添加字段 '" << field.name << "' 并更新记录成功。" << std::endl;
+    std::cout << "添加字段 '" << new_field.name << "' 并更新记录成功。" << std::endl;
 }
+
 
 
 void Table::updateRecord_delete(const std::string& fieldName) {
