@@ -138,8 +138,6 @@ void MainWindow::onRunButtonClicked() {
 }
 
 
-}
-
 void MainWindow::refreshTree() {
     try
     {
@@ -200,7 +198,7 @@ void MainWindow::onTreeItemClicked(QTreeWidgetItem* item, int column) {
         // 显示 SQL 并执行
         QString sql = "USE " + dbName + ";\n";
         ui->inputEdit->setPlainText(sql);
-        
+
 
         Output::printInfo(ui->outputEdit, "已切换数据库：" + dbName);
         return;
@@ -216,11 +214,12 @@ void MainWindow::onTreeItemClicked(QTreeWidgetItem* item, int column) {
     for (const auto& name : dbList) {
         QTreeWidgetItem* dbItem = new QTreeWidgetItem(ui->treeWidget);
         dbItem->setText(0, QString::fromStdString(name));
-    try {
-        Parse parser(ui->outputEdit, this);
-        parser.execute(sql);
-    }
-    catch (const std::exception& e) {
-        Output::printError(ui->outputEdit, QString("加载表失败: ") + e.what());
+        try {
+            Parse parser(ui->outputEdit, this);
+            parser.execute(sql);
+        }
+        catch (const std::exception& e) {
+            Output::printError(ui->outputEdit, QString("加载表失败: ") + e.what());
+        }
     }
 }
