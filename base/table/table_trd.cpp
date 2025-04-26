@@ -2,9 +2,19 @@
 #include <iostream>
 #include <ctime>
 #include "manager/parse.h"
+#include <base/Record/record.h>
 #include <cstring>
 #include <iomanip>
 #include"manager/dbManager.h"
+
+std::string Table::getDefaultValue(const std::string& fieldName) const {
+    for (const auto& constraint : m_constraints) {
+        if (constraint.type == 6 && fieldName == constraint.field) { // 6: DEFAULT
+            return constraint.param; // 找到了默认值，返回
+        }
+    }
+    return "NULL"; // 没找到，返回"NULL"
+}
 
 void Table::updateRecord(std::vector<FieldBlock>& fields) {
     // 检查表是否存在
@@ -242,3 +252,86 @@ void Table::updateRecord(std::vector<FieldBlock>& fields) {
     file.close();
     std::cout << "记录更新成功。" << std::endl;
 }
+
+void Table::updateRecord_add(FieldBlock& field) {
+    // 检查表是否存在
+    if (!isTableExist()) {
+        throw std::runtime_error("表 '" + m_tableName + "' 不存在。");
+    }
+
+    // 打开 .trd 文件
+    std::fstream file(m_trd, std::ios::in | std::ios::out | std::ios::binary);
+    if (!file) {
+        throw std::runtime_error("无法打开表文件 '" + m_tableName + ".trd' 进行更新。");
+    }
+    file.close(); // 先关掉，接下来重新覆盖写
+
+    // 读取现有记录
+    std::vector<std::unordered_map<std::string, std::string>> records;
+    records = Record::read_records(m_tableName);
+
+    // 获取新字段的默认值
+    std::string defaultValue = getDefaultValue(field.name);
+
+    // 给每条记录新增这个字段
+    for (auto& record : records) {
+        record[field.name] = defaultValue; // 添加新字段
+    }
+
+    // 重新写入所有更新后的记录
+    file.open(m_trd, std::ios::out | std::ios::binary | std::ios::trunc); // 覆盖写
+    if (!file) {
+        throw std::runtime_error("无法重新打开表文件 '" + m_tableName + ".trd' 进行写入。");
+    }
+
+    for (const auto& record : records) {
+        for (const auto& fieldBlock : m_fields) {
+            auto it = record.find(fieldBlock.name);
+            if (it == record.end()) {
+                throw std::runtime_error("字段 '" + std::string(fieldBlock.name) + "' 缺失对应值。");
+            }
+            const std::string& value = it->second;
+
+            // 写入 NULL 标志
+            bool is_null = (value == "NULL");
+            file.write(reinterpret_cast<const char*>(&is_null), sizeof(bool));
+
+            if (!is_null) {
+                switch (fieldBlock.type) {
+                case 1: { // INT
+                    int int_val = std::stoi(value);
+                    file.write(reinterpret_cast<const char*>(&int_val), sizeof(int));
+                    break;
+                }
+                case 2: { // DOUBLE
+                    double double_val = std::stod(value);
+                    file.write(reinterpret_cast<const char*>(&double_val), sizeof(double));
+                    break;
+                }
+                case 3: // VARCHAR
+                case 4: { // CHAR
+                    char* buffer = new char[fieldBlock.param];
+                    std::memset(buffer, 0, fieldBlock.param);
+                    if (strncpy_s(buffer, fieldBlock.param, value.c_str(), fieldBlock.param - 1) != 0) {
+                        throw std::runtime_error("字符串复制失败。");
+                    }
+                    file.write(buffer, fieldBlock.param);
+                    delete[] buffer;
+                    break;
+                }
+                case 5: { // DATETIME
+                    std::time_t timestamp = static_cast<std::time_t>(std::stoll(value));
+                    file.write(reinterpret_cast<const char*>(&timestamp), sizeof(std::time_t));
+                    break;
+                }
+                default:
+                    throw std::runtime_error("未知字段类型。");
+                }
+            }
+        }
+    }
+
+    file.close();
+    std::cout << "添加字段 '" << field.name << "' 并更新记录成功。" << std::endl;
+}
+
