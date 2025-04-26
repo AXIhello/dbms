@@ -154,6 +154,7 @@ void MainWindow::refreshTree() {
             //BUG；此时获取到的db不是最新的；createTable后尚未添加进去？
             Database* db = dbManager::getInstance().get_database_by_name(dbName);
             if (!db) continue;
+            db->loadTables();
 
             // 顶层节点：数据库
             QTreeWidgetItem* dbItem = new QTreeWidgetItem(ui->treeWidget);

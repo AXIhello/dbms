@@ -7,10 +7,17 @@
 #include "base/block/constraintBlock.h"
 #include <filesystem> 
 
-struct JoinInfo {
-    std::vector<std::string> tables;  // 表列表
-    std::vector<std::pair<std::string, std::string>> join_conditions;  // 每对字段连接条件
+struct JoinPair {
+    std::string left_table;
+    std::string right_table;
+    std::vector<std::pair<std::string, std::string>> conditions; // 这一对表的连接条件
 };
+
+struct JoinInfo {
+    std::vector<std::string> tables;
+    std::vector<JoinPair> joins;       // 变成多组条件
+};
+
 
 class Record {
 private:
@@ -32,7 +39,6 @@ private:
     // 验证列名和类型
     void validate_columns();
     void validate_types();
-    void validate_types_without_columns();
     // 检查值的类型是否有效
     bool is_valid_type(const std::string& value, const std::string& type);
 
