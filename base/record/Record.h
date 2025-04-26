@@ -39,7 +39,6 @@ private:
     // 验证列名和类型
     void validate_columns();
     void validate_types();
-    void validate_types_without_columns();
     // 检查值的类型是否有效
     bool is_valid_type(const std::string& value, const std::string& type);
 
