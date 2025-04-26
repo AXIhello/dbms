@@ -23,8 +23,8 @@ std::vector<Record> Record::select(
     std::vector<std::unordered_map<std::string, std::string>> filtered;
     std::unordered_map<std::string, std::string> combined_structure;
 
-    if (join_info && join_info->tables.size() >= 1) {
-        // 初始表
+    if (join_info && !join_info->tables.empty()) {
+        // 初始化第一个表
         std::vector<std::unordered_map<std::string, std::string>> result = read_records(join_info->tables[0]);
         for (auto& rec : result) {
             std::unordered_map<std::string, std::string> prefixed;
@@ -36,7 +36,7 @@ std::vector<Record> Record::select(
             rec = prefixed;
         }
 
-        // 逐跳 JOIN
+        // 处理每一对 join
         for (const auto& join : join_info->joins) {
             std::vector<std::unordered_map<std::string, std::string>> right_records = read_records(join.right_table);
             for (auto& rec : right_records) {
@@ -54,7 +54,10 @@ std::vector<Record> Record::select(
                 for (const auto& r2 : right_records) {
                     bool match = true;
                     for (const auto& [left_field, right_field] : join.conditions) {
-                        if (r1.at(left_field) != r2.at(right_field)) {
+                        std::string left_full = join.left_table + "." + left_field;
+                        std::string right_full = join.right_table + "." + right_field;
+
+                        if (r1.at(left_full) != r2.at(right_full)) {
                             match = false;
                             break;
                         }
@@ -66,9 +69,9 @@ std::vector<Record> Record::select(
                     }
                 }
             }
+
             result = new_result;
         }
-
         filtered = result;
     }
     else {
@@ -86,13 +89,15 @@ std::vector<Record> Record::select(
         temp.parse_condition(condition);
     }
 
+    // where筛选
     std::vector<std::unordered_map<std::string, std::string>> condition_filtered;
     for (const auto& rec : filtered) {
-        if (condition.empty() || temp.matches_condition(rec, join_info && join_info->tables.size() > 1)) {
+        if (condition.empty() || temp.matches_condition(rec, join_info && !join_info->tables.empty())) {
             condition_filtered.push_back(rec);
         }
     }
 
+    // group by分组
     std::map<std::string, std::vector<std::unordered_map<std::string, std::string>>> grouped;
     if (!group_by.empty()) {
         for (const auto& rec : condition_filtered) {
@@ -101,13 +106,11 @@ std::vector<Record> Record::select(
         }
     }
 
-    std::vector<std::unordered_map<std::string, std::string>> result;
+    std::vector<std::unordered_map<std::string, std::string>> final_result;
 
     auto apply_aggregates = [](const std::string& col, const std::vector<std::unordered_map<std::string, std::string>>& records) -> std::string {
         std::string field = col.substr(col.find("(") + 1, col.length() - col.find("(") - 2);
-        if (records.empty() || records[0].find(field) == records[0].end()) {
-            return "NULL";
-        }
+        if (records.empty() || records[0].find(field) == records[0].end()) return "NULL";
         if (col.find("COUNT(") == 0) return std::to_string(records.size());
         if (col.find("SUM(") == 0) {
             double sum = 0;
@@ -152,15 +155,17 @@ std::vector<Record> Record::select(
                 if (col == group_by) continue;
                 row[col] = apply_aggregates(col, group_records);
             }
-            result.push_back(row);
+            final_result.push_back(row);
         }
     }
-    else if (std::any_of(selected_cols.begin(), selected_cols.end(), [](const std::string& c) { return c.find("(") != std::string::npos; })) {
+    else if (std::any_of(selected_cols.begin(), selected_cols.end(), [](const std::string& c) {
+        return c.find("(") != std::string::npos;
+        })) {
         std::unordered_map<std::string, std::string> row;
         for (const auto& col : selected_cols) {
             row[col] = apply_aggregates(col, condition_filtered);
         }
-        result.push_back(row);
+        final_result.push_back(row);
     }
     else {
         for (const auto& rec : condition_filtered) {
@@ -169,7 +174,7 @@ std::vector<Record> Record::select(
                 auto it = rec.find(col);
                 row[col] = (it != rec.end()) ? it->second : "NULL";
             }
-            result.push_back(row);
+            final_result.push_back(row);
         }
     }
 
@@ -180,12 +185,12 @@ std::vector<Record> Record::select(
             desc = true;
             key = key.substr(0, key.find(" DESC"));
         }
-        std::sort(result.begin(), result.end(), [&](const auto& a, const auto& b) {
+        std::sort(final_result.begin(), final_result.end(), [&](const auto& a, const auto& b) {
             return desc ? a.at(key) > b.at(key) : a.at(key) < b.at(key);
             });
     }
 
-    for (const auto& row : result) {
+    for (const auto& row : final_result) {
         Record rec;
         rec.set_table_name(table_name);
         for (const auto& col : selected_cols) {
@@ -197,4 +202,3 @@ std::vector<Record> Record::select(
 
     return records;
 }
-
