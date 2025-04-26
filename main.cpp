@@ -14,13 +14,13 @@ int main(int argc, char *argv[])
     debug::printTIC(dbManager::basePath + "/data/7/TEST4.tic"); 
 
     MainWindow w;
-    dbManager& db = dbManager::getInstance();
+    dbManager& db = dbManager::getInstance();/*
     user::createSysDBA();
 	login loginWidget;
     loginWidget.show();
-    QObject::connect(&loginWidget, &login::acceptedLogin, [&w]() {
+    QObject::connect(&loginWidget, &login::acceptedLogin, [&w]() {*/
         w.showMaximized();
-        });
+    //    });
 	////loginWidget.show();
     return a.exec();
 }

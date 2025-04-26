@@ -1,7 +1,5 @@
 #include "parse.h"
 
-//#include <main.cpp>
-
 Parse::Parse(QTextEdit* outputEdit, MainWindow* mainWindow) : outputEdit(outputEdit), mainWindow(mainWindow) {
     registerPatterns();
 }
