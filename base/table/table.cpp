@@ -22,7 +22,7 @@ Table::Table(const std::string& dbName, const std::string& tableName)
 	}
 	else {
 	    initializeNew(); // 初始化四个文件
-		save();  // 保存表的元数据
+		//save();  // 保存表的元数据
 	}
 }
 
@@ -30,25 +30,7 @@ Table::Table(const std::string& dbName, const std::string& tableName)
 // 析构函数（一般为空）
 Table::~Table() {
 
-    // 删除表的相关文件  
-
-	//deleteTableMetadata(); // 删除表的元数据文件
-
-    //vector<string> filesToDelete = {
-    //    m_tic, // 表的完整性文件  
-    //    m_trd, // 表的数据文件  
-    //    m_tdf, // 表的定义文件  
-    //    m_tid  // 表的索引文件  
-    //};
-
-    //for (const auto& file : filesToDelete) {
-    //    if (std::remove(file.c_str()) == 0) {
-    //        cout << "文件删除成功: " << file << endl;
-    //    }
-    //    else {
-    //       throw std::runtime_error("文件删除失败: ");
-    //    }
-    //}
+   
 }
 
 void Table::load()
@@ -257,6 +239,13 @@ bool Table::deleteTableMetadata(){
     return true;
 }
 
+vector<std::string> Table::getFieldNames() const {  
+   vector<std::string> fieldNames;  
+   for (const auto& field : m_fields) {  
+       fieldNames.push_back(field.name);  
+   }  
+   return fieldNames;  
+}
 /*
 // 更新列√
 void Table::updateCol(const Column& oldCol, const Column& newCol) {

@@ -89,34 +89,17 @@ void Table::dropField(const std::string fieldName) {
     if (std::find(fieldNames.begin(), fieldNames.end(), fieldName) == fieldNames.end()) {
         throw std::runtime_error("字段 '" + fieldName + "' 不存在。");
     }
-    // 检查完整性约束；只有 NOT NULL / DEFAULT / 无约束 情况下才能删
-    for (const auto& f : m_fields) {
-        if (f.name == fieldName) {
-            switch (f.integrities) {
-            case 0:  // 无约束
-                break;
-            case 5:  // NOT NULL
-                break;
-            case 6:  // DEFAULT
-                break;
-            case 7: //自增
-                break;
-            case 1:
-                throw std::runtime_error("字段 '" + fieldName + "' 受主键约束影响，不能删除。");
-            case 2:
-                throw std::runtime_error("字段 '" + fieldName + "' 受外键约束影响，不能删除。");
-            case 3:
-                throw std::runtime_error("字段 '" + fieldName + "' 受CHECK约束影响，不能删除。");
-            case 4:
-                throw std::runtime_error("字段 '" + fieldName + "' 受UNIQUE约束影响，不能删除。");
-            default:
-                throw std::runtime_error("字段 '" + fieldName + "' 受约束影响，不能删除。");
-            }
-            break;  // 找到字段后结束外层循环
-        }
+    //
+    auto fieldIt = std::find_if(m_fields.begin(), m_fields.end(),
+        [&fieldName](const FieldBlock& field) { return field.name == fieldName; });
+
+    if (fieldIt != m_fields.end()) {
+        m_fields.erase(fieldIt);  // 从字段容器中移除该字段
     }
 
+    //完整性约束还没更新
     saveDefineBinary(); // 保存到定义文件
+    saveMetadataBinary(); // 保存到元数据文件
 }
 
 void Table::updateField(const std::string fieldName, const FieldBlock& updatedField) {

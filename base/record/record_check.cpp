@@ -161,40 +161,40 @@ bool Record::check_check_constraint(const ConstraintBlock& constraint, const std
     if (is_null(value)) return true;
     std::string check_expr = constraint.param;
     std::string clean_value = value;
-
-    std::regex gt_regex("\\s*>\\s*(\\d+)");
     std::smatch matches;
-    if (std::regex_match(check_expr, matches, gt_regex)) {
-        int check_val = std::stoi(matches[1]);
+
+    std::regex lt_regex("(<)\\s*(\\d+)");  // 匹配 < 及其后面的数字
+    if (std::regex_search(check_expr, matches, lt_regex)) {
+        int check_val = std::stoi(matches[2]);  // 数字在第二个捕获组
         try {
-            return std::stoi(clean_value) > check_val;
+            return std::stod(clean_value) < check_val;
         }
         catch (...) { return false; }
     }
 
-    std::regex lt_regex("\\s*<\\s*(\\d+)");
-    if (std::regex_match(check_expr, matches, lt_regex)) {
-        int check_val = std::stoi(matches[1]);
+    std::regex gt_regex("(>)\\s*(\\d+)");  // 匹配 > 及其后面的数字
+    if (std::regex_search(check_expr, matches, gt_regex)) {
+        int check_val = std::stoi(matches[2]);  // 数字在第二个捕获组
         try {
-            return std::stoi(clean_value) < check_val;
+            return std::stod(clean_value) > check_val;
         }
         catch (...) { return false; }
     }
 
-    std::regex gte_regex("\\s*>=\\s*(\\d+)");
-    if (std::regex_match(check_expr, matches, gte_regex)) {
-        int check_val = std::stoi(matches[1]);
+    std::regex gte_regex("(>=)\\s*(\\d+)");  // 匹配 >= 及其后面的数字
+    if (std::regex_search(check_expr, matches, gte_regex)) {
+        int check_val = std::stoi(matches[2]);  // 数字在第二个捕获组
         try {
-            return std::stoi(clean_value) >= check_val;
+            return std::stod(clean_value) >= check_val;
         }
         catch (...) { return false; }
     }
 
-    std::regex lte_regex("\\s*<=\\s*(\\d+)");
-    if (std::regex_match(check_expr, matches, lte_regex)) {
-        int check_val = std::stoi(matches[1]);
+    std::regex lte_regex("(<=)\\s*(\\d+)");  // 匹配 <= 及其后面的数字
+    if (std::regex_search(check_expr, matches, lte_regex)) {
+        int check_val = std::stoi(matches[2]);  // 数字在第二个捕获组
         try {
-            return std::stoi(clean_value) <= check_val;
+            return std::stod(clean_value) <= check_val;
         }
         catch (...) { return false; }
     }

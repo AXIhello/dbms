@@ -115,7 +115,8 @@ MainWindow::MainWindow(QWidget* parent)
     mainLayout->addWidget(mainSplitter);
     setCentralWidget(centralWidget);
 
-    refreshTree(); }
+    refreshTree(); 
+   }
 
 MainWindow::~MainWindow() {
     delete ui;  // 释放 UI 资源
@@ -134,6 +135,8 @@ void MainWindow::onRunButtonClicked() {
 
     Parse parser(ui->outputEdit,this);
     parser.execute(sql);
+}
+
 
 }
 
@@ -147,10 +150,11 @@ void MainWindow::refreshTree() {
         QIcon tableIcon(":/image/icons_table.png");
 
         //获取所有数据库和库名
-        const auto& dbList = dbManager::getInstance().getDatabaseList();
+        const auto& dbList = dbManager::getInstance().get_database_list_by_db();
         for (const std::string& dbName : dbList) {
             // 加载数据库对象
-            Database* db = dbManager::getInstance().getDatabaseByName(dbName);
+            //BUG；此时获取到的db不是最新的；createTable后尚未添加进去？
+            Database* db = dbManager::getInstance().get_database_by_name(dbName);
             if (!db) continue;
 
             // 顶层节点：数据库
@@ -208,6 +212,10 @@ void MainWindow::onTreeItemClicked(QTreeWidgetItem* item, int column) {
     ui->inputEdit->setPlainText(sql);
     QString dbName = parent->text(0);
 
+    const auto& dbList = dbManager::getInstance().get_database_list_by_db();
+    for (const auto& name : dbList) {
+        QTreeWidgetItem* dbItem = new QTreeWidgetItem(ui->treeWidget);
+        dbItem->setText(0, QString::fromStdString(name));
     try {
         Parse parser(ui->outputEdit, this);
         parser.execute(sql);
