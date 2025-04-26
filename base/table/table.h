@@ -91,7 +91,10 @@ public:
     bool loadRecord();
     void addRecord(const string& recordData);
     void deleteRecord(int recordID);
+    string getDefaultValue(const std::string& fieldName) const;
     void updateRecord(std::vector<FieldBlock>& fields);
+    void updateRecord_add(FieldBlock& field);
+   
 
     //表索引文件
     void saveIndex();

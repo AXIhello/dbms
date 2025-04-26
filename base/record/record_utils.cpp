@@ -458,9 +458,6 @@ bool Record::matches_condition(const std::unordered_map<std::string, std::string
     return result;
 }
 
-
-
-
 // 从.trd文件读取记录
 std::vector<std::unordered_map<std::string, std::string>> Record::read_records(const std::string table_name) {
     std::vector<std::unordered_map<std::string, std::string>> records;
@@ -690,58 +687,58 @@ void Record::write_field(std::ofstream& out, const FieldBlock& field, const std:
     out.write(pad, padding);
 }
 
-std::string Record::read_field(std::ifstream& in, const FieldBlock& field) {
-    char null_flag;
-    in.read(&null_flag, sizeof(char));
-    if (in.eof()) return "";
-
-    size_t data_size = get_field_data_size(field.type, field.param);
-    std::string result;
-
-    if (null_flag == 1) {
-        in.seekg(data_size, std::ios::cur);
-        result = "NULL";
-    }
-    else {
-        switch (field.type) {
-        case 1: {
-            int v;
-            in.read(reinterpret_cast<char*>(&v), sizeof(int));
-            result = std::to_string(v);
-            break;
-        }
-        case 2: {
-            double d;
-            in.read(reinterpret_cast<char*>(&d), sizeof(double));
-            result = std::to_string(d);
-            break;
-        }
-        case 3: {
-            std::vector<char> buf(field.param, 0);
-            in.read(buf.data(), field.param);
-            result = std::string(buf.data());
-            break;
-        }
-        case 4: {
-            char b;
-            in.read(&b, sizeof(char));
-            result = (b == 1) ? "1" : "0";
-            break;
-        }
-        case 5: {
-            std::time_t t;
-            in.read(reinterpret_cast<char*>(&t), sizeof(std::time_t));
-            result = std::to_string(t);
-            break;
-        }
-        default:
-            result = "";
-        }
-    }
-    size_t padding = (4 - (sizeof(char) + data_size) % 4) % 4;
-    if (padding > 0) {
-        in.seekg(padding, std::ios::cur);
-    }
-
-    return result;
-}
+//std::string Record::read_field(std::ifstream& in, const FieldBlock& field) {
+//    char null_flag;
+//    in.read(&null_flag, sizeof(char));
+//    if (in.eof()) return "";
+//
+//    size_t data_size = get_field_data_size(field.type, field.param);
+//    std::string result;
+//
+//    if (null_flag == 1) {
+//        in.seekg(data_size, std::ios::cur);
+//        result = "NULL";
+//    }
+//    else {
+//        switch (field.type) {
+//        case 1: {
+//            int v;
+//            in.read(reinterpret_cast<char*>(&v), sizeof(int));
+//            result = std::to_string(v);
+//            break;
+//        }
+//        case 2: {
+//            double d;
+//            in.read(reinterpret_cast<char*>(&d), sizeof(double));
+//            result = std::to_string(d);
+//            break;
+//        }
+//        case 3: {
+//            std::vector<char> buf(field.param, 0);
+//            in.read(buf.data(), field.param);
+//            result = std::string(buf.data());
+//            break;
+//        }
+//        case 4: {
+//            char b;
+//            in.read(&b, sizeof(char));
+//            result = (b == 1) ? "1" : "0";
+//            break;
+//        }
+//        case 5: {
+//            std::time_t t;
+//            in.read(reinterpret_cast<char*>(&t), sizeof(std::time_t));
+//            result = std::to_string(t);
+//            break;
+//        }
+//        default:
+//            result = "";
+//        }
+//    }
+//    size_t padding = (4 - (sizeof(char) + data_size) % 4) % 4;
+//    if (padding > 0) {
+//        in.seekg(padding, std::ios::cur);
+//    }
+//
+//    return result;
+//}
