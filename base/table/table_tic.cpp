@@ -71,7 +71,7 @@ void Table::addForeignKey(const std::string& constraintName,
         throw std::runtime_error("外键字段不存在于当前表中: " + foreignKeyField);
     }
     //检查引用表和字段是否存在(字段检查未完成）
-    Database* db = dbManager::getInstance().getCurrentDatabase();
+    Database* db = dbManager::getInstance().get_current_database();
     // 确保引用表已加载到内存中
     Table* refTable = db->getTable(referenceTable);
     if (!refTable) {

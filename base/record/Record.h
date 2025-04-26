@@ -25,7 +25,7 @@ private:
     // 条件解析相关
     std::string full_condition;
     void parse_condition(const std::string& condition);
-    bool matches_condition(const std::unordered_map<std::string, std::string>& record_data) const;
+    bool matches_condition(const std::unordered_map<std::string, std::string>& record_data, bool use_prefix = false) const;
 
     // 解析列名和值
     void parse_columns(const std::string& cols);

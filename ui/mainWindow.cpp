@@ -115,7 +115,8 @@ MainWindow::MainWindow(QWidget* parent)
     mainLayout->addWidget(mainSplitter);
     setCentralWidget(centralWidget);
 
-    refreshTree(); }
+    refreshTree(); 
+   }
 
 MainWindow::~MainWindow() {
     delete ui;  // 释放 UI 资源
@@ -134,8 +135,8 @@ void MainWindow::onRunButtonClicked() {
 
     Parse parser(ui->outputEdit,this);
     parser.execute(sql);
-
 }
+
 
 void MainWindow::refreshTree() {
     try
@@ -147,10 +148,11 @@ void MainWindow::refreshTree() {
         QIcon tableIcon(":/image/icons_table.png");
 
         //获取所有数据库和库名
-        const auto& dbList = dbManager::getInstance().getDatabaseList();
+        const auto& dbList = dbManager::getInstance().get_database_list_by_db();
         for (const std::string& dbName : dbList) {
             // 加载数据库对象
-            Database* db = dbManager::getInstance().getDatabaseByName(dbName);
+            //BUG；此时获取到的db不是最新的；createTable后尚未添加进去？
+            Database* db = dbManager::getInstance().get_database_by_name(dbName);
             if (!db) continue;
 
             // 顶层节点：数据库
@@ -188,17 +190,12 @@ void MainWindow::onTreeItemClicked(QTreeWidgetItem* item, int column) {
     if (!parent) {
         // === 点击数据库节点 ===
         QString dbName = item->text(0);
-        std::string dbNameStr = dbName.toStdString();
-
-        // 设置当前数据库（视你的实现而定）
-        dbManager::getInstance().useDatabase(dbNameStr);
-
-        // 显示 SQL 并执行
-        QString sql = "USE " + dbName + ";\n";
-        ui->inputEdit->setPlainText(sql);
         
-
-        Output::printInfo(ui->outputEdit, "已切换数据库：" + dbName);
+        // 显示 SQL 并执行
+        QString sql = "USE DATABASE " + dbName + ";\n";
+        ui->inputEdit->setPlainText(sql);
+        Parse parser(ui->outputEdit, this);
+        parser.execute(sql);
         return;
     }
 
@@ -208,11 +205,11 @@ void MainWindow::onTreeItemClicked(QTreeWidgetItem* item, int column) {
     ui->inputEdit->setPlainText(sql);
     QString dbName = parent->text(0);
 
-    try {
-        Parse parser(ui->outputEdit, this);
-        parser.execute(sql);
+        try {
+            Parse parser(ui->outputEdit, this);
+            parser.execute(sql);
+        }
+        catch (const std::exception& e) {
+            Output::printError(ui->outputEdit, QString("加载表失败: ") + e.what());
+        }
     }
-    catch (const std::exception& e) {
-        Output::printError(ui->outputEdit, QString("加载表失败: ") + e.what());
-    }
-}
