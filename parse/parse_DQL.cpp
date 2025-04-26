@@ -131,7 +131,7 @@ void Parse::handleSelect(const std::smatch& m) {
 
         QString first_table_name = QString::fromStdString(tables[0]);
         std::string dbPath = dbManager::getInstance().get_current_database()->getDBPath();
-        std::string table_path = dbManager::getInstance().get_current_database()->getDBPath() + "/" + tables[0];
+        std::string table_path = tables[0];
 
         // 调用 select，分情况
         std::vector<Record> records;
