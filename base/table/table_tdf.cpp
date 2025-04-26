@@ -68,6 +68,9 @@ void Table::addField(const FieldBlock& field) {
     // 设置最后修改时间
     newField.mtime = std::time(nullptr);
 
+    // 更新记录
+	updateRecord_add(newField); 
+
     // 添加到字段列表
     m_fields.push_back(newField);
 

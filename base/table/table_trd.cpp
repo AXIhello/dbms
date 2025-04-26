@@ -259,51 +259,88 @@ std::string Table::getDefaultValue(const std::string& fieldName) const {
 //}
 
 void Table::updateRecord_add(FieldBlock& new_field) {
-    // 检查表是否存在
+    // 1. 检查表是否存在
     if (!isTableExist()) {
         throw std::runtime_error("表 '" + m_tableName + "' 不存在。");
     }
 
-    // 读取现有记录（使用原来的字段m_fields来读）
-    std::vector<std::unordered_map<std::string, std::string>> records = Record::read_records(m_tableName);
+    // 2. 检查原表数据是否能正确读取
+    std::vector<std::unordered_map<std::string, std::string>> records;
+    try {
+        records = Record::read_records(m_tableName);
+    }
+    catch (const std::exception& e) {
+        throw std::runtime_error("读取表记录失败：" + std::string(e.what()));
+    }
 
-    // 找默认值
-    std::string default_value = "";
+    if (records.empty()) {
+        throw std::runtime_error("警告：读取到的记录为空，可能是表本身就没有数据。");
+    }
+
+    // 3. 找默认值
+    std::string default_value = "NULL";
     for (const auto& constraint : m_constraints) {
-        if (constraint.type == 6 && constraint.field == new_field.name) { // DEFAULT约束
+        if (constraint.type == 6 && constraint.field == new_field.name) {
             default_value = constraint.param;
             break;
         }
     }
 
-    // 先把每条记录加上新字段（值是默认值）
+    // 4. 给每条记录加上新字段
     for (auto& record : records) {
+        if (record.empty()) {
+            throw std::runtime_error("发现空的记录，数据可能损坏！");
+        }
         record[std::string(new_field.name)] = default_value;
     }
 
-    // 重要！！保存一份当前fields，并且加上新字段
+    // 5. 准备更新后的字段列表（注意：不改 m_fields）
     std::vector<FieldBlock> updated_fields = m_fields;
     updated_fields.push_back(new_field);
 
-    // 打开文件，清空后重新写
+    // 6. 打开文件（清空）准备重写
     std::ofstream file(m_trd, std::ios::binary | std::ios::trunc);
-    if (!file) {
-        throw std::runtime_error("无法重新打开表文件 '" + m_tableName + ".trd' 进行写入。");
+    if (!file.is_open()) {
+        throw std::runtime_error("无法打开表文件 '" + m_tableName + ".trd' 进行重写。");
     }
 
+    size_t record_count_written = 0;
+
+    // 7. 逐条写回数据
     for (const auto& record : records) {
         for (const auto& fieldBlock : updated_fields) {
             auto it = record.find(std::string(fieldBlock.name));
             if (it == record.end()) {
-                throw std::runtime_error("字段 '" + std::string(fieldBlock.name) + "' 缺失对应值。");
+                throw std::runtime_error("写入失败：记录缺少字段 '" + std::string(fieldBlock.name) + "' 的值！");
             }
             const std::string& value = it->second;
-            Record::write_field(file, fieldBlock, value);
+            try {
+                Record::write_field(file, fieldBlock, value);
+            }
+            catch (const std::exception& e) {
+                throw std::runtime_error("写入字段 '" + std::string(fieldBlock.name) + "' 失败：" + std::string(e.what()));
+            }
         }
+        ++record_count_written;
+    }
+
+    file.flush();
+    if (!file) {
+        throw std::runtime_error("刷新文件失败，磁盘可能出问题！");
     }
     file.close();
-    std::cout << "添加字段 '" << new_field.name << "' 并更新记录成功。" << std::endl;
+
+    // 8. 检查写入记录数量
+    if (record_count_written != records.size()) {
+        throw std::runtime_error("写入完成，但记录数量不一致！原记录：" + std::to_string(records.size()) +
+            "，实际写入：" + std::to_string(record_count_written));
+    }
+
+    std::cout << "添加字段 '" << new_field.name
+        << "' 并成功更新了 " << record_count_written
+        << " 条记录。" << std::endl;
 }
+
 
 
 
