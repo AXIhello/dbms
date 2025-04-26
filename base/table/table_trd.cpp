@@ -344,3 +344,93 @@ void Table::updateRecord_add(FieldBlock& field) {
     std::cout << "添加字段 '" << field.name << "' 并更新记录成功。" << std::endl;
 }
 
+void Table::updateRecord_delete(const std::string& fieldName) {
+    // 检查表是否存在
+    if (!isTableExist()) {
+        throw std::runtime_error("表 '" + m_tableName + "' 不存在。");
+    }
+
+    // 读取现有记录
+    std::vector<std::unordered_map<std::string, std::string>> records;
+    records = Record::read_records(m_tableName);
+
+    // 检查字段是否存在于 m_fields
+    auto fieldIt = std::find_if(m_fields.begin(), m_fields.end(), [&](const FieldBlock& f) {
+        return fieldName == f.name;
+        });
+    if (fieldIt == m_fields.end()) {
+        throw std::runtime_error("字段 '" + fieldName + "' 不存在，无法删除。");
+    }
+
+    // 在所有记录中删除这个字段
+    for (auto& record : records) {
+        record.erase(fieldName);
+    }
+
+    // 同时从 m_fields 中删除这个字段
+    m_fields.erase(fieldIt);
+
+    // 重新写入所有更新后的记录
+    std::fstream file(m_trd, std::ios::out | std::ios::binary | std::ios::trunc);
+    if (!file) {
+        throw std::runtime_error("无法重新打开表文件 '" + m_tableName + ".trd' 进行写入。");
+    }
+
+    for (const auto& record : records) {
+        for (const auto& fieldBlock : m_fields) {
+            auto it = record.find(fieldBlock.name);
+            if (it == record.end()) {
+                throw std::runtime_error("字段 '" + std::string(fieldBlock.name) + "' 缺失对应值。");
+            }
+            const std::string& value = it->second;
+
+            // 写 NULL 标志
+            bool is_null = (value == "NULL");
+            file.write(reinterpret_cast<const char*>(&is_null), sizeof(bool));
+
+            if (!is_null) {
+                switch (fieldBlock.type) {
+                case 1: { // INT
+                    int int_val = std::stoi(value);
+                    file.write(reinterpret_cast<const char*>(&int_val), sizeof(int));
+                    break;
+                }
+                case 2: { // DOUBLE
+                    double double_val = std::stod(value);
+                    file.write(reinterpret_cast<const char*>(&double_val), sizeof(double));
+                    break;
+                }
+                case 3: { // VARCHAR
+                    char* buffer = new char[fieldBlock.param];
+                    std::memset(buffer, 0, fieldBlock.param);
+                    if (strncpy_s(buffer, fieldBlock.param, value.c_str(), fieldBlock.param - 1) != 0) {
+                        throw std::runtime_error("字符串复制失败。");
+                    }
+                    file.write(buffer, fieldBlock.param);
+                    delete[] buffer;
+                    break;
+                }
+                case 4: { // BOOL
+                    bool bool_val = (value == "true" || value == "1");
+                    file.write(reinterpret_cast<const char*>(&bool_val), sizeof(bool));
+                    break;
+                }
+                case 5: { // DATETIME
+                    std::time_t timestamp = static_cast<std::time_t>(std::stoll(value));
+                    file.write(reinterpret_cast<const char*>(&timestamp), sizeof(std::time_t));
+                    break;
+                }
+                default:
+                    throw std::runtime_error("未知字段类型。");
+                }
+            }
+        }
+    }
+
+    file.close();
+    std::cout << "删除字段 '" << fieldName << "' 并更新记录成功。" << std::endl;
+}
+
+
+
+

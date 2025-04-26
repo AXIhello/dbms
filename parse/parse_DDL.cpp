@@ -438,7 +438,7 @@ void Parse::handleAddColumn(const std::smatch& m) {
             table->addConstraint(constraint);
         }
 
-        table->updateRecord(fieldsCopy);
+        //table->updateRecord(fieldsCopy);
         table;
     }
     catch (const std::exception& e) {
