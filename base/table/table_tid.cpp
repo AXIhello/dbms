@@ -103,12 +103,17 @@ void Table::createIndex(const IndexBlock& index) {
                 break;
             }
             case 3: { // VARCHAR
-            case 4: { // CHAR
                 char* buffer = new char[current_field.param];
                 file.read(buffer, current_field.param);
                 value = std::string(buffer, current_field.param);
                 delete[] buffer;
                 break;
+            }
+            case 4: { // BOOL
+				bool bool_val;
+				file.read(reinterpret_cast<char*>(&bool_val), sizeof(bool));
+				value = bool_val;
+				break;
             }
             case 5: { // DATETIME
                 std::time_t timestamp;
@@ -121,13 +126,12 @@ void Table::createIndex(const IndexBlock& index) {
             }
                   record_values.push_back(value);
 
-                  // 如果是我们要为其创建索引的字段，将字段值存储到相应变量
-                  if (current_field.name == fieldName1) {
-                      field_value1 = value;  // 存储第一个字段的值
-                  }
-                  else if (field2 && current_field.name == fieldName2) {
-                      field_value2 = value;  // 存储第二个字段的值
-                  }
+             // 如果是我们要为其创建索引的字段，将字段值存储到相应变量
+            if (current_field.name == fieldName1) {
+                field_value1 = value;  // 存储第一个字段的值
+            }
+            else if (field2 && current_field.name == fieldName2) {
+                field_value2 = value;  // 存储第二个字段的值
             }
 
             // 根据字段数量，将字段值插入到 B 树中

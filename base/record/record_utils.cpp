@@ -343,10 +343,9 @@ void Record::parse_condition(const std::string& condition) {
 }
 
 // 实现条件匹配判断方法
-bool Record::matches_condition(const std::unordered_map<std::string, std::string>& record_data) const {
+bool Record::matches_condition(const std::unordered_map<std::string, std::string>& record_data, bool use_prefix) const {
     if (full_condition.empty()) return true;
 
-    // 正则分割 AND / OR 表达式并提取子句
     std::regex logic_split(R"(\s+(AND|OR)\s+)", std::regex::icase);
     std::sregex_token_iterator token_iter(full_condition.begin(), full_condition.end(), logic_split, { -1, 1 });
     std::sregex_token_iterator end;
@@ -367,20 +366,58 @@ bool Record::matches_condition(const std::unordered_map<std::string, std::string
         is_logic = !is_logic;
     }
 
+    auto resolve_field_type = [&](const std::string& key) -> std::string {
+        auto it = table_structure.find(key);
+        if (it != table_structure.end()) return it->second;
+
+        if (!use_prefix) {
+            std::string matched_type;
+            int count = 0;
+            for (const auto& [k, type] : table_structure) {
+                size_t dot_pos = k.find('.');
+                std::string suffix = (dot_pos != std::string::npos) ? k.substr(dot_pos + 1) : k;
+                if (suffix == key) {
+                    matched_type = type;
+                    count++;
+                }
+            }
+            if (count == 1) return matched_type;
+        }
+        throw std::runtime_error("字段 '" + key + "' 无法匹配到表结构中");
+        };
+
+    auto get_field_value = [&](const std::string& key) -> std::string {
+        auto it = record_data.find(key);
+        if (it != record_data.end()) return it->second;
+
+        if (!use_prefix) {
+            std::string result;
+            int count = 0;
+            for (const auto& [k, v] : record_data) {
+                size_t dot_pos = k.find('.');
+                std::string suffix = (dot_pos != std::string::npos) ? k.substr(dot_pos + 1) : k;
+                if (suffix == key) {
+                    result = v;
+                    count++;
+                }
+            }
+            if (count == 1) return result;
+        }
+        throw std::runtime_error("字段 '" + key + "' 无法匹配到记录中");
+        };
+
     auto evaluate_single = [&](const std::string& cond) -> bool {
-        std::regex expr_regex(R"(^\s*(\w+)\s*(=|!=|>=|<=|>|<)\s*(.+?)\s*$)");
+        std::regex expr_regex(R"(^\s*(\w+(\.\w+)?)\s*(=|!=|>=|<=|>|<)\s*(.+?)\s*$)");
         std::smatch m;
         if (!std::regex_match(cond, m, expr_regex)) return false;
 
         std::string field = m[1];
-        std::string op = m[2];
-        std::string value = m[3];
+        std::string op = m[3];
+        std::string value = m[4];
 
-        if (record_data.find(field) == record_data.end()) return false;
-        std::string field_val = record_data.at(field);
-        std::string field_type = table_structure.at(field);
+        std::string field_val = get_field_value(field);
+        std::string field_type = resolve_field_type(field);
 
-        // 不去除引号，支持带引号字符串比较
         if (field_type == "INTEGER" || field_type == "FLOAT" || field_type == "DOUBLE") {
             try {
                 double a = std::stod(field_val);
@@ -395,12 +432,9 @@ bool Record::matches_condition(const std::unordered_map<std::string, std::string
             catch (...) { return false; }
         }
         else if (field_type == "BOOL") {
-            return (op == "=") ? (field_val == value)
-                : (op == "!=") ? (field_val != value)
-                : false;
+            return (op == "=") ? (field_val == value) : (op == "!=") ? (field_val != value) : false;
         }
         else {
-            // 字符串比较，包括带引号
             if (op == "=") return field_val == value;
             if (op == "!=") return field_val != value;
             if (op == ">") return field_val > value;
@@ -414,7 +448,6 @@ bool Record::matches_condition(const std::unordered_map<std::string, std::string
 
     if (expressions.empty()) return true;
 
-    // 执行布尔逻辑
     bool result = evaluate_single(expressions[0]);
     for (size_t i = 0; i < logic_ops.size(); ++i) {
         bool next_result = evaluate_single(expressions[i + 1]);
@@ -424,7 +457,6 @@ bool Record::matches_condition(const std::unordered_map<std::string, std::string
 
     return result;
 }
-
 
 // 从.trd文件读取记录
 std::vector<std::unordered_map<std::string, std::string>> Record::read_records(const std::string table_name) {
@@ -655,58 +687,58 @@ void Record::write_field(std::ofstream& out, const FieldBlock& field, const std:
     out.write(pad, padding);
 }
 
-std::string Record::read_field(std::ifstream& in, const FieldBlock& field) {
-    char null_flag;
-    in.read(&null_flag, sizeof(char));
-    if (in.eof()) return "";
-
-    size_t data_size = get_field_data_size(field.type, field.param);
-    std::string result;
-
-    if (null_flag == 1) {
-        in.seekg(data_size, std::ios::cur);
-        result = "NULL";
-    }
-    else {
-        switch (field.type) {
-        case 1: {
-            int v;
-            in.read(reinterpret_cast<char*>(&v), sizeof(int));
-            result = std::to_string(v);
-            break;
-        }
-        case 2: {
-            double d;
-            in.read(reinterpret_cast<char*>(&d), sizeof(double));
-            result = std::to_string(d);
-            break;
-        }
-        case 3: {
-            std::vector<char> buf(field.param, 0);
-            in.read(buf.data(), field.param);
-            result = std::string(buf.data());
-            break;
-        }
-        case 4: {
-            char b;
-            in.read(&b, sizeof(char));
-            result = (b == 1) ? "1" : "0";
-            break;
-        }
-        case 5: {
-            std::time_t t;
-            in.read(reinterpret_cast<char*>(&t), sizeof(std::time_t));
-            result = std::to_string(t);
-            break;
-        }
-        default:
-            result = "";
-        }
-    }
-    size_t padding = (4 - (sizeof(char) + data_size) % 4) % 4;
-    if (padding > 0) {
-        in.seekg(padding, std::ios::cur);
-    }
-
-    return result;
-}
+//std::string Record::read_field(std::ifstream& in, const FieldBlock& field) {
+//    char null_flag;
+//    in.read(&null_flag, sizeof(char));
+//    if (in.eof()) return "";
+//
+//    size_t data_size = get_field_data_size(field.type, field.param);
+//    std::string result;
+//
+//    if (null_flag == 1) {
+//        in.seekg(data_size, std::ios::cur);
+//        result = "NULL";
+//    }
+//    else {
+//        switch (field.type) {
+//        case 1: {
+//            int v;
+//            in.read(reinterpret_cast<char*>(&v), sizeof(int));
+//            result = std::to_string(v);
+//            break;
+//        }
+//        case 2: {
+//            double d;
+//            in.read(reinterpret_cast<char*>(&d), sizeof(double));
+//            result = std::to_string(d);
+//            break;
+//        }
+//        case 3: {
+//            std::vector<char> buf(field.param, 0);
+//            in.read(buf.data(), field.param);
+//            result = std::string(buf.data());
+//            break;
+//        }
+//        case 4: {
+//            char b;
+//            in.read(&b, sizeof(char));
+//            result = (b == 1) ? "1" : "0";
+//            break;
+//        }
+//        case 5: {
+//            std::time_t t;
+//            in.read(reinterpret_cast<char*>(&t), sizeof(std::time_t));
+//            result = std::to_string(t);
+//            break;
+//        }
+//        default:
+//            result = "";
+//        }
+//    }
+//    size_t padding = (4 - (sizeof(char) + data_size) % 4) % 4;
+//    if (padding > 0) {
+//        in.seekg(padding, std::ios::cur);
+//    }
+//
+//    return result;
+//}

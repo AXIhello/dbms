@@ -14,7 +14,6 @@ struct JoinInfo {
 
 class Record {
 private:
-    static std::vector<std::unordered_map<std::string, std::string>> read_records(const std::string table_name);
     static bool read_single_record(std::ifstream& file, const std::vector<FieldBlock>& fields,
         std::unordered_map<std::string, std::string>& record_data);
     std::string table_name;
@@ -25,7 +24,7 @@ private:
     // 条件解析相关
     std::string full_condition;
     void parse_condition(const std::string& condition);
-    bool matches_condition(const std::unordered_map<std::string, std::string>& record_data) const;
+    bool matches_condition(const std::unordered_map<std::string, std::string>& record_data, bool use_prefix = false) const;
 
     // 解析列名和值
     void parse_columns(const std::string& cols);
@@ -62,10 +61,8 @@ private:
         const std::unordered_map<std::string, std::string>& record_data);
     // 计算数据本体的大小（不含null标志）
     static size_t get_field_data_size(int type, int param);
-    // 写入一个字段，包括 null_flag + 数据 + padding
-    static void write_field(std::ofstream& out, const FieldBlock& field, const std::string& value);
     // 读取一个字段，返回字符串值（带 null 判断）
-    static std::string read_field(std::ifstream& in, const FieldBlock& field);
+    //static std::string read_field(std::ifstream& in, const FieldBlock& field);
 
 public:
     // 构造函数
@@ -74,7 +71,11 @@ public:
         const std::vector<std::string>& types, const std::vector<int>& params);
     bool validate_field_block(const std::string& value, const FieldBlock& field);
     // 表操作相关函数
+    static std::vector<std::unordered_map<std::string, std::string>> read_records(const std::string table_name);
     void insert_record(const std::string& table_name, const std::string& cols, const std::string& vals);
+
+    // 写入一个字段，包括 null_flag + 数据 + padding
+    static void write_field(std::ofstream& out, const FieldBlock& field, const std::string& value);
     void insert_into();
     static std::vector<Record> select(
         const std::string& columns,

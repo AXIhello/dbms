@@ -53,6 +53,7 @@ public:
     bool loadDefine();
     void loadDefineBinary();
    
+    vector<string> getFieldNames() const;
 	//对表操作（添加、删除、更新字段）
 	vector<FieldBlock> getFields() const {
 		return m_fields;
@@ -60,13 +61,7 @@ public:
 
     FieldBlock* getFieldByName(const std::string& fieldName) const;
     //获取列名
-    vector<string> getFieldNames() const {
-        vector<string> fieldNames;
-        for (const auto& col : m_fields) {
-            fieldNames.push_back(col.name);
-        }
-        return fieldNames;
-    }
+
 
     void addField(const FieldBlock& field);
     void dropField(const std::string fieldName);
@@ -96,7 +91,11 @@ public:
     bool loadRecord();
     void addRecord(const string& recordData);
     void deleteRecord(int recordID);
-    void updateRecord(std::vector<FieldBlock>& fields);
+    string getDefaultValue(const std::string& fieldName) const;
+    //void updateRecord(std::vector<FieldBlock>& fields);
+    void updateRecord_add(FieldBlock& field);
+    void updateRecord_delete(const std::string& fieldName);
+   
 
     //表索引文件
     void saveIndex();

@@ -15,7 +15,7 @@ void Parse::handleInsertInto(const std::smatch& m) {
     trimParens(vals);
 
     try {
-        std::string table_path = dbManager::getInstance().getCurrentDatabase()->getDBPath() + "/" + table_name;
+        std::string table_path = dbManager::getInstance().get_current_database()->getDBPath() + "/" + table_name;
         Record r;
         r.insert_record(table_path, cols, vals);
         Output::printMessage(outputEdit, QString::fromStdString("INSERT INTO 执行成功。"));
@@ -32,14 +32,14 @@ void Parse::handleUpdate(const std::smatch& m) {
     std::string setClause = m[2];  // SET 子句
     std::string condition = m.size() > 3 ? m[3].str() : "";
 
-    std::string table_path = dbManager::getInstance().getCurrentDatabase()->getDBPath() + "/" + tableName;
+    std::string table_path = dbManager::getInstance().get_current_database()->getDBPath() + "/" + tableName;
 
         
 
     // 创建 Record 对象来执行更新操作
     Record record;
     try {
-        std::string table_path = dbManager::getInstance().getCurrentDatabase()->getDBPath() + "/" + tableName;
+        std::string table_path = dbManager::getInstance().get_current_database()->getDBPath() + "/" + tableName;
         int num=record.update(table_path, setClause, condition);
 
         Output::printMessage(outputEdit, QString::fromStdString("UPDATE 执行成功：已更新"+to_string(num)+"条记录。"));
@@ -60,7 +60,7 @@ void Parse::handleDelete(const std::smatch& m) {
     }
 
     try {
-        std::string table_path = dbManager::getInstance().getCurrentDatabase()->getDBPath() + "/" + table_name;
+        std::string table_path = dbManager::getInstance().get_current_database()->getDBPath() + "/" + table_name;
 
         Record r;
         int num=r.delete_(table_path, condition);

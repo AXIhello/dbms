@@ -8,6 +8,7 @@
 #include"ui/output.h"
 #include "manager/parse.h" 
 #include "manager/dbManager.h"
+#include <QGroupBox>
 
 MainWindow::MainWindow(QWidget* parent)
     : QMainWindow(parent)
@@ -52,19 +53,15 @@ MainWindow::MainWindow(QWidget* parent)
     ui->inputEdit->setInputMethodHints(Qt::ImhPreferLatin); // 设置为英文输入
 
     this->setStyleSheet(styleSheet);
-    // 设置 stackedWidget 默认显示第一页（inputEdit页）
-    ui->displayStack->setCurrentIndex(0);
 
     // 连接按钮点击事件到槽函数
-    connect(ui->runButton, &QPushButton::clicked, this,&MainWindow::onRunButtonClicked);
+    connect(ui->runButton, &QPushButton::clicked, this, &MainWindow::onRunButtonClicked);
     connect(ui->treeWidget, &QTreeWidget::itemClicked, this, &MainWindow::onTreeItemClicked);
-    //refreshTree();
     setWindowTitle("My Database Client"); // 设置窗口标题
     setGeometry(100, 100, 1000, 600);  // 设置窗口大小
 
     // 设置菜单栏的样式
     menuBar()->setStyleSheet("QMenuBar { background-color: lightgray; }");
-    ui->dockWidget->setMinimumWidth(200);
     ui->outputEdit->setReadOnly(true);
 
     // 设置按钮的宽度
@@ -77,6 +74,10 @@ MainWindow::MainWindow(QWidget* parent)
     buttonLayout->addWidget(ui->runButton);
     buttonWidget->setLayout(buttonLayout);
 
+    ui->treeWidget->setHeaderHidden(true); // 隐藏表头
+    ui->treeWidget->setMinimumWidth(200);  // 设置宽度
+
+
     // 输入框和输出框使用垂直分割
     QSplitter* ioSplitter = new QSplitter(Qt::Vertical);
     ioSplitter->addWidget(ui->inputEdit);  // 输入框
@@ -86,16 +87,27 @@ MainWindow::MainWindow(QWidget* parent)
     ioSplitter->setStretchFactor(1, 1);  // 按钮占较少空间
     ioSplitter->setStretchFactor(2, 3);  // 输出框占较少空间
 
-    // 左侧导航栏使用 DockWidget
-    QDockWidget* dockWidget = new QDockWidget("数据库资源管理器", this);
-    dockWidget->setWidget(ui->treeWidget);
-    dockWidget->setAllowedAreas(Qt::LeftDockWidgetArea | Qt::RightDockWidgetArea);
- 
+    // ===== 创建左侧：数据库资源管理器 =====
+    QGroupBox* treeGroupBox = new QGroupBox("数据库资源管理器");
+    QVBoxLayout* treeLayout = new QVBoxLayout(treeGroupBox);
+    treeLayout->addWidget(ui->treeWidget);
+    treeGroupBox->setMinimumWidth(200);
+    treeGroupBox->setStyleSheet("QGroupBox { font-weight: bold; font-size: 14pt; }");
 
-    // 主内容区水平分割
+    // ===== 创建右侧：控制台区域 =====
+    QGroupBox* consoleGroupBox = new QGroupBox;
+    QVBoxLayout* consoleLayout = new QVBoxLayout(consoleGroupBox);
+    consoleLayout->addWidget(ioSplitter);  // ioSplitter 里包含输入框、按钮、输出框
+    consoleGroupBox->setStyleSheet("QGroupBox { font-weight: bold; font-size: 14pt; }");
+
+    // ===== 主内容区水平分割器 =====
     QSplitter* mainSplitter = new QSplitter(Qt::Horizontal);
-    mainSplitter->addWidget(ioSplitter);
-    mainSplitter->setStretchFactor(0, 3);  // 主要区域占较多空间
+    mainSplitter->addWidget(treeGroupBox);
+    mainSplitter->addWidget(consoleGroupBox);
+    mainSplitter->setStretchFactor(0, 1); // 左边占小
+    mainSplitter->setStretchFactor(1, 4); // 右边占大
+
+
 
     // 主窗口部件
     QWidget* centralWidget = new QWidget(this);
@@ -103,16 +115,17 @@ MainWindow::MainWindow(QWidget* parent)
     mainLayout->addWidget(mainSplitter);
     setCentralWidget(centralWidget);
 
-    // 将DockWidget添加到主窗口
-    addDockWidget(Qt::LeftDockWidgetArea, dockWidget);
-}
+    refreshTree(); 
+   }
 
 MainWindow::~MainWindow() {
     delete ui;  // 释放 UI 资源
+    dbManager::getInstance().clearCache();
 }
 
 void MainWindow::onRunButtonClicked() {
-    QString sql = ui->inputEdit->toPlainText().trimmed(); // 获取 SQL 语句
+    //QString sql = ui->inputEdit->toPlainText().trimmed(); // 获取 SQL 语句
+    QString sql = ui->inputEdit->toPlainText().split('\n', Qt::SkipEmptyParts).last().trimmed();//只获取最后一行的语句
 
     if (sql.isEmpty())
     {
@@ -122,56 +135,44 @@ void MainWindow::onRunButtonClicked() {
 
     Parse parser(ui->outputEdit,this);
     parser.execute(sql);
-
-   /* QString message;
-    if (sql.startsWith("SELECT", Qt::CaseInsensitive))
-    {
-        message = "解析结果：这是一个 SELECT 语句。";
-    }
-    else if (sql.startsWith("INSERT", Qt::CaseInsensitive) ||
-        sql.startsWith("UPDATE", Qt::CaseInsensitive) ||
-        sql.startsWith("DELETE", Qt::CaseInsensitive) ||
-        sql.startsWith("CREATE", Qt::CaseInsensitive) ||
-        sql.startsWith("DROP", Qt::CaseInsensitive))
-    {
-        message = "解析结果：这是一个 数据修改 语句。";
-    }
-    else
-    {
-        message = "解析结果：不支持的 SQL 语句！";
-    }
-
-    QMessageBox::information(this, "SQL 解析", message);*/
 }
+
 
 void MainWindow::refreshTree() {
     try
     {
         ui->treeWidget->clear(); // 清空旧数据
 
-        //获取当前数据库和库名
-        Database* db = dbManager::getInstance().getCurrentDatabase();
-        if (!db) {
-            Output::printInfo(ui->outputEdit, "当前没有选中的数据库。");
-            return;
+        // 图标
+        QIcon dbIcon(":/image/icons_database.png");
+        QIcon tableIcon(":/image/icons_table.png");
+
+        //获取所有数据库和库名
+        const auto& dbList = dbManager::getInstance().get_database_list_by_db();
+        for (const std::string& dbName : dbList) {
+            // 加载数据库对象
+            //BUG；此时获取到的db不是最新的；createTable后尚未添加进去？
+            Database* db = dbManager::getInstance().get_database_by_name(dbName);
+            if (!db) continue;
+
+            // 顶层节点：数据库
+            QTreeWidgetItem* dbItem = new QTreeWidgetItem(ui->treeWidget);
+            dbItem->setText(0, QString::fromStdString(dbName));
+            dbItem->setIcon(0, dbIcon);
+
+            // 添加表作为子节点
+            std::vector<std::string> tableNames = db->getAllTableNames();
+            for (const std::string& tableName : tableNames) {
+                if (!tableName.empty()) {
+                    QTreeWidgetItem* tableItem = new QTreeWidgetItem();
+                    tableItem->setText(0, QString::fromStdString(tableName));
+                    tableItem->setIcon(0, tableIcon);
+                    dbItem->addChild(tableItem);
+                }
+            }
         }
-        std::string dbName = db->getDBName();
 
-        //添加顶层节点（当前数据库），挂到treeWidget上
-        QTreeWidgetItem* dbItem = new QTreeWidgetItem(ui->treeWidget);
-        dbItem->setText(0, QString::fromStdString(dbName));
-
-        //添加库下的所有表名为子节点
-        std::vector<std::string> tableNames = db->getAllTableNames();
-        for (const std::string& tableName : tableNames) {
-            if (!tableName.empty()) {
-                QTreeWidgetItem* tableItem = new QTreeWidgetItem();
-                tableItem->setText(0, QString::fromStdString(tableName));
-                dbItem->addChild(tableItem);
-            } // 将表名节点添加为数据库节点的子项
-        }
-
-        ui->treeWidget->expandAll(); // 展开所有
+        ui->treeWidget->expandAll(); // 展开全部
     }
     catch (const std::runtime_error& e) {
         Output::printError(ui->outputEdit, QString("运行时错误: ") + e.what());
@@ -184,25 +185,31 @@ void MainWindow::refreshTree() {
 }
 
 void MainWindow::onTreeItemClicked(QTreeWidgetItem* item, int column) {
-    QString itemText = item->text(0);
+    QTreeWidgetItem* parent = item->parent();
 
-    // 判断是否是数据库名节点
-    if (item->parent() == nullptr) {
-        if (itemText.toLower() == "console") {
-            ui->displayStack->setCurrentIndex(0); // 切回日志输出框
-        }
+    if (!parent) {
+        // === 点击数据库节点 ===
+        QString dbName = item->text(0);
+        
+        // 显示 SQL 并执行
+        QString sql = "USE DATABASE " + dbName + ";\n";
+        ui->inputEdit->setPlainText(sql);
+        Parse parser(ui->outputEdit, this);
+        parser.execute(sql);
         return;
     }
 
-}
+    // === 点击表节点 ===
+    QString tableName = item->text(0);
+    QString sql = "SELECT * FROM " + tableName + ";\n";
+    ui->inputEdit->setPlainText(sql);
+    QString dbName = parent->text(0);
 
-//针对建数据库，只把数据库挂上去
-void MainWindow::refreshDatabaseList() {
-    ui->treeWidget->clear();
-
-    const auto& dbList = dbManager::getInstance().getDatabaseList();
-    for (const auto& name : dbList) {
-        QTreeWidgetItem* dbItem = new QTreeWidgetItem(ui->treeWidget);
-        dbItem->setText(0, QString::fromStdString(name));
+        try {
+            Parse parser(ui->outputEdit, this);
+            parser.execute(sql);
+        }
+        catch (const std::exception& e) {
+            Output::printError(ui->outputEdit, QString("加载表失败: ") + e.what());
+        }
     }
-}

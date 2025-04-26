@@ -106,19 +106,19 @@
     <ClCompile Include="manager\parse.cpp">
       <Filter>manager\parse</Filter>
     </ClCompile>
-    <ClCompile Include="parse_DDL.cpp">
+    <ClCompile Include="parse\parse_DDL.cpp">
       <Filter>manager\parse</Filter>
     </ClCompile>
-    <ClCompile Include="parse_DML.cpp">
+    <ClCompile Include="parse\parse_DML.cpp">
       <Filter>manager\parse</Filter>
     </ClCompile>
-    <ClCompile Include="parse_DCL.cpp">
+    <ClCompile Include="parse\parse_DCL.cpp">
       <Filter>manager\parse</Filter>
     </ClCompile>
-    <ClCompile Include="parse_util.cpp">
+    <ClCompile Include="parse\parse_util.cpp">
       <Filter>manager\parse</Filter>
     </ClCompile>
-    <ClCompile Include="parse_DQL.cpp">
+    <ClCompile Include="parse\parse_DQL.cpp">
       <Filter>manager\parse</Filter>
     </ClCompile>
     <ClCompile Include="base\BTree.cpp">
@@ -176,5 +176,8 @@
     <QtUic Include="login.ui">
       <Filter>ui</Filter>
     </QtUic>
+  </ItemGroup>
+  <ItemGroup>
+    <QtRcc Include="Resource.qrc" />
   </ItemGroup>
 </Project>
