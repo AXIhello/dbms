@@ -390,30 +390,6 @@ bool Record::matches_condition(const std::unordered_map<std::string, std::string
         auto it = record_data.find(key);
         if (it != record_data.end()) return it->second;
 
-    auto resolve_field_type = [&](const std::string& key) -> std::string {
-        auto it = table_structure.find(key);
-        if (it != table_structure.end()) return it->second;
-
-        if (!use_prefix) {
-            std::string matched_type;
-            int count = 0;
-            for (const auto& [k, type] : table_structure) {
-                size_t dot_pos = k.find('.');
-                std::string suffix = (dot_pos != std::string::npos) ? k.substr(dot_pos + 1) : k;
-                if (suffix == key) {
-                    matched_type = type;
-                    count++;
-                }
-            }
-            if (count == 1) return matched_type;
-        }
-        throw std::runtime_error("字段 '" + key + "' 无法匹配到表结构中");
-        };
-
-    auto get_field_value = [&](const std::string& key) -> std::string {
-        auto it = record_data.find(key);
-        if (it != record_data.end()) return it->second;
-
         if (!use_prefix) {
             std::string result;
             int count = 0;
