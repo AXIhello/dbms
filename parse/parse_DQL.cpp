@@ -67,7 +67,7 @@ void Parse::handleSelect(const std::smatch& m) {
             while (std::getline(ss, table, ',')) {
                 table.erase(0, table.find_first_not_of(" \t"));
                 table.erase(table.find_last_not_of(" \t") + 1);
-                tables.push_back(table);
+                tables.push_back(dbManager::getInstance().get_current_database()->getDBPath() + "/" + table);
             }
         }
 
@@ -94,20 +94,20 @@ void Parse::handleSelect(const std::smatch& m) {
                     return;
                 }
 
-                std::string left_table = left_field.substr(0, dot_pos1);
+                std::string left_table = dbManager::getInstance().get_current_database()->getDBPath() + "/" +left_field.substr(0, dot_pos1);
                 std::string left_col = left_field.substr(dot_pos1 + 1);
-                std::string right_tab = right_field.substr(0, dot_pos2);
+                std::string right_tab = dbManager::getInstance().get_current_database()->getDBPath() + "/" + right_field.substr(0, dot_pos2);
                 std::string right_col = right_field.substr(dot_pos2 + 1);
 
                 JoinPair jp;
-                jp.left_table = dbManager::getInstance().get_current_database()->getDBPath() + "/" + left_table;  // 左表
-                jp.right_table = dbManager::getInstance().get_current_database()->getDBPath() + "/" + right_table; // 右表
+                jp.left_table = left_table;  // 左表
+                jp.right_table =  right_tab; // 右表
                 jp.conditions.push_back({ left_col, right_col });
                 join_info.joins.push_back(jp);
 
                 // 查找是否已有这个 join pair
                 auto it_pair = std::find_if(join_info.joins.begin(), join_info.joins.end(), [&](const JoinPair& jp) {
-                    return jp.left_table == left_table && jp.right_table == right_table;
+                    return jp.left_table == left_table && jp.right_table == right_tab;
                     });
 
                 if (it_pair != join_info.joins.end()) {
@@ -116,7 +116,7 @@ void Parse::handleSelect(const std::smatch& m) {
                 else {
                     JoinPair jp;
                     jp.left_table =   left_table;
-                    jp.right_table =  right_table;
+                    jp.right_table =  right_tab;
                     jp.conditions.push_back({ left_col, right_col });
                     join_info.joins.push_back(jp);
                 }
