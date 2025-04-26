@@ -190,17 +190,12 @@ void MainWindow::onTreeItemClicked(QTreeWidgetItem* item, int column) {
     if (!parent) {
         // === 点击数据库节点 ===
         QString dbName = item->text(0);
-        std::string dbNameStr = dbName.toStdString();
-
-        // 设置当前数据库（视你的实现而定）
-        dbManager::getInstance().useDatabase(dbNameStr);
-
+        
         // 显示 SQL 并执行
-        QString sql = "USE " + dbName + ";\n";
+        QString sql = "USE DATABASE " + dbName + ";\n";
         ui->inputEdit->setPlainText(sql);
-
-
-        Output::printInfo(ui->outputEdit, "已切换数据库：" + dbName);
+        Parse parser(ui->outputEdit, this);
+        parser.execute(sql);
         return;
     }
 
@@ -210,14 +205,11 @@ void MainWindow::onTreeItemClicked(QTreeWidgetItem* item, int column) {
     ui->inputEdit->setPlainText(sql);
     QString dbName = parent->text(0);
 
-    dbManager::getInstance().useDatabase(dbName.toStdString());
-
-    try {
-        Parse parser(ui->outputEdit, this);
-        parser.execute(sql);
+        try {
+            Parse parser(ui->outputEdit, this);
+            parser.execute(sql);
+        }
+        catch (const std::exception& e) {
+            Output::printError(ui->outputEdit, QString("加载表失败: ") + e.what());
+        }
     }
-    catch (const std::exception& e) {
-        Output::printError(ui->outputEdit, QString("加载表失败: ") + e.what());
-    }
-
-}
