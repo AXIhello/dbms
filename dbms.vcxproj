@@ -129,7 +129,7 @@
     <ClCompile Include="base\record\record_utils.cpp" />
     <ClCompile Include="base\user.cpp" />
     <QtRcc Include="dbms.qrc" />
-    <QtRcc Include="Resource.qrc" />
+    <QtRcc Include="resource\Resource.qrc" />
     <QtUic Include="login.ui" />
     <QtUic Include="ui\dbms.ui" />
     <ClCompile Include="main.cpp" />
