@@ -12,7 +12,7 @@
 
 std::vector<Record> Record::select(
     const std::string& columns,
-    const std::string& table_name,
+    const std::string& table_path,
     const std::string& condition,
     const std::string& group_by,
     const std::string& order_by,
@@ -24,27 +24,31 @@ std::vector<Record> Record::select(
     std::unordered_map<std::string, std::string> combined_structure;
 
     if (join_info && !join_info->tables.empty()) {
-        // 初始化第一个表
-        std::vector<std::unordered_map<std::string, std::string>> result = read_records(join_info->tables[0]);
+        // 读第一个表
+        std::string first_path = dbManager::getInstance().get_current_database()->getDBPath() + "/" + join_info->tables[0];
+        std::vector<std::unordered_map<std::string, std::string>> result = read_records(first_path);
+
         for (auto& rec : result) {
             std::unordered_map<std::string, std::string> prefixed;
             for (const auto& [k, v] : rec) {
                 std::string full_key = join_info->tables[0] + "." + k;
                 prefixed[full_key] = v;
-                combined_structure[full_key] = read_table_structure_static(join_info->tables[0]).at(k);
+                combined_structure[full_key] = read_table_structure_static(first_path).at(k);
             }
             rec = prefixed;
         }
 
-        // 处理每一对 join
+        // 每一层JOIN
         for (const auto& join : join_info->joins) {
-            std::vector<std::unordered_map<std::string, std::string>> right_records = read_records(join.right_table);
+            std::string right_path = dbManager::getInstance().get_current_database()->getDBPath() + "/" + join.right_table;
+            std::vector<std::unordered_map<std::string, std::string>> right_records = read_records(right_path);
+
             for (auto& rec : right_records) {
                 std::unordered_map<std::string, std::string> prefixed;
                 for (const auto& [k, v] : rec) {
                     std::string full_key = join.right_table + "." + k;
                     prefixed[full_key] = v;
-                    combined_structure[full_key] = read_table_structure_static(join.right_table).at(k);
+                    combined_structure[full_key] = read_table_structure_static(right_path).at(k);
                 }
                 rec = prefixed;
             }
@@ -53,11 +57,8 @@ std::vector<Record> Record::select(
             for (const auto& r1 : result) {
                 for (const auto& r2 : right_records) {
                     bool match = true;
-                    for (const auto& [left_field, right_field] : join.conditions) {
-                        std::string left_full = join.left_table + "." + left_field;
-                        std::string right_full = join.right_table + "." + right_field;
-
-                        if (r1.at(left_full) != r2.at(right_full)) {
+                    for (const auto& [left_col, right_col] : join.conditions) {
+                        if (r1.at(join.left_table + "." + left_col) != r2.at(join.right_table + "." + right_col)) {
                             match = false;
                             break;
                         }
@@ -69,27 +70,26 @@ std::vector<Record> Record::select(
                     }
                 }
             }
-
             result = new_result;
         }
+
         filtered = result;
     }
     else {
-        if (!table_exists(table_name)) {
-            throw std::runtime_error("表 '" + table_name + "' 不存在。");
+        if (!table_exists(table_path)) {
+            throw std::runtime_error("表不存在！");
         }
-        filtered = read_records(table_name);
-        combined_structure = read_table_structure_static(table_name);
+        filtered = read_records(table_path);
+        combined_structure = read_table_structure_static(table_path);
     }
 
     Record temp;
-    temp.set_table_name(table_name);
+    temp.set_table_name(table_path);
     temp.table_structure = combined_structure;
     if (!condition.empty()) {
         temp.parse_condition(condition);
     }
 
-    // where筛选
     std::vector<std::unordered_map<std::string, std::string>> condition_filtered;
     for (const auto& rec : filtered) {
         if (condition.empty() || temp.matches_condition(rec, join_info && !join_info->tables.empty())) {
@@ -192,7 +192,7 @@ std::vector<Record> Record::select(
 
     for (const auto& row : final_result) {
         Record rec;
-        rec.set_table_name(table_name);
+        rec.set_table_name(table_path);
         for (const auto& col : selected_cols) {
             rec.add_column(col);
             rec.add_value(row.at(col));
@@ -202,3 +202,4 @@ std::vector<Record> Record::select(
 
     return records;
 }
+
