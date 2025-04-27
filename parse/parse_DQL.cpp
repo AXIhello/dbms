@@ -48,7 +48,7 @@ void Parse::handleSelect(const std::smatch& m) {
         if (m.size() > 6 && m[6].matched) order_by = m[6].str();
         if (m.size() > 7 && m[7].matched) having = m[7].str();
 
-        // 【改动1】：tables保存裸表名，不加路径
+        // tables保存裸表名，不加路径
         std::vector<std::string> tables;
         {
             std::stringstream ss(table_part);
@@ -96,6 +96,7 @@ void Parse::handleSelect(const std::smatch& m) {
                     JoinPair jp;
                     jp.left_table = left_table;
                     jp.right_table = right_tab;
+                    tables.push_back(right_tab);
                     jp.conditions.push_back({ left_col, right_col });
                     join_info.joins.push_back(jp);
                 }
