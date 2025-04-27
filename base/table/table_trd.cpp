@@ -1,7 +1,7 @@
 #include "table.h"
 #include <iostream>
 #include <ctime>
-#include "manager/parse.h"
+#include "parse/parse.h"
 #include <base/Record/record.h>
 #include <cstring>
 #include <iomanip>
