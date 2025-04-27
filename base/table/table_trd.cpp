@@ -303,7 +303,8 @@ void Table::updateRecord_add(FieldBlock& new_field) {
         //if (record.empty()) {
         //    throw std::runtime_error("发现空的记录，数据可能损坏！");
         //}
-        record[std::string(new_field.name)] = default_value;
+        
+        //record[std::string(new_field.name)] = default_value;
         auto result = record.insert({ std::string(new_field.name), default_value });
         if (!result.second) {
             throw std::runtime_error("字段已存在，不能插入！");
