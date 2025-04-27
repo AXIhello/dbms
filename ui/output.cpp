@@ -9,11 +9,11 @@ static QString currentTimestamp() {
 void Output::printSelectResult(QTextEdit* outputEdit, const std::vector<Record>& results) {
     if (!outputEdit) return;
 
-    if (results.empty()) {
-        outputEdit->append(currentTimestamp() + "<p style='color:gray;'>无查询结果。</p>");
-        outputEdit->append(""); // 添加空行
-        return;
-    }
+    //if (results.empty()) {
+    //    outputEdit->append(currentTimestamp() + "<p style='color:gray;'>无查询结果。</p>");
+    //    outputEdit->append(""); // 添加空行
+    //    return;
+    //}
 
     const auto& columns = results[0].get_columns();
 
