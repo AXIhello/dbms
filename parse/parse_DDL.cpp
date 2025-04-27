@@ -1,4 +1,4 @@
-#include "manager/parse.h"
+#include "parse.h"
 
 void Parse::handleCreateDatabase(const std::smatch& m) {
     try { dbManager::getInstance().create_user_db(m[1]); }

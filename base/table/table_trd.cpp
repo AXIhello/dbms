@@ -5,6 +5,7 @@
 #include <base/Record/record.h>
 #include <cstring>
 #include <iomanip>
+#include <QDebug>
 #include"manager/dbManager.h"
 
 std::string Table::getDefaultValue(const std::string& fieldName) const {
@@ -271,8 +272,6 @@ void Table::print_records(const std::vector<std::unordered_map<std::string, std:
 //    file.close();
 //    std::cout << "记录更新成功。" << std::endl;
 //}
-
-#include <QDebug>  // 别忘了加上 Qt 的头文件
 
 void Table::updateRecord_add(FieldBlock& new_field) {
     // 1. 检查表是否存在
