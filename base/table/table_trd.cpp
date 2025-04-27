@@ -281,17 +281,13 @@ void Table::updateRecord_add(FieldBlock& new_field) {
     // 2. 检查原表数据是否能正确读取
     std::vector<std::unordered_map<std::string, std::string>> records;
     try {
-        records = Record::read_records(dbManager::basePath + "/data/" + m_db_name + "/" + m_tableName);
+        records = Record::read_records(m_tableName);
     }
 
     catch (const std::exception& e) {
         throw std::runtime_error("读取表记录失败：" + std::string(e.what()));
     }
 	print_records(records);
-
-    if (records.empty()) {
-        throw std::runtime_error("警告：读取到的记录为空，可能是表本身就没有数据。");
-    }
 
     // 3. 找默认值
     std::string default_value = "NULL";
@@ -331,16 +327,11 @@ void Table::updateRecord_add(FieldBlock& new_field) {
     for (const auto& record : records) {
         for (const auto& fieldBlock : updated_fields) {
             auto it = record.find(std::string(fieldBlock.name));
-            if (it == record.end()) {
-                throw std::runtime_error("写入失败：记录缺少字段 '" + std::string(fieldBlock.name) + "' 的值！");
-            }
+            //if (it == record.end()) {
+            //    throw std::runtime_error("写入失败：记录缺少字段 '" + std::string(fieldBlock.name) + "' 的值！");
+            //}
             const std::string& value = it->second;
-            try {
-                Record::write_field(file, fieldBlock, value);
-            }
-            catch (const std::exception& e) {
-                throw std::runtime_error("写入字段 '" + std::string(fieldBlock.name) + "' 失败：" + std::string(e.what()));
-            }
+            Record::write_field(file, fieldBlock, value);
         }
         ++record_count_written;
     }
