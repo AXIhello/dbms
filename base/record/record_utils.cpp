@@ -1,5 +1,6 @@
 #ifdef _MSC_VER
 #define _CRT_SECURE_NO_WARNINGS
+#define strcasecmp _stricmp
 #endif
 #include <stdexcept>
 #include "Record.h"
@@ -367,61 +368,66 @@ bool Record::matches_condition(const std::unordered_map<std::string, std::string
     }
 
     auto resolve_field_type = [&](const std::string& key) -> std::string {
-        auto it = table_structure.find(key);
-        if (it != table_structure.end()) return it->second;
-
-        if (!use_prefix) {
-            std::string matched_type;
-            int count = 0;
-            for (const auto& [k, type] : table_structure) {
+        for (const auto& [k, type] : table_structure) {
+            if (strcasecmp(k.c_str(), key.c_str()) == 0) return type;
+            if (!use_prefix) {
                 size_t dot_pos = k.find('.');
                 std::string suffix = (dot_pos != std::string::npos) ? k.substr(dot_pos + 1) : k;
-                if (suffix == key) {
-                    matched_type = type;
-                    count++;
-                }
+                if (strcasecmp(suffix.c_str(), key.c_str()) == 0) return type;
             }
-            if (count == 1) return matched_type;
         }
         throw std::runtime_error("字段 '" + key + "' 无法匹配到表结构中");
         };
 
     auto get_field_value = [&](const std::string& key) -> std::string {
-        auto it = record_data.find(key);
-        if (it != record_data.end()) return it->second;
-
-        if (!use_prefix) {
-            std::string result;
-            int count = 0;
-            for (const auto& [k, v] : record_data) {
+        for (const auto& [k, v] : record_data) {
+            if (strcasecmp(k.c_str(), key.c_str()) == 0) return v;
+            if (!use_prefix) {
                 size_t dot_pos = k.find('.');
                 std::string suffix = (dot_pos != std::string::npos) ? k.substr(dot_pos + 1) : k;
-                if (suffix == key) {
-                    result = v;
-                    count++;
-                }
+                if (strcasecmp(suffix.c_str(), key.c_str()) == 0) return v;
             }
-            if (count == 1) return result;
         }
         throw std::runtime_error("字段 '" + key + "' 无法匹配到记录中");
         };
 
     auto evaluate_single = [&](const std::string& cond) -> bool {
-        std::regex expr_regex(R"(^\s*(\w+(\.\w+)?)\s*(=|!=|>=|<=|>|<)\s*(.+?)\s*$)");
+        std::regex expr_regex(R"(^\s*(\w+(?:\.\w+)?)\s*(=|!=|>=|<=|>|<)\s*(.+?)\s*$)");
         std::smatch m;
         if (!std::regex_match(cond, m, expr_regex)) return false;
 
-        std::string field = m[1];
-        std::string op = m[3];
-        std::string value = m[4];
+        std::string left = m[1];
+        std::string op = m[2];
+        std::string right = m[3];
 
-        std::string field_val = get_field_value(field);
-        std::string field_type = resolve_field_type(field);
+        std::string left_val = get_field_value(left);
+        std::string left_type = resolve_field_type(left);
 
-        if (field_type == "INTEGER" || field_type == "FLOAT" || field_type == "DOUBLE") {
+        // 判断右边是字段还是常量
+        bool right_is_field = false;
+        for (const auto& [k, _] : record_data) {  
+            if (strcasecmp(k.c_str(), right.c_str()) == 0) { right_is_field = true; break; }
+            if (!use_prefix) {
+                size_t dot_pos = k.find('.');
+                std::string suffix = (dot_pos != std::string::npos) ? k.substr(dot_pos + 1) : k;
+                if (strcasecmp(suffix.c_str(), right.c_str()) == 0) { right_is_field = true; break; }
+            }
+        }
+
+
+        std::string right_val;
+        if (right_is_field) {
+            right_val = get_field_value(right);
+        }
+        else {
+            right_val = right;
+        }
+
+        // 处理数值类型比较
+        if (left_type == "INTEGER" || left_type == "FLOAT" || left_type == "DOUBLE") {
             try {
-                double a = std::stod(field_val);
-                double b = std::stod(value);
+                double a = std::stod(left_val);
+                double b = std::stod(right_val);
                 if (op == "=") return a == b;
                 if (op == "!=") return a != b;
                 if (op == ">") return a > b;
@@ -431,16 +437,19 @@ bool Record::matches_condition(const std::unordered_map<std::string, std::string
             }
             catch (...) { return false; }
         }
-        else if (field_type == "BOOL") {
-            return (op == "=") ? (field_val == value) : (op == "!=") ? (field_val != value) : false;
+        // 布尔
+        else if (left_type == "BOOL") {
+            if (op == "=") return left_val == right_val;
+            if (op == "!=") return left_val != right_val;
         }
+        // 字符串
         else {
-            if (op == "=") return field_val == value;
-            if (op == "!=") return field_val != value;
-            if (op == ">") return field_val > value;
-            if (op == "<") return field_val < value;
-            if (op == ">=") return field_val >= value;
-            if (op == "<=") return field_val <= value;
+            if (op == "=") return left_val == right_val;
+            if (op == "!=") return left_val != right_val;
+            if (op == ">") return left_val > right_val;
+            if (op == "<") return left_val < right_val;
+            if (op == ">=") return left_val >= right_val;
+            if (op == "<=") return left_val <= right_val;
         }
 
         return false;
@@ -457,6 +466,7 @@ bool Record::matches_condition(const std::unordered_map<std::string, std::string
 
     return result;
 }
+
 
 // 从.trd文件读取记录
 std::vector<std::unordered_map<std::string, std::string>> Record::read_records(const std::string table_name) {
