@@ -39,7 +39,7 @@
     <QtModules>core;gui;widgets</QtModules>
     <QtBuildConfig>debug</QtBuildConfig>
     <QtInstall>6.2.13_msvc2019_64</QtInstall>
-    <QtInstall>6.5.3_msvc2019_64</QtInstall>
+    <QtInstall>6.2.13_msvc2019_64</QtInstall>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)' == 'Release|x64'" Label="QtSettings">
     <QtModules>core;gui;widgets</QtModules>
@@ -113,6 +113,7 @@
     <ClCompile Include="debug.cpp" />
     <ClCompile Include="manager\dbManager.cpp" />
     <ClCompile Include="base\record\record_check.cpp" />
+    <ClCompile Include="parse\parse.cpp" />
     <ClCompile Include="parse\parse_DCL.cpp" />
     <ClCompile Include="parse\parse_DDL.cpp" />
     <ClCompile Include="parse\parse_DML.cpp" />
@@ -122,11 +123,11 @@
     <ClCompile Include="base\table\table_tic.cpp" />
     <ClCompile Include="base\table\table_tid.cpp" />
     <ClCompile Include="base\table\table_trd.cpp" />
+    <ClCompile Include="transaction\TransactionManager.cpp" />
     <ClCompile Include="ui\login.cpp" />
     <ClCompile Include="base\database.cpp" />
     <ClCompile Include="ui\mainWindow.cpp" />
     <ClCompile Include="ui\output.cpp" />
-    <ClCompile Include="manager\parse.cpp" />
     <ClCompile Include="base\record\record_utils.cpp" />
     <ClCompile Include="base\user.cpp" />
     <QtRcc Include="dbms.qrc" />
@@ -149,8 +150,9 @@
     <ClInclude Include="manager\databaseBlock.h" />
     <ClInclude Include="debug.h" />
     <ClInclude Include="manager\dbManager.h" />
+    <ClInclude Include="parse\parse.h" />
+    <ClInclude Include="transaction\TransactionManager.h" />
     <ClInclude Include="ui\output.h" />
-    <ClInclude Include="manager\parse.h" />
     <ClInclude Include="base\record\Record.h" />
     <ClInclude Include="base\user.h" />
   </ItemGroup>

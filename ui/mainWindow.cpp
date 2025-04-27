@@ -6,7 +6,7 @@
 #include <QPushButton>
 #include <QMessageBox>
 #include"ui/output.h"
-#include "manager/parse.h" 
+#include "parse/parse.h" 
 #include "manager/dbManager.h"
 #include <QGroupBox>
 
@@ -124,18 +124,37 @@ MainWindow::~MainWindow() {
 }
 
 void MainWindow::onRunButtonClicked() {
-    //QString sql = ui->inputEdit->toPlainText().trimmed(); // 获取 SQL 语句
-    QString sql = ui->inputEdit->toPlainText().split('\n', Qt::SkipEmptyParts).last().trimmed();//只获取最后一行的语句
+    QString sql = ui->inputEdit->toPlainText().trimmed(); // 获取 SQL 语句
 
-    if (sql.isEmpty())
-    {
+    if (sql.isEmpty()) {
         QMessageBox::warning(this, "警告", "SQL 语句不能为空！");
         return;
     }
 
-    Parse parser(ui->outputEdit,this);
-    parser.execute(sql);
+    // 分割多个 SQL 语句，以分号为分隔符
+    QStringList sqlStatements = sql.split(";", Qt::SkipEmptyParts); // 按分号分割，跳过空部分
+
+    if (sqlStatements.isEmpty()) {
+        QMessageBox::warning(this, "警告", "没有有效的 SQL 语句！");
+        return;
+    }
+
+    Parse parser(ui->outputEdit, this);
+
+    // 对每条 SQL 语句进行处理
+    for (QString statement : sqlStatements) {  // 注意，这里不用 const QString&，改成 QString，方便后面改内容
+        QString trimmedSql = statement.trimmed(); // 去除前后空格
+
+        if (!trimmedSql.isEmpty()) {
+            if (!trimmedSql.endsWith(';')) {  // 如果没以分号结尾
+                trimmedSql += ";";             // 手动加上分号
+            }
+            parser.execute(trimmedSql);  // 执行每条 SQL 语句
+        }
+    }
 }
+
+
 
 
 void MainWindow::refreshTree() {

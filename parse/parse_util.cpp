@@ -1,4 +1,4 @@
-#include "manager/parse.h"
+#include "parse/parse.h"
 
 
 QString Parse::cleanSQL(const QString& sql) {

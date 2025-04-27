@@ -103,9 +103,6 @@
     <ClCompile Include="base\record\record_check.cpp">
       <Filter>base\record</Filter>
     </ClCompile>
-    <ClCompile Include="manager\parse.cpp">
-      <Filter>manager\parse</Filter>
-    </ClCompile>
     <ClCompile Include="parse\parse_DDL.cpp">
       <Filter>manager\parse</Filter>
     </ClCompile>
@@ -139,6 +136,9 @@
     <ClCompile Include="base\table\table.cpp">
       <Filter>base\table</Filter>
     </ClCompile>
+    <ClCompile Include="base\BTree_delete.cpp" />
+    <ClCompile Include="transaction\TransactionManager.cpp" />
+    <ClCompile Include="parse\parse.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="debug.h">
@@ -146,9 +146,6 @@
     </ClInclude>
     <ClInclude Include="base\record\Record.h">
       <Filter>base\record</Filter>
-    </ClInclude>
-    <ClInclude Include="manager\parse.h">
-      <Filter>manager\parse</Filter>
     </ClInclude>
     <ClInclude Include="base\BTree.h">
       <Filter>base</Filter>
@@ -171,6 +168,8 @@
     <ClInclude Include="base\table\table.h">
       <Filter>base\table</Filter>
     </ClInclude>
+    <ClInclude Include="transaction\TransactionManager.h" />
+    <ClInclude Include="parse\parse.h" />
   </ItemGroup>
   <ItemGroup>
     <QtUic Include="login.ui">

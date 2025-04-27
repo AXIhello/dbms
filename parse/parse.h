@@ -11,7 +11,7 @@
 #include "ui/output.h"
 #include "ui/mainWindow.h"
 
-#include "dbManager.h"
+#include "manager/dbManager.h"
 #include "base/record/Record.h"
 #include "base/user.h"
 #include "base/database.h"

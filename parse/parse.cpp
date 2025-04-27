@@ -1,4 +1,5 @@
 #include "parse.h"
+#include <transaction/TransactionManager.h>
 
 //#include <main.cpp>
 
@@ -152,12 +153,31 @@ void Parse::registerPatterns() {
 
 void Parse::execute(const QString& sql_qt) {
     // 1. 清理 SQL 字符串
+	qDebug() << "原始SQL:" << sql_qt;
     QString cleanedSQL = cleanSQL(sql_qt);  // 使用 cleanSQL 来处理输入
     std::string sql = cleanedSQL.toStdString();  // 转为 std::string 类型
 
 	// 2. 转换为大写（除引号内的内容不变）
     std::string upperSQL = toUpperPreserveQuoted(sql);
+	qDebug() << "清理后SQL:" << QString::fromStdString(upperSQL);
+    //直接判断事务；TODO：判断之后仍会进入正则匹配，此时尚未注册
+    if(upperSQL == "START TRANSACTION") {
+        TransactionManager::instance().begin();
+        return;
+    }
+    if (upperSQL == "COMMIT") {
+        TransactionManager::instance().commit();
+        return;
+    }
+    if (upperSQL == "ROLLBACK") {
+        TransactionManager::instance().rollback();
+        return;
+    }
 
+   /* if (upperSQL.find("USE DATABASE") != std::string::npos && TransactionManager::instance().isActive()) {
+        Output::printError(outputEdit, "事务正在进行.禁止切换数据库。");
+        return;
+    }*/
     // 3. 遍历所有正则模式并匹配
     for (const auto& p : patterns) {
         std::smatch match;

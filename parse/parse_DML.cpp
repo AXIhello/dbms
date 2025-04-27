@@ -1,4 +1,4 @@
-#include "manager/parse.h"
+#include "parse/parse.h"
 
 void Parse::handleInsertInto(const std::smatch& m) {
     std::string table_name = m[1];

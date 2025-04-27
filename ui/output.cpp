@@ -1,11 +1,17 @@
 #include "output.h"
+#include <QDateTime>
+
+// 获取当前时间戳字符串
+static QString currentTimestamp() {
+    return "[" + QDateTime::currentDateTime().toString("yyyy-MM-dd hh:mm:ss") + "] ";
+}
 
 void Output::printSelectResult(QTextEdit* outputEdit, const std::vector<Record>& results) {
     if (!outputEdit) return;
-    outputEdit->clear();
 
     if (results.empty()) {
-        outputEdit->append("<p style='color:gray;'>无查询结果。</p>");
+        outputEdit->append(currentTimestamp() + "<p style='color:gray;'>无查询结果。</p>");
+        outputEdit->append(""); // 添加空行
         return;
     }
 
@@ -40,90 +46,78 @@ void Output::printSelectResult(QTextEdit* outputEdit, const std::vector<Record>&
 
     html += "</table>";
 
+    outputEdit->append(currentTimestamp() + "查询结果：");
     outputEdit->append(html);
+    outputEdit->append(""); // 添加空行
 }
-
 
 void Output::printMessage(QTextEdit* outputEdit, const QString& message) {
     if (!outputEdit) return;
-    outputEdit->clear();
-    outputEdit->append(message);
+    outputEdit->append(currentTimestamp() + message);
+    outputEdit->append(""); // 添加空行
 }
 
 void Output::printError(QTextEdit* outputEdit, const QString& error) {
     if (!outputEdit) return;
-    outputEdit->clear();
-    outputEdit->append("[错误] " + error);
+    outputEdit->append(currentTimestamp() + "<span style='color:red;'>[错误] " + error + "</span>");
+    outputEdit->append(""); // 添加空行
 }
 
 void Output::printInfo(QTextEdit* outputEdit, const QString& message) {
-    if (outputEdit) {
-        outputEdit->clear();
-        outputEdit->append("[信息] :" + message);
-    }
+    if (!outputEdit) return;
+    outputEdit->append(currentTimestamp() + "<span style='color:blue;'>[信息] " + message + "</span>");
+    outputEdit->append(""); // 添加空行
 }
 
 void Output::printDatabaseList(QTextEdit* outputEdit, const std::vector<std::string>& dbs) {
     if (!outputEdit) return;
-    outputEdit->clear();
 
-    // 如果没有数据库
     if (dbs.empty()) {
-        outputEdit->append("<b>无数据库可用。</b>");
+        outputEdit->append(currentTimestamp() + "<b>无数据库可用。</b>");
+        outputEdit->append(""); // 添加空行
         return;
     }
 
-    // 添加标题
-    outputEdit->append("<b>数据库列表</b>");
+    outputEdit->append(currentTimestamp() + "<b>数据库列表：</b>");
 
-    // 使用HTML表格展示数据库列表
     QString html = "<table border='1' cellspacing='0' cellpadding='4' style='width: 100%;'>";
-    html += "<tr><th style='text-align: center;'>数据库名称</th></tr>";  // 表头居中
+    html += "<tr><th style='text-align: center;'>数据库名称</th></tr>";
 
-    // 表体，数据库名称居中
     for (const auto& name : dbs) {
-        html += "<tr><td style='text-align: center;'>" + QString::fromStdString(name) + "</td></tr>";  // 数据库名称居中
+        html += "<tr><td style='text-align: center;'>" + QString::fromStdString(name) + "</td></tr>";
     }
 
     html += "</table>";
     outputEdit->append(html);
+    outputEdit->append(""); // 添加空行
 }
 
 void Output::printTableList(QTextEdit* outputEdit, const std::vector<std::string>& tables) {
     if (!outputEdit) return;
-    outputEdit->clear();
 
-    // 如果没有表
     if (tables.empty()) {
-        outputEdit->append("<b>当前数据库没有表。</b>");
+        outputEdit->append(currentTimestamp() + "<b>当前数据库没有表。</b>");
+        outputEdit->append(""); // 添加空行
         return;
     }
 
-    // 添加标题
-    outputEdit->append("<b>当前数据库中的表：</b>");
+    outputEdit->append(currentTimestamp() + "<b>当前数据库中的表：</b>");
 
-    // 使用HTML表格展示表名列表
     QString html = "<table border='1' cellspacing='0' cellpadding='4' style='width: 100%;'>";
-    html += "<tr><th style='text-align: center;'>表名</th></tr>";  // 表头居中
+    html += "<tr><th style='text-align: center;'>表名</th></tr>";
 
-    // 表体，表名居中
     for (const auto& name : tables) {
         html += "<tr><td style='text-align: center;'>" + QString::fromStdString(name) + "</td></tr>";
     }
 
     html += "</table>";
     outputEdit->append(html);
+    outputEdit->append(""); // 添加空行
 }
 
-
 void Output::printSelectResultEmpty(QTextEdit* outputEdit, const std::vector<std::string>& cols) {
-    // 如果 cols 为空，直接返回
-    if (cols.empty()) {
-        outputEdit->append("No columns to display.");
-        return;
-    }
+    if (!outputEdit) return;
 
-    // 创建 HTML 格式的字符串
     QString html;
     html += "<style>"
         "table { border-collapse: collapse; width: 100%; font-family: Consolas, monospace; }"
@@ -132,18 +126,15 @@ void Output::printSelectResultEmpty(QTextEdit* outputEdit, const std::vector<std
         "tr:nth-child(even) { background-color: #fafafa; }"
         "</style>";
 
-    html += "<table>";
+    html += "<table><tr>";
 
-    // 添加表头
-    html += "<tr>";
     for (const auto& col : cols) {
         html += "<th>" + QString::fromStdString(col) + "</th>";
     }
-    html += "</tr>";
 
-    html += "</table>";
+    html += "</tr></table>";
 
-    // 将 HTML 内容插入到 QTextEdit 中
-    outputEdit->setHtml(html);
+    outputEdit->append(currentTimestamp() + "当前表中无数据：");
+    outputEdit->append(html);
+    outputEdit->append(""); // 添加空行
 }
-
