@@ -42,47 +42,31 @@ void Parse::handleSelect(const std::smatch& m) {
         if (m.size() > 3 && m[3].matched) {
             join_part = m[3].str();
         }
-        std::string condition;
-        if (m.size() > 4 && m[4].matched) {
-            condition = m[4].str();
-        }
-        std::string group_by;
-        if (m.size() > 5 && m[5].matched) {
-            group_by = m[5].str();
-        }
-        std::string order_by;
-        if (m.size() > 6 && m[6].matched) {
-            order_by = m[6].str();
-        }
-        std::string having;
-        if (m.size() > 7 && m[7].matched) {
-            having = m[7].str();
-        }
+        std::string condition, group_by, order_by, having;
+        if (m.size() > 4 && m[4].matched) condition = m[4].str();
+        if (m.size() > 5 && m[5].matched) group_by = m[5].str();
+        if (m.size() > 6 && m[6].matched) order_by = m[6].str();
+        if (m.size() > 7 && m[7].matched) having = m[7].str();
 
-        // 解析 FROM 后的表
+        // 【改动1】：tables保存裸表名，不加路径
         std::vector<std::string> tables;
-        std::vector<std::string> table_paths;
         {
             std::stringstream ss(table_part);
             std::string table;
             while (std::getline(ss, table, ',')) {
                 table.erase(0, table.find_first_not_of(" \t"));
                 table.erase(table.find_last_not_of(" \t") + 1);
-                tables.push_back(table);
-                table_paths.push_back(dbManager::getInstance().get_current_database()->getDBPath() + "/" + table);
+                tables.push_back(table); // 注意，不加路径
             }
         }
 
         JoinInfo join_info;
         bool use_join_info = false;
 
-        // 解析 JOIN 子句
         if (!join_part.empty()) {
             use_join_info = true;
             std::regex join_regex(R"(\s+JOIN\s+(\w+)\s+ON\s+([\w\.]+)\s*=\s*([\w\.]+))", std::regex::icase);
-            std::sregex_iterator it(join_part.begin(), join_part.end(), join_regex);
-            std::sregex_iterator end;
-
+            std::sregex_iterator it(join_part.begin(), join_part.end(), join_regex), end;
             for (; it != end; ++it) {
                 std::string right_table = (*it)[1];
                 std::string left_field = (*it)[2];
@@ -101,37 +85,41 @@ void Parse::handleSelect(const std::smatch& m) {
                 std::string right_tab = right_field.substr(0, dot_pos2);
                 std::string right_col = right_field.substr(dot_pos2 + 1);
 
-                JoinPair jp;
-                jp.left_table = left_table;
-                jp.right_table = right_tab;
-                jp.conditions.push_back({ left_col, right_col });
-                join_info.joins.push_back(jp);
+                // 查找已有pair
+                auto it_pair = std::find_if(join_info.joins.begin(), join_info.joins.end(), [&](const JoinPair& jp) {
+                    return jp.left_table == left_table && jp.right_table == right_tab;
+                    });
+                if (it_pair != join_info.joins.end()) {
+                    it_pair->conditions.push_back({ left_col, right_col });
+                }
+                else {
+                    JoinPair jp;
+                    jp.left_table = left_table;
+                    jp.right_table = right_tab;
+                    jp.conditions.push_back({ left_col, right_col });
+                    join_info.joins.push_back(jp);
+                }
             }
         }
 
         if (tables.size() > 1) {
             use_join_info = true;
         }
+        join_info.tables = tables;
 
-        join_info.tables = tables; // 保存的是不带路径的表名
-
-        std::string first_table = tables[0];
-        std::string first_table_path = table_paths[0];
-
-        // 调用 select
         std::vector<Record> records;
         if (use_join_info) {
-            records = Record::select(columns, first_table_path, condition, group_by, order_by, having, &join_info);
+            records = Record::select(columns, tables[0], condition, group_by, order_by, having, &join_info);
         }
         else {
-            records = Record::select(columns, first_table_path, condition, group_by, order_by, having, nullptr);
+            records = Record::select(columns, tables[0], condition, group_by, order_by, having, nullptr);
         }
 
         if (!records.empty()) {
             Output::printSelectResult(outputEdit, records);
         }
         else {
-            Table* table = dbManager::getInstance().get_current_database()->getTable(first_table);
+            Table* table = dbManager::getInstance().get_current_database()->getTable(tables[0]);
             Output::printSelectResultEmpty(outputEdit, table->getFieldNames());
         }
     }

@@ -119,7 +119,7 @@ void Record::insert_into() {
     }
 
     // 写入数据
-    std::string file_name = this->table_name + ".trd";
+    std::string file_name = dbManager::getInstance().get_current_database()->getDBPath() + "/" + this->table_name + ".trd";
     std::ofstream file(file_name, std::ios::app | std::ios::binary);
     if (!file) {
         throw std::runtime_error("打开文件" + file_name + "失败。");

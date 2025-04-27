@@ -25,7 +25,7 @@ std::vector<Record> Record::select(
 
     if (join_info && !join_info->tables.empty()) {
         // 读第一个表
-        std::string first_path = dbManager::getInstance().get_current_database()->getDBPath() + "/" + join_info->tables[0];
+        std::string first_path =  join_info->tables[0];
         std::vector<std::unordered_map<std::string, std::string>> result = read_records(first_path);
 
         for (auto& rec : result) {
@@ -40,7 +40,7 @@ std::vector<Record> Record::select(
 
         // 每一层JOIN
         for (const auto& join : join_info->joins) {
-            std::string right_path = dbManager::getInstance().get_current_database()->getDBPath() + "/" + join.right_table;
+            std::string right_path =  join.right_table;
             std::vector<std::unordered_map<std::string, std::string>> right_records = read_records(right_path);
 
             for (auto& rec : right_records) {

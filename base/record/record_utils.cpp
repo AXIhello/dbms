@@ -36,7 +36,7 @@ Record::Record() {
 }
 
 bool Record::table_exists(const std::string& table_name) {
-    std::string tdf_filename = table_name + ".tdf";
+    std::string tdf_filename = dbManager::getInstance().get_current_database()->getDBPath() + "/" + table_name + ".tdf";
     std::ifstream file(tdf_filename,std::ios::binary);
     return file.good();
 }
@@ -167,7 +167,7 @@ void Record::write_to_tdf_format(const std::string& table_name,
         throw std::runtime_error("字段名、类型和参数数量不匹配");
     }
 
-    std::string tdf_filename = table_name + ".tdf";
+    std::string tdf_filename = dbManager::getInstance().get_current_database()->getDBPath() + "/" + table_name + ".tdf";
     std::ofstream file(tdf_filename, std::ios::binary);
 
     if (!file) {
@@ -221,7 +221,7 @@ void Record::write_to_tdf_format(const std::string& table_name,
 // 从.tdf文件读取FieldBlock结构
 std::vector<FieldBlock> Record::read_field_blocks(const std::string& table_name) {
     std::vector<FieldBlock> fields;
-    std::string tdf_filename = table_name + ".tdf";
+    std::string tdf_filename = dbManager::getInstance().get_current_database()->getDBPath() + "/" + table_name + ".tdf";
     std::ifstream file(tdf_filename, std::ios::binary);
 
     if (!file) {
@@ -461,7 +461,7 @@ bool Record::matches_condition(const std::unordered_map<std::string, std::string
 // 从.trd文件读取记录
 std::vector<std::unordered_map<std::string, std::string>> Record::read_records(const std::string table_name) {
     std::vector<std::unordered_map<std::string, std::string>> records;
-    std::string trd_filename = table_name + ".trd";
+    std::string trd_filename = dbManager::getInstance().get_current_database()->getDBPath() + "/" + table_name + ".trd";
     std::ifstream file(trd_filename, std::ios::binary);
 
     if (!file) {

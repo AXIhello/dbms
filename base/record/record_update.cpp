@@ -39,7 +39,7 @@ int Record::update(const std::string& tableName, const std::string& setClause, c
     }
 
     // 读取所有记录到内存中
-    std::ifstream infile(table_name + ".trd", std::ios::binary);
+    std::ifstream infile(dbManager::getInstance().get_current_database()->getDBPath() + "/" + table_name + ".trd", std::ios::binary);
     if (!infile) throw std::runtime_error("无法打开数据文件。");
 
     int updated = 0;
@@ -69,7 +69,7 @@ int Record::update(const std::string& tableName, const std::string& setClause, c
     infile.close();
 
     // 清空原文件并重写
-    std::ofstream outfile(table_name + ".trd", std::ios::binary | std::ios::trunc);
+    std::ofstream outfile(dbManager::getInstance().get_current_database()->getDBPath() + "/" + table_name + ".trd", std::ios::binary | std::ios::trunc);
     if (!outfile) throw std::runtime_error("无法打开数据文件进行写入。");
 
     // 写入所有记录

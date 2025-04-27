@@ -20,7 +20,7 @@ inline bool is_null(const std::string& value) {
 
 std::vector<ConstraintBlock> Record::read_constraints(const std::string& table_name) {
     std::vector<ConstraintBlock> constraints;
-    std::string tic_filename = table_name + ".tic";
+    std::string tic_filename = dbManager::getInstance().get_current_database()->getDBPath() + "/" + table_name + ".tic";
     std::ifstream file(tic_filename, std::ios::binary);
     if (!file) return constraints;
 
