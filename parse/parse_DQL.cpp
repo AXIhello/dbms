@@ -97,14 +97,14 @@ void Parse::handleSelect(const std::smatch& m) {
                 std::string right_col = right_field.substr(dot_pos2 + 1);
 
                 // 检查如果 right_table 没有在 tables 中，则补充进去
-                bool exists = false;
+                bool exists_r = false;
                 for (const auto& t : join_info.tables) {
                     if (iequals(t, right_table)) {
-                        exists = true;
+                        exists_r = true;
                         break;
                     }
                 }
-                if (!exists) join_info.tables.push_back(right_table);
+                if (!exists_r) join_info.tables.push_back(right_table);
 
                 // 加入一组 JoinPair
                 JoinPair jp;
