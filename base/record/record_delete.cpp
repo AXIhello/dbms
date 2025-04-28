@@ -3,7 +3,7 @@
 #endif
 
 #include "Record.h"
-#include "manager/parse.h"
+#include "parse/parse.h"
 #include "ui/output.h"
 
 #include <regex>
@@ -22,7 +22,7 @@ int Record::delete_(const std::string& tableName, const std::string& condition) 
     this->table_structure = read_table_structure_static(table_name);
     if (!condition.empty()) parse_condition(condition);
     // 首先读取所有不需要删除的记录
-    std::ifstream infile(table_name + ".trd", std::ios::binary);
+    std::ifstream infile(dbManager::getInstance().get_current_database()->getDBPath() + "/" + table_name + ".trd", std::ios::binary);
     if (!infile) {
         throw std::runtime_error("无法打开数据文件进行删除操作。");
     }
@@ -42,7 +42,7 @@ int Record::delete_(const std::string& tableName, const std::string& condition) 
     }
     infile.close();
     // 直接清空并重写文件
-    std::ofstream outfile(table_name + ".trd", std::ios::binary | std::ios::trunc);
+    std::ofstream outfile(dbManager::getInstance().get_current_database()->getDBPath() + "/" + table_name + ".trd", std::ios::binary | std::ios::trunc);
     if (!outfile) {
         throw std::runtime_error("无法打开数据文件进行写入操作。");
     }

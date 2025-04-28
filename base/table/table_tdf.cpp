@@ -1,7 +1,7 @@
 #include "table.h"
 #include <iostream>
 #include <ctime>
-#include "manager/parse.h"
+#include "parse/parse.h"
 #include <cstring>
 #include <iomanip>
 #include"manager/dbManager.h"
@@ -60,6 +60,10 @@ FieldBlock* Table::getFieldByName(const std::string& fieldName) const{
 }
 //字段操作
 void Table::addField(const FieldBlock& field) {
+
+    saveDefineBinary();
+    saveMetadataBinary();
+
     FieldBlock newField = field;
 
     // 设置字段顺序为当前字段数
@@ -69,7 +73,7 @@ void Table::addField(const FieldBlock& field) {
     newField.mtime = std::time(nullptr);
 
     // 更新记录
-	//updateRecord_add(newField); 
+	updateRecord_add(newField); 
 
     // 添加到字段列表
     m_fields.push_back(newField);
@@ -83,6 +87,7 @@ void Table::addField(const FieldBlock& field) {
     // 保存到定义文件和元数据文件
     saveDefineBinary();
     saveMetadataBinary();
+
 }
 
 //待实现。不管有没有值，都直接删

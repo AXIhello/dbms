@@ -3,7 +3,7 @@
 #endif
 
 #include "Record.h"
-#include "manager/parse.h"
+#include "parse/parse.h"
 #include "ui/output.h"
 
 #include <regex>
@@ -20,7 +20,7 @@ inline bool is_null(const std::string& value) {
 
 std::vector<ConstraintBlock> Record::read_constraints(const std::string& table_name) {
     std::vector<ConstraintBlock> constraints;
-    std::string tic_filename = table_name + ".tic";
+    std::string tic_filename = dbManager::getInstance().get_current_database()->getDBPath() + "/" + table_name + ".tic";
     std::ifstream file(tic_filename, std::ios::binary);
     if (!file) return constraints;
 
@@ -204,13 +204,7 @@ bool Record::check_check_constraint(const ConstraintBlock& constraint, const std
 
 bool Record::check_default_constraint(const ConstraintBlock& constraint, std::string& value) {
     if (is_null(value)) {
-        std::string check_expr = constraint.param;
-        std::smatch matches;
-
-        std::regex lt_regex("(=)\\s*(\\d+)");  // 匹配 = 及其后面的数字
-        if (std::regex_search(check_expr, matches, lt_regex)) {
-            value = matches[2];
-        }
+        value = constraint.param;
     }
     return true;
 }

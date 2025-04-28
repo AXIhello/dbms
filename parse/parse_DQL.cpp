@@ -1,5 +1,12 @@
-#include "manager/parse.h"
+#include "parse/parse.h"
 #include <set>
+// 小写无关字符串比较，返回 true 则相同
+bool iequals(const std::string& a, const std::string& b) {
+    return std::equal(a.begin(), a.end(), b.begin(), b.end(),
+        [](char a, char b) {
+            return tolower(a) == tolower(b);
+        });
+}
 
 void Parse::handleSelectDatabase() {
     try {
@@ -34,114 +41,103 @@ void Parse::handleShowTables(const std::smatch& m) {
     }
 }
 
-
-
 void Parse::handleSelect(const std::smatch& m) {
-    std::string columns = m[1]; // 获取列名部分（可能是 '*' 或 'id, name'）
-    std::string table_name = m[2];
-    std::string table_path = dbManager::getInstance().get_current_database()->getDBPath() + "/" + table_name;
-
-    // 权限检查
-    // if (!user::hasPermission("select|" + table_name)) {
-      //  Output::printError(outputEdit, "无权限访问表 '" + QString::fromStdString(table_name) + "'。");
-       // return;
-    //}
-
     try {
-        std::string condition;
+        std::string columns = m[1];
+        std::string table_part = m[2];
+        std::string join_part;
         if (m.size() > 3 && m[3].matched) {
-            condition = m[3].str();
+            join_part = m[3].str();
         }
+        std::string condition, group_by, order_by, having;
+        if (m.size() > 4 && m[4].matched) condition = m[4].str();
+        if (m.size() > 5 && m[5].matched) group_by = m[5].str();
+        if (m.size() > 6 && m[6].matched) order_by = m[6].str();
+        if (m.size() > 7 && m[7].matched) having = m[7].str();
 
-        std::string group_by;
-        if (m.size() > 4 && m[4].matched) {
-            group_by = m[4].str();
-        }
-
-        std::string order_by;
-        if (m.size() > 5 && m[5].matched) {
-            order_by = m[5].str();
-        }
-
-        std::string having;
-        if (m.size() > 6 && m[6].matched) {
-            having = m[6].str();
-        }
-
-        // 调用封装了 where 逻辑的 Record::select
-        auto records = Record::select(columns, table_path, condition, group_by, order_by, having);
-        
-        if (!records.empty())
+        // 解析 FROM 后面的所有表（初始表）
+        std::vector<std::string> tables;
         {
-            Output::printSelectResult(outputEdit, records);
-            return;
+            std::stringstream ss(table_part);
+            std::string table;
+            while (std::getline(ss, table, ',')) {
+                table.erase(0, table.find_first_not_of(" \t"));
+                table.erase(table.find_last_not_of(" \t") + 1);
+                tables.push_back(table);
+            }
         }
-        //如果为空，显示表结构 向tdf中找:table类中提供根据表名找列名的方法（从tdf中读）
 
-		Table* table = dbManager::getInstance().get_current_database()->getTable(table_name);
-        Output::printSelectResultEmpty(outputEdit, table->getFieldNames());
+        JoinInfo join_info;
+        join_info.tables = tables; // 初始加入 from 后所有表
+
+        bool use_join_info = false;
+
+        // 解析 JOIN ... ON ... 部分
+        if (!join_part.empty()) {
+            use_join_info = true;
+            std::regex join_regex(R"(\s+JOIN\s+(\w+)\s+ON\s+([\w\.]+)\s*=\s*([\w\.]+))", std::regex::icase);
+            std::sregex_iterator it(join_part.begin(), join_part.end(), join_regex), end;
+
+            for (; it != end; ++it) {
+                std::string right_table = (*it)[1];
+                std::string left_field = (*it)[2];
+                std::string right_field = (*it)[3];
+
+                size_t dot_pos1 = left_field.find('.');
+                size_t dot_pos2 = right_field.find('.');
+
+                if (dot_pos1 == std::string::npos || dot_pos2 == std::string::npos) {
+                    Output::printError(outputEdit, "JOIN ON 子句字段格式错误，必须是表名.字段名");
+                    return;
+                }
+
+                std::string left_table = left_field.substr(0, dot_pos1);
+                std::string left_col = left_field.substr(dot_pos1 + 1);
+                std::string right_tab = right_field.substr(0, dot_pos2);
+                std::string right_col = right_field.substr(dot_pos2 + 1);
+
+                // 检查如果 right_table 没有在 tables 中，则补充进去
+                bool exists = false;
+                for (const auto& t : join_info.tables) {
+                    if (iequals(t, right_table)) {
+                        exists = true;
+                        break;
+                    }
+                }
+                if (!exists) join_info.tables.push_back(right_table);
+
+                // 加入一组 JoinPair
+                JoinPair jp;
+                jp.left_table = left_table;
+                jp.right_table = right_tab;
+                jp.conditions.push_back({ left_col, right_col });
+
+                join_info.joins.push_back(jp);
+            }
+        }
+
+        if (join_info.tables.size() > 1) {
+            use_join_info = true;
+        }
+
+        std::vector<Record> records;
+        if (use_join_info) {
+            records = Record::select(columns, join_info.tables[0], condition, group_by, order_by, having, &join_info);
+        }
+        else {
+            records = Record::select(columns, join_info.tables[0], condition, group_by, order_by, having, nullptr);
+        }
+
+        if (!records.empty()) {
+            Output::printSelectResult(outputEdit, records);
+        }
+        else {
+            Table* table = dbManager::getInstance().get_current_database()->getTable(join_info.tables[0]);
+            Output::printSelectResultEmpty(outputEdit, table->getFieldNames());
+        }
     }
     catch (const std::exception& e) {
         Output::printError(outputEdit, "查询失败: " + QString::fromStdString(e.what()));
     }
 }
 
-
-//void Parse::handleSelect(const std::smatch& m) {
-//    std::string columns = m[1]; // 获取列名部分（可能是 '*' 或 'id, name'）
-//    std::string main_table_name = m[2]; // 获取主表名部分
-//
-//    // 初始化 JoinInfo 对象
-//    std::shared_ptr<JoinInfo> join_info = std::make_shared<JoinInfo>();
-//
-//    // 解析 JOIN 信息
-//    for (size_t i = 3; i + 2 < m.size(); i += 4) {
-//        if (m[i].matched) {
-//            std::string join_table = m[i].str();
-//            std::string left_column = m[i + 1].str();
-//            std::string right_column = m[i + 2].str();
-//
-//            join_info->tables.push_back(join_table);
-//            join_info->join_conditions.emplace_back(left_column, right_column);
-//        }
-//    }
-//
-//    std::string table_name_for_select;
-//    if (!join_info->tables.empty()) {
-//        // 如果有 JOIN 子句，第一个表名是主表名，后续的是 JOIN 的表名
-//        join_info->tables.insert(join_info->tables.begin(), main_table_name);
-//        // 为了兼容 Record::select 的逻辑，这里我们传递主表名，实际的表在 join_info 中
-//        table_name_for_select = main_table_name;
-//    }
-//    else {
-//        // 如果没有 JOIN 子句，可能是单表查询或隐式多表连接
-//        table_name_for_select = main_table_name;
-//        if (table_name_for_select.find(',') != std::string::npos) {
-//            std::stringstream ss(table_name_for_select);
-//            std::string token;
-//            join_info->tables.clear(); // 确保 join_info 的 tables 是最新的
-//            while (std::getline(ss, token, ',')) {
-//                token.erase(0, token.find_first_not_of(" \t"));
-//                token.erase(token.find_last_not_of(" \t") + 1);
-//                join_info->tables.push_back(token);
-//            }
-//        }
-//    }
-//
-//    try {
-//        std::string condition = (m.size() > 4 && m[4].matched) ? m[4].str() : "";
-//        std::string group_by = (m.size() > 5 && m[5].matched) ? m[5].str() : "";
-//        std::string order_by = (m.size() > 6 && m[6].matched) ? m[6].str() : "";
-//        std::string having = (m.size() > 7 && m[7].matched) ? m[7].str() : "";
-//
-//        // 正确传参：第二个参数是主表名，join 信息通过 join_info 传递
-//        auto records = Record::select(columns, table_name_for_select, condition, group_by, order_by, having, join_info.get());
-//
-//        Output::printSelectResult(outputEdit, records);
-//    }
-//    catch (const std::exception& e) {
-//        Output::printError(outputEdit, "查询失败: " + QString::fromStdString(e.what()));
-//    }
-//
-//}
-//

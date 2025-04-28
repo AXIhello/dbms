@@ -1,42 +1,73 @@
-#ifndef BTREE_H
-#define BTREE_H
+#pragma once
 
-#include <vector>
 #include <string>
-#include <ctime>
-#include "block/indexBlock.h"
-#include "block/fieldBlock.h"
+#include <vector>
+#include <unordered_map>
+#include <iostream>
+#include <stdexcept>
+#include <cstring>
+#include <fstream>
+#include <cstdio>
 
-// B树节点
-struct BTreeNode {
-    std::vector<std::string> fields;      // 节点中的字段值（字符串形式）
-    std::vector<BTreeNode*> children;     // 子节点
-    bool isLeaf;                          // 是否是叶子节点
+#include "base/block/indexBlock.h"
+#include "base/block/fieldBlock.h"
+#include "base/block/constraintBlock.h"
+#include "base/block/tableBlock.h"
+
+
+// 指向磁盘中记录的位置
+struct RecordPointer {
+    int blockId;     // 块号
+    int offset;      // 块内偏移
+};
+
+// 字段值 + 记录指针
+struct FieldPointer {
+    std::string fieldValue;  // 索引字段的值
+    RecordPointer recordPtr; // 指向磁盘记录的位置
+};
+
+class BTreeNode {
+public:
+    bool isLeaf;
+    std::vector<FieldPointer> fields;
+    std::vector<BTreeNode*> children;
 
     BTreeNode(bool isLeaf = true);
 };
 
-// B树类
 class BTree {
 private:
-    BTreeNode* root;             // B树的根节点
-    int degree = 3;              // B树的度（每个节点最多存储的元素数量）
-    const IndexBlock* m_index;  // B树索引块
+    int degree = 3;        // B树的度
+    BTreeNode* root;
+    const IndexBlock* m_index;
+
+    void splitChild(BTreeNode* parent, int index);
+    void insertNonFull(BTreeNode* node, const FieldPointer& fieldPtr);
+    FieldPointer* findInNode(BTreeNode* node, const std::string& fieldValue);
+    void serializeNode(BTreeNode* node, std::vector<BTreeNode*>& nodes) const;
+    void deleteNodes(BTreeNode* node);
+
+    // 删除相关私有辅助函数
+    void removeFromNode(BTreeNode* node, const std::string& fieldValue);
+    void removeFromLeaf(BTreeNode* node, int idx);
+    void removeFromNonLeaf(BTreeNode* node, int idx);
+    std::string getPredecessor(BTreeNode* node, int idx);
+    std::string getSuccessor(BTreeNode* node, int idx);
+    void fill(BTreeNode* node, int idx);
+    void borrowFromPrev(BTreeNode* node, int idx);
+    void borrowFromNext(BTreeNode* node, int idx);
+    void merge(BTreeNode* node, int idx);
 
 public:
-    BTree(const IndexBlock* indexBlock);       // 构造函数
-    ~BTree();                                 // 析构函数
+    BTree(const IndexBlock* indexBlock);
+    ~BTree();
 
-    void insert(const std::string& fieldValue); // 插入字段值到B树
-    std::string* find(const std::string& fieldName); // 查找字段值
-    void saveBTreeIndex() const;               // 保存B树索引到文件
-    void serializeNode(BTreeNode* node, std::vector<BTreeNode*>& nodesToWrite) const; // 扁平化序列化节点
-    void loadBTreeIndex();                     // 从文件加载B树索引
+    void insert(const std::string& fieldValue, const RecordPointer& recordPtr);
+    FieldPointer* find(const std::string& fieldValue);
 
-private:
-    void splitChild(BTreeNode* parent, int index);  // 分裂子节点
-    void insertNonFull(BTreeNode* node, const std::string& fieldValue); // 向非满节点插入字段值
-    std::string* findInNode(BTreeNode* node, const std::string& fieldName); // 在节点中查找字段值
+    void remove(const std::string& fieldValue);  // 新增删除接口
+
+    void saveBTreeIndex() const;
+    void loadBTreeIndex();
 };
-
-#endif // BTREE_H

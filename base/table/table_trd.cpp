@@ -1,10 +1,11 @@
 #include "table.h"
 #include <iostream>
 #include <ctime>
-#include "manager/parse.h"
+#include "parse/parse.h"
 #include <base/Record/record.h>
 #include <cstring>
 #include <iomanip>
+#include <QDebug>
 #include"manager/dbManager.h"
 
 std::string Table::getDefaultValue(const std::string& fieldName) const {
@@ -14,6 +15,20 @@ std::string Table::getDefaultValue(const std::string& fieldName) const {
         }
     }
     return "NULL"; // 没找到，返回"NULL"
+}
+
+// 辅助函数：打印所有记录内容
+void Table::print_records(const std::vector<std::unordered_map<std::string, std::string>>& records) {
+    std::cout << "\n====== 当前读取到的记录内容 ======" << std::endl;
+    size_t index = 0;
+    for (const auto& record : records) {
+        std::cout << "记录 " << index++ << ": { ";
+        for (const auto& [key, value] : record) {
+            std::cout << key << ": " << value << ", ";
+        }
+        std::cout << " }" << std::endl;
+    }
+    std::cout << "====== 记录总数: " << records.size() << " ======" << std::endl;
 }
 
 //void Table::updateRecord(std::vector<FieldBlock>& fields) {
@@ -272,10 +287,8 @@ void Table::updateRecord_add(FieldBlock& new_field) {
     catch (const std::exception& e) {
         throw std::runtime_error("读取表记录失败：" + std::string(e.what()));
     }
-
-    if (records.empty()) {
-        throw std::runtime_error("警告：读取到的记录为空，可能是表本身就没有数据。");
-    }
+    print_records(records);
+    qDebug() << "Step 2: 初始读取 records 完成，记录数量:" << records.size();
 
     // 3. 找默认值
     std::string default_value = "NULL";
@@ -285,18 +298,27 @@ void Table::updateRecord_add(FieldBlock& new_field) {
             break;
         }
     }
+    qDebug() << "Step 3: 找到新字段默认值:" << QString::fromStdString(default_value);
 
     // 4. 给每条记录加上新字段
-    for (auto& record : records) {
-        if (record.empty()) {
-            throw std::runtime_error("发现空的记录，数据可能损坏！");
+    for (size_t i = 0; i < records.size(); ++i) {
+        auto& record = records[i];
+
+        auto result = record.insert({ std::string(new_field.name), default_value });
+        if (!result.second) {
+            throw std::runtime_error("字段已存在，不能插入！");
         }
-        record[std::string(new_field.name)] = default_value;
+        // 打印每条记录被修改后的内容
+        qDebug() << "Step 4: 插入新字段后，第" << i << "条记录内容：";
+        for (const auto& pair : record) {
+            qDebug() << "    " << QString::fromStdString(pair.first) << ":" << QString::fromStdString(pair.second);
+        }
     }
 
     // 5. 准备更新后的字段列表（注意：不改 m_fields）
     std::vector<FieldBlock> updated_fields = m_fields;
     updated_fields.push_back(new_field);
+    qDebug() << "Step 5: updated_fields 准备完成，字段总数:" << updated_fields.size();
 
     // 6. 打开文件（清空）准备重写
     std::ofstream file(m_trd, std::ios::binary | std::ios::trunc);
@@ -307,19 +329,15 @@ void Table::updateRecord_add(FieldBlock& new_field) {
     size_t record_count_written = 0;
 
     // 7. 逐条写回数据
-    for (const auto& record : records) {
+    for (size_t i = 0; i < records.size(); ++i) {
+        const auto& record = records[i];
+        qDebug() << "Step 7: 写回第" << i << "条记录：";
         for (const auto& fieldBlock : updated_fields) {
             auto it = record.find(std::string(fieldBlock.name));
-            if (it == record.end()) {
-                throw std::runtime_error("写入失败：记录缺少字段 '" + std::string(fieldBlock.name) + "' 的值！");
-            }
             const std::string& value = it->second;
-            try {
-                Record::write_field(file, fieldBlock, value);
-            }
-            catch (const std::exception& e) {
-                throw std::runtime_error("写入字段 '" + std::string(fieldBlock.name) + "' 失败：" + std::string(e.what()));
-            }
+            Record::write_field(file, fieldBlock, value);
+            qDebug() << "    字段" << QString::fromStdString(fieldBlock.name)
+                << "值" << QString::fromStdString(value);
         }
         ++record_count_written;
     }
@@ -329,18 +347,19 @@ void Table::updateRecord_add(FieldBlock& new_field) {
         throw std::runtime_error("刷新文件失败，磁盘可能出问题！");
     }
     file.close();
+    qDebug() << "Step 7: 全部记录写入完成。写入条数:" << record_count_written;
 
     // 8. 检查写入记录数量
     if (record_count_written != records.size()) {
         throw std::runtime_error("写入完成，但记录数量不一致！原记录：" + std::to_string(records.size()) +
             "，实际写入：" + std::to_string(record_count_written));
     }
+    qDebug() << "Step 8: 校验通过，记录数量一致。";
 
     std::cout << "添加字段 '" << new_field.name
         << "' 并成功更新了 " << record_count_written
         << " 条记录。" << std::endl;
 }
-
 
 
 
