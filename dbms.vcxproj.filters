@@ -138,7 +138,9 @@
     </ClCompile>
     <ClCompile Include="base\BTree_delete.cpp" />
     <ClCompile Include="transaction\TransactionManager.cpp" />
-    <ClCompile Include="parse\parse.cpp" />
+    <ClCompile Include="parse\parse.cpp">
+      <Filter>manager\parse</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="debug.h">
@@ -169,7 +171,9 @@
       <Filter>base\table</Filter>
     </ClInclude>
     <ClInclude Include="transaction\TransactionManager.h" />
-    <ClInclude Include="parse\parse.h" />
+    <ClInclude Include="parse\parse.h">
+      <Filter>manager\parse</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <QtUic Include="login.ui">
