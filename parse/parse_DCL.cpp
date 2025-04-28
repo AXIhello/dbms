@@ -14,3 +14,54 @@ void Parse::handleUseDatabase(const std::smatch& m) {
         Output::printError(outputEdit, e.what());
     }
 }
+
+void Parse::handleCreateUser(const std::smatch& m) {
+    std::string username = m[1].str();
+    std::string password = m[2].str();
+    if (user::createUser(username, password)) {
+        Output::printMessage(outputEdit, "用户 '" + QString::fromStdString(username) + "' 创建成功。");
+    }
+    else {
+        Output::printMessage(outputEdit, "用户 '" + QString::fromStdString(username) + "' 已存在。");
+    }
+}
+
+void Parse::handleGrantPermission(const std::smatch& m) {
+    std::string permission = m[1].str();
+    std::string username = m[2].str();
+    if (user::grantPermission(username, permission)) {
+        Output::printMessage(outputEdit, "已授予 '" + QString::fromStdString(permission) + "' 权限给用户 '" + QString::fromStdString(username) + "'。");
+    }
+    else {
+        Output::printMessage(outputEdit, "授权失败，用户 '" + QString::fromStdString(username) + "' 不存在。");
+    }
+}
+
+void Parse::handleRevokePermission(const std::smatch& m) {
+    std::string permission = m[1].str();
+    std::string username = m[2].str();
+    if (user::revokePermission(username, permission)) {
+        Output::printMessage(outputEdit, "已从用户 '" + QString::fromStdString(username) + "' 收回 '" + QString::fromStdString(permission) + "' 权限。");
+    }
+    else {
+        Output::printMessage(outputEdit, "收回失败，用户 '" + QString::fromStdString(username) + "' 不存在。");
+    }
+}
+
+void Parse::handleShowUsers(const std::smatch& m) {
+    // 获取所有用户
+    std::vector<user::User> users = user::loadUsers();
+
+    // 判断是否为空
+    if (users.empty()) {
+        Output::printMessage(outputEdit, "没有找到用户。");
+    }
+    else {
+        Output::printMessage(outputEdit, "用户列表:");
+        for (const auto& user : users) {
+            // 确保显示正确的用户名（去除可能的垃圾数据）
+            std::string username(user.username, strnlen(user.username, sizeof(user.username)));
+            Output::printMessage(outputEdit, QString::fromStdString(user.username));
+        }
+    }
+}

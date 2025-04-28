@@ -124,8 +124,8 @@ MainWindow::~MainWindow() {
 }
 
 void MainWindow::onRunButtonClicked() {
-    //QString sql = ui->inputEdit->toPlainText().trimmed(); // 获取 SQL 语句
-    QString sql = ui->inputEdit->toPlainText().split('\n', Qt::SkipEmptyParts).last().trimmed();//只获取最后一行的语句
+    QString sql = ui->inputEdit->toPlainText().trimmed(); // 获取 SQL 语句
+    //QString sql = ui->inputEdit->toPlainText().split('\n', Qt::SkipEmptyParts).last().trimmed();//只获取最后一行的语句
 
     if (sql.isEmpty())
     {

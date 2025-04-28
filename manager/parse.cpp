@@ -147,6 +147,33 @@ void Parse::registerPatterns() {
     std::regex(R"(^USE\s+(?:DATABASE\s+)?(\w+);$)", std::regex::icase),
     [this](const std::smatch& m) { handleUseDatabase(m); }
         });
+
+
+    /* 用户权限管理相关DCL */
+
+    // CREATE USER xxx IDENTIFIED BY xxx;
+    patterns.push_back({
+        std::regex(R"(^CREATE\s+USER\s+(\w+)\s+IDENTIFIED\s+BY\s+(\w+);$)", std::regex::icase),
+        [this](const std::smatch& m) { handleCreateUser(m); }
+        });
+
+    // GRANT conn|resource TO xxx;
+    patterns.push_back({
+        std::regex(R"(^GRANT\s+(conn|resource)\s+TO\s+(\w+);$)", std::regex::icase),
+        [this](const std::smatch& m) { handleGrantPermission(m); }
+        });
+
+    // REVOKE conn|resource FROM xxx;
+    patterns.push_back({
+        std::regex(R"(^REVOKE\s+(conn|resource)\s+FROM\s+(\w+);$)", std::regex::icase),
+        [this](const std::smatch& m) { handleRevokePermission(m); }
+        });
+
+    //SHOW USERS;
+    patterns.push_back({
+    std::regex(R"(^show\s+users\s*;?$)", std::regex::icase),
+    [this](const std::smatch& m) { handleShowUsers(m); }
+        });    
 }
 
 void Parse::execute(const QString& sql_qt) {
