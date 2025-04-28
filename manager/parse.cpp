@@ -1,15 +1,9 @@
 #include "parse.h"
-#include <transaction/TransactionManager.h>
-
-//#include <main.cpp>
 
 Parse::Parse(QTextEdit* outputEdit, MainWindow* mainWindow) : outputEdit(outputEdit), mainWindow(mainWindow) {
     registerPatterns();
 }
-Parse::Parse(Database* database)
-    : db(database) {  // 初始化 db 指针
 
-}
 
 
 
@@ -134,13 +128,16 @@ void Parse::registerPatterns() {
         [this](const std::smatch& m) { handleShowTables(m); }
         });
 
-    //√ 
+    //√ (匹配 select * )
+   // patterns.push_back({
+     //std::regex(R"(^SELECT\s+(\*|[\w\s\(\)\*,]+)\s+FROM\s+(\w+)(?:\s+WHERE\s+(.+?))?(?:\s+GROUP\s+BY\s+(.+?))?(?:\s+ORDER\s+BY\s+(.+?))?(?:\s+HAVING\s+(.+?))?\s*;$)", std::regex::icase),
+    //[this](const std::smatch& m) { handleSelect(m); }
+      //});
+
     patterns.push_back({
-     std::regex(R"(^SELECT\s+(\*|[\w\s\(\)\*,\.]+)\s+FROM\s+(\w+)((?:\s+JOIN\s+\w+\s+ON\s+[\w\.]+\s*=\s*[\w\.]+)+)?(?:\s+WHERE\s+(.+?))?(?:\s+GROUP\s+BY\s+(.+?))?(?:\s+ORDER\s+BY\s+(.+?))?(?:\s+HAVING\s+(.+?))?\s*;$)", std::regex::icase),
-     [this](const std::smatch& m) { handleSelect(m); }
+    std::regex(R"(^SELECT\s+([\w\s\(\)\*,]+)\s+FROM\s+([\w\s,]+)(?:\s+JOIN\s+\w+\s+ON\s+[\w\.]+\s*=\s*[\w\.]+)?(?:\s+WHERE\s+(.+?))?(?:\s+GROUP\s+BY\s+(.+?))?(?:\s+ORDER\s+BY\s+(.+?))?(?:\s+HAVING\s+(.+?))?\s*;$)", std::regex::icase),
+    [this](const std::smatch& m) { handleSelect(m); }
         });
-
-
 
 
 
@@ -150,6 +147,7 @@ void Parse::registerPatterns() {
     std::regex(R"(^USE\s+(?:DATABASE\s+)?(\w+);$)", std::regex::icase),
     [this](const std::smatch& m) { handleUseDatabase(m); }
         });
+
 
     /* 用户权限管理相关DCL */
 
@@ -173,38 +171,19 @@ void Parse::registerPatterns() {
 
     //SHOW USERS;
     patterns.push_back({
-    std::regex(R"(^SHOW\s+USERS;$)", std::regex::icase),
+    std::regex(R"(^show\s+users\s*;?$)", std::regex::icase),
     [this](const std::smatch& m) { handleShowUsers(m); }
-        });
+        });    
 }
 
 void Parse::execute(const QString& sql_qt) {
     // 1. 清理 SQL 字符串
-	qDebug() << "原始SQL:" << sql_qt;
     QString cleanedSQL = cleanSQL(sql_qt);  // 使用 cleanSQL 来处理输入
     std::string sql = cleanedSQL.toStdString();  // 转为 std::string 类型
 
 	// 2. 转换为大写（除引号内的内容不变）
     std::string upperSQL = toUpperPreserveQuoted(sql);
-	qDebug() << "清理后SQL:" << QString::fromStdString(upperSQL);
-    //直接判断事务；TODO：判断之后仍会进入正则匹配，此时尚未注册
-    if(upperSQL == "START TRANSACTION") {
-        TransactionManager::instance().begin();
-        return;
-    }
-    if (upperSQL == "COMMIT") {
-        TransactionManager::instance().commit();
-        return;
-    }
-    if (upperSQL == "ROLLBACK") {
-        TransactionManager::instance().rollback();
-        return;
-    }
 
-   /* if (upperSQL.find("USE DATABASE") != std::string::npos && TransactionManager::instance().isActive()) {
-        Output::printError(outputEdit, "事务正在进行.禁止切换数据库。");
-        return;
-    }*/
     // 3. 遍历所有正则模式并匹配
     for (const auto& p : patterns) {
         std::smatch match;
