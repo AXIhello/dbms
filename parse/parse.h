@@ -96,9 +96,12 @@ private:
 
     //DCL
     void handleUseDatabase(const std::smatch& m);
-   
 
-   
+    void handleCreateUser(const std::smatch& m);
+    void handleGrantPermission(const std::smatch& m);
+    void handleRevokePermission(const std::smatch& m);
+    void handleShowUsers(const std::smatch& m);
+     
 
 };
 

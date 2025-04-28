@@ -1,4 +1,4 @@
-#include "parse/parse.h"
+#include "parse.h"
 void Parse::handleUseDatabase(const std::smatch& m) {
     std::string dbName = m[1];
 

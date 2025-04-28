@@ -32,6 +32,8 @@ public:
     
     //util
     static std::string trim(const std::string& s);
+
+    void handleCreateUser(const std::smatch& m);
     
 private:
 	QTextEdit* outputEdit;  // 输出编辑器指针
@@ -93,7 +95,6 @@ private:
 
     //DCL
     void handleUseDatabase(const std::smatch& m);
-    void handleCreateUser(const std::smatch& m);
     void handleGrantPermission(const std::smatch& m);
     void handleRevokePermission(const std::smatch& m);
     void handleShowUsers(const std::smatch& m);
