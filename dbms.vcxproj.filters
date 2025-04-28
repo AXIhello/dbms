@@ -28,6 +28,9 @@
     <Filter Include="base\table">
       <UniqueIdentifier>{a5f4181a-8651-4e4a-a4bc-2b9ef1a210b9}</UniqueIdentifier>
     </Filter>
+    <Filter Include="transaction">
+      <UniqueIdentifier>{671b2e24-d648-40fa-9140-cf7325eb3356}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <!-- base -->
@@ -137,9 +140,11 @@
       <Filter>base\table</Filter>
     </ClCompile>
     <ClCompile Include="base\BTree_delete.cpp" />
-    <ClCompile Include="transaction\TransactionManager.cpp" />
     <ClCompile Include="parse\parse.cpp">
       <Filter>manager\parse</Filter>
+    </ClCompile>
+    <ClCompile Include="transaction\TransactionManager.cpp">
+      <Filter>transaction</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
@@ -170,9 +175,11 @@
     <ClInclude Include="base\table\table.h">
       <Filter>base\table</Filter>
     </ClInclude>
-    <ClInclude Include="transaction\TransactionManager.h" />
     <ClInclude Include="parse\parse.h">
       <Filter>manager\parse</Filter>
+    </ClInclude>
+    <ClInclude Include="transaction\TransactionManager.h">
+      <Filter>transaction</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
