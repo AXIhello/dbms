@@ -96,19 +96,22 @@ void Record::insert_into() {
         record_values[idx] = values[i];
     }
 
-    // 使用完整字段名和值检查约束（在设置 record_values 后）
-    std::vector<std::string> all_columns, all_values;
+    // 完整字段名和值
+    std::vector<std::string> all_columns;
     for (const auto& field : fields) {
         all_columns.push_back(field.name);
     }
-    all_values = record_values;
+    std::vector<std::string> all_values = record_values;
 
     std::vector<ConstraintBlock> constraints = read_constraints(table_name);
     if (!check_constraints(all_columns, all_values, constraints)) {
         throw std::runtime_error("插入数据违反表约束");
     }
 
-    // 校验类型（已修复：跳过 NULL）
+    // 【新增】同步 DEFAULT 修改后的 all_values 回 record_values
+    record_values = all_values;
+
+    // 校验类型
     for (size_t i = 0; i < fields.size(); ++i) {
         const FieldBlock& field = fields[i];
         const std::string& value = record_values[i];

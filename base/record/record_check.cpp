@@ -204,13 +204,7 @@ bool Record::check_check_constraint(const ConstraintBlock& constraint, const std
 
 bool Record::check_default_constraint(const ConstraintBlock& constraint, std::string& value) {
     if (is_null(value)) {
-        std::string check_expr = constraint.param;
-        std::smatch matches;
-
-        std::regex lt_regex("(=)\\s*(\\d+)");  // 匹配 = 及其后面的数字
-        if (std::regex_search(check_expr, matches, lt_regex)) {
-            value = matches[2];
-        }
+        value = constraint.param;
     }
     return true;
 }

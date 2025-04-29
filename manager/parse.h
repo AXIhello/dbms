@@ -11,7 +11,7 @@
 #include "ui/output.h"
 #include "ui/mainWindow.h"
 
-#include "manager/dbManager.h"
+#include "dbManager.h"
 #include "base/record/Record.h"
 #include "base/user.h"
 #include "base/database.h"
@@ -30,10 +30,10 @@ public:
     Parse(QTextEdit* outputEdit, MainWindow* mainWindow = nullptr);
     void execute(const QString& sql);
     
-    Parse(Database* database);
-
     //util
     static std::string trim(const std::string& s);
+
+    void handleCreateUser(const std::smatch& m);
     
 private:
 	QTextEdit* outputEdit;  // 输出编辑器指针
@@ -43,7 +43,6 @@ private:
         std::function<void(const std::smatch&)> action;
     };
 
-    Database* db;
     std::vector<SqlPattern> patterns;
     void registerPatterns();
 
@@ -96,12 +95,10 @@ private:
 
     //DCL
     void handleUseDatabase(const std::smatch& m);
-
-    void handleCreateUser(const std::smatch& m);
     void handleGrantPermission(const std::smatch& m);
     void handleRevokePermission(const std::smatch& m);
     void handleShowUsers(const std::smatch& m);
-     
+   
 
 };
 

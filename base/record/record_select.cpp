@@ -49,13 +49,17 @@ std::vector<Record> Record::select(
                 rec = prefixed;
             }
 
-            // 连接
+            // 正确连接（每次只使用相关的 JoinPair）
             std::vector<std::unordered_map<std::string, std::string>> new_result;
             for (const auto& r1 : result) {
                 for (const auto& r2 : right_records) {
                     bool match = true;
                     for (const auto& join : join_info->joins) {
-                        // 检查连接条件
+                        bool relevant =
+                            (join.left_table == join_info->tables[i - 1] && join.right_table == join_info->tables[i]) ||
+                            (join.left_table == join_info->tables[i] && join.right_table == join_info->tables[i - 1]);
+                        if (!relevant) continue;
+
                         for (const auto& [left_col, right_col] : join.conditions) {
                             std::string left_field = join.left_table + "." + left_col;
                             std::string right_field = join.right_table + "." + right_col;
@@ -86,6 +90,7 @@ std::vector<Record> Record::select(
         combined_structure = read_table_structure_static(table_name);
     }
 
+    // 处理 WHERE 条件
     Record temp;
     temp.set_table_name(table_name);
     temp.table_structure = combined_structure;
@@ -100,7 +105,7 @@ std::vector<Record> Record::select(
         }
     }
 
-    // 🔥最关键改动！！！选字段必须基于连接后的结果
+    // 处理 SELECT 字段
     std::vector<std::string> selected_cols;
     if (columns == "*") {
         if (!condition_filtered.empty()) {
@@ -113,7 +118,7 @@ std::vector<Record> Record::select(
         selected_cols = parse_column_list(columns);
     }
 
-    // 输出
+    // 输出最终结果
     for (const auto& rec_map : condition_filtered) {
         Record rec;
         rec.set_table_name(table_name);
@@ -127,4 +132,3 @@ std::vector<Record> Record::select(
 
     return records;
 }
-
