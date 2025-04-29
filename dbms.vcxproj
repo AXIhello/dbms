@@ -104,6 +104,7 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="base\BTree_delete.cpp" />
+    <ClCompile Include="base\BTree_find.cpp" />
     <ClCompile Include="base\record\record_delete.cpp" />
     <ClCompile Include="base\record\record_insert.cpp" />
     <ClCompile Include="base\record\record_select.cpp" />
