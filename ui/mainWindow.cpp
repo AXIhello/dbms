@@ -51,12 +51,14 @@ MainWindow::MainWindow(QWidget* parent)
         }
     )";
     ui->inputEdit->setInputMethodHints(Qt::ImhPreferLatin); // 设置为英文输入
-
+    ui->treeWidget->setContextMenuPolicy(Qt::CustomContextMenu);//为QTreeWidget 设置右键菜单策略
     this->setStyleSheet(styleSheet);
 
     // 连接按钮点击事件到槽函数
     connect(ui->runButton, &QPushButton::clicked, this, &MainWindow::onRunButtonClicked);
     connect(ui->treeWidget, &QTreeWidget::itemClicked, this, &MainWindow::onTreeItemClicked);
+    connect(ui->treeWidget, &QTreeWidget::customContextMenuRequested,
+        this, &MainWindow::onTreeWidgetContextMenu);
     setWindowTitle("My Database Client"); // 设置窗口标题
     setGeometry(100, 100, 1000, 600);  // 设置窗口大小
 
@@ -233,3 +235,111 @@ void MainWindow::onTreeItemClicked(QTreeWidgetItem* item, int column) {
             Output::printError(ui->outputEdit, QString("加载表失败: ") + e.what());
         }
     }
+
+/*void MainWindow::onTreeWidgetContextMenu(const QPoint& pos) {
+    QTreeWidgetItem* item = ui->treeWidget->itemAt(pos);
+    if (!item) return;
+
+    QMenu menu(this);
+
+    QTreeWidgetItem* parent = item->parent();
+    QString dbName;
+    QString tableName;
+
+    if (!parent) {
+        // === 数据库节点 ===
+        dbName = item->text(0);
+
+        menu.addAction("新建表", [=]() {
+            // 弹出输入框或对话框创建表
+            QString createSQL = "CREATE TABLE 表名 (...);\n";  // 你可以改为实际语句
+            ui->inputEdit->setPlainText(createSQL);
+            });
+
+        menu.addAction("删除数据库", [=]() {
+            QString sql = "DROP DATABASE " + dbName + ";\n";
+            ui->inputEdit->setPlainText(sql);
+            Parse parser(ui->outputEdit, this);
+            parser.execute(sql);
+            });
+
+    }
+    else {
+        // === 表节点 ===
+        dbName = parent->text(0);
+        tableName = item->text(0);
+
+        menu.addAction("修改表", [=]() {
+            // 根据你支持的修改方式填写 SQL 模板
+            QString alterSQL = "ALTER TABLE " + tableName + " ADD COLUMN 新列名 数据类型;\n";
+            ui->inputEdit->setPlainText(alterSQL);
+            });
+
+        menu.addAction("删除表", [=]() {
+            QString sql = "DROP TABLE " + tableName + ";\n";
+            ui->inputEdit->setPlainText(sql);
+            Parse parser(ui->outputEdit, this);
+            parser.execute(sql);
+            });
+    }
+
+    // 显示菜单
+    menu.exec(ui->treeWidget->viewport()->mapToGlobal(pos));
+}*/
+
+/**
+ * 在TreeWidget右键选择数据库、表、用户的添加删除、修改操作.
+ * 
+ * \param pos
+ */
+void MainWindow::onTreeWidgetContextMenu(const QPoint& pos) {
+    QTreeWidgetItem* item = ui->treeWidget->itemAt(pos);
+    QMenu menu(this);
+
+    if (!item) {
+        // === 空白区域右键 ===
+        menu.addAction("添加数据库", [=]() {
+            // 将来弹出你自定义的建库窗口
+            QMessageBox::information(this, "添加数据库", "这里将来会弹出建库窗口");
+            });
+
+        menu.addAction("添加用户", [=]() {
+            // 将来弹出你自定义的建用户窗口
+            QMessageBox::information(this, "添加用户", "这里将来会弹出创建用户窗口");
+            });
+
+    }
+    else {
+        QTreeWidgetItem* parent = item->parent();
+        QString dbName, tableName;
+
+        if (!parent) {
+            // 数据库节点
+            dbName = item->text(0);
+            menu.addAction("新建表", [=]() {
+                QMessageBox::information(this, "新建数据表", "这里将来会弹出新建表窗口（属于数据库：" + dbName + "）");
+                });
+
+            menu.addAction("删除数据库", [=]() {
+                QMessageBox::information(this, "删除数据库", "这里将来会处理删除数据库：" + dbName);
+                });
+
+        }
+        else {
+            // 表节点
+            dbName = parent->text(0);
+            tableName = item->text(0);
+
+            menu.addAction("修改表", [=]() {
+                QMessageBox::information(this, "修改表", "这里将来会弹出修改表窗口（表名：" + tableName + "）");
+                });
+
+            menu.addAction("删除表", [=]() {
+                QMessageBox::information(this, "删除表", "这里将来会处理删除表：" + tableName);
+                });
+        }
+    }
+
+    menu.exec(ui->treeWidget->viewport()->mapToGlobal(pos));
+}
+
