@@ -445,9 +445,18 @@ bool Record::matches_condition(const std::unordered_map<std::string, std::string
             if (op == "<") return clean_left < clean_right;
             if (op == ">=") return clean_left >= clean_right;
             if (op == "<=") return clean_left <= clean_right;
-
         }
 
+        else if (left_type == "DATETIME") {
+            std::string clean_left = normalize_string(left_val);
+            std::string clean_right = normalize_string(right_val);
+            if (op == "=") return clean_left == clean_right;
+            if (op == "!=") return clean_left != clean_right;
+            if (op == ">") return clean_left > clean_right;
+            if (op == "<") return clean_left < clean_right;
+            if (op == ">=") return clean_left >= clean_right;
+            if (op == "<=") return clean_left <= clean_right;
+        }
 
         return false;
         };
@@ -463,7 +472,6 @@ bool Record::matches_condition(const std::unordered_map<std::string, std::string
 
     return result;
 }
-
 
 // 从.trd文件读取记录
 std::vector<std::unordered_map<std::string, std::string>> Record::read_records(const std::string table_name) {
