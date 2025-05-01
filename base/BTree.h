@@ -32,8 +32,10 @@ public:
     bool isLeaf;
     std::vector<FieldPointer> fields;
     std::vector<BTreeNode*> children;
+    BTreeNode* parent;  // 新增的父节点指针
 
-    BTreeNode(bool isLeaf = true);
+    // B树节点构造
+    BTreeNode(bool isLeaf, BTreeNode* parent) : isLeaf(isLeaf), parent(parent) {}
 };
 
 class BTree {
@@ -44,9 +46,11 @@ private:
 
     void splitChild(BTreeNode* parent, int index);
     void insertNonFull(BTreeNode* node, const FieldPointer& fieldPtr);
-    FieldPointer* findInNode(BTreeNode* node, const std::string& fieldValue);
     void serializeNode(BTreeNode* node, std::vector<BTreeNode*>& nodes) const;
     void deleteNodes(BTreeNode* node);
+
+    FieldPointer* findInNode(BTreeNode* node, const std::string& fieldValue);
+    void findRangeInNode(BTreeNode* node, const std::string& low, const std::string& high, std::vector<FieldPointer>& result);
 
     // 删除相关私有辅助函数
     void removeFromNode(BTreeNode* node, const std::string& fieldValue);
@@ -64,7 +68,9 @@ public:
     ~BTree();
 
     void insert(const std::string& fieldValue, const RecordPointer& recordPtr);
+
     FieldPointer* find(const std::string& fieldValue);
+    void findRange(const std::string& low, const std::string& high, std::vector<FieldPointer>& result);
 
     void remove(const std::string& fieldValue);  // 新增删除接口
 

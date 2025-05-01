@@ -139,6 +139,7 @@
     <ClCompile Include="base\BTree_delete.cpp" />
     <ClCompile Include="transaction\TransactionManager.cpp" />
     <ClCompile Include="parse\parse.cpp" />
+    <ClCompile Include="base\BTree_find.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="debug.h">

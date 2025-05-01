@@ -33,7 +33,6 @@ std::tm custom_strptime(const std::string& datetime_str, const std::string& form
 }
 
 Record::Record() {
-    // 暂定为空
 }
 
 bool Record::table_exists(const std::string& table_name) {
@@ -275,24 +274,6 @@ bool Record::validate_field_block(const std::string& value, const FieldBlock& fi
     }
 }
 
-/*void Record::validate_types_without_columns() {
-    // 按表结构中的列顺序验证值的类型
-    size_t i = 0;
-    for (const auto& column : columns) {
-        if (i < values.size()) {  // 确保不会越界
-            std::string expected_type = table_structure[column];
-            std::string value = values[i];
-
-            if (!is_valid_type(value, expected_type)) {
-                throw std::runtime_error("Type mismatch for column '" + column +
-                    "'. Expected " + expected_type +
-                    ", got value: " + value);
-            }
-            ++i;
-        }
-    }
-}*/
-
 // 解析列名列表
 std::vector<std::string> Record::parse_column_list(const std::string& columns) {
     std::vector<std::string> result;
@@ -391,6 +372,17 @@ bool Record::matches_condition(const std::unordered_map<std::string, std::string
         throw std::runtime_error("字段 '" + key + "' 无法匹配到记录中");
         };
 
+    auto normalize_string = [](const std::string& str) -> std::string {
+        std::string res = str;
+        // 去除尾部的 '\0' 或其他不可打印字符
+        while (!res.empty() && (res.back() == '\0' || !isprint(res.back()))) {
+            res.pop_back();
+        }
+
+        return res;
+        };
+
+
     auto evaluate_single = [&](const std::string& cond) -> bool {
         std::regex expr_regex(R"(^\s*(\w+(?:\.\w+)?)\s*(=|!=|>=|<=|>|<)\s*(.+?)\s*$)");
         std::smatch m;
@@ -443,13 +435,27 @@ bool Record::matches_condition(const std::unordered_map<std::string, std::string
             if (op == "!=") return left_val != right_val;
         }
         // 字符串
-        else {
-            if (op == "=") return left_val == right_val;
-            if (op == "!=") return left_val != right_val;
-            if (op == ">") return left_val > right_val;
-            if (op == "<") return left_val < right_val;
-            if (op == ">=") return left_val >= right_val;
-            if (op == "<=") return left_val <= right_val;
+        else if (left_type == "CHAR" || left_type == "VARCHAR" || left_type == "TEXT") {
+            std::string clean_left = normalize_string(left_val);
+            std::string clean_right = normalize_string(right_val);
+
+            if (op == "=") return clean_left == clean_right;
+            if (op == "!=") return clean_left != clean_right;
+            if (op == ">") return clean_left > clean_right;
+            if (op == "<") return clean_left < clean_right;
+            if (op == ">=") return clean_left >= clean_right;
+            if (op == "<=") return clean_left <= clean_right;
+        }
+
+        else if (left_type == "DATETIME") {
+            std::string clean_left = normalize_string(left_val);
+            std::string clean_right = normalize_string(right_val);
+            if (op == "=") return clean_left == clean_right;
+            if (op == "!=") return clean_left != clean_right;
+            if (op == ">") return clean_left > clean_right;
+            if (op == "<") return clean_left < clean_right;
+            if (op == ">=") return clean_left >= clean_right;
+            if (op == "<=") return clean_left <= clean_right;
         }
 
         return false;
@@ -466,7 +472,6 @@ bool Record::matches_condition(const std::unordered_map<std::string, std::string
 
     return result;
 }
-
 
 // 从.trd文件读取记录
 std::vector<std::unordered_map<std::string, std::string>> Record::read_records(const std::string table_name) {
@@ -696,59 +701,3 @@ void Record::write_field(std::ofstream& out, const FieldBlock& field, const std:
     char pad[4] = { 0 };
     out.write(pad, padding);
 }
-
-//std::string Record::read_field(std::ifstream& in, const FieldBlock& field) {
-//    char null_flag;
-//    in.read(&null_flag, sizeof(char));
-//    if (in.eof()) return "";
-//
-//    size_t data_size = get_field_data_size(field.type, field.param);
-//    std::string result;
-//
-//    if (null_flag == 1) {
-//        in.seekg(data_size, std::ios::cur);
-//        result = "NULL";
-//    }
-//    else {
-//        switch (field.type) {
-//        case 1: {
-//            int v;
-//            in.read(reinterpret_cast<char*>(&v), sizeof(int));
-//            result = std::to_string(v);
-//            break;
-//        }
-//        case 2: {
-//            double d;
-//            in.read(reinterpret_cast<char*>(&d), sizeof(double));
-//            result = std::to_string(d);
-//            break;
-//        }
-//        case 3: {
-//            std::vector<char> buf(field.param, 0);
-//            in.read(buf.data(), field.param);
-//            result = std::string(buf.data());
-//            break;
-//        }
-//        case 4: {
-//            char b;
-//            in.read(&b, sizeof(char));
-//            result = (b == 1) ? "1" : "0";
-//            break;
-//        }
-//        case 5: {
-//            std::time_t t;
-//            in.read(reinterpret_cast<char*>(&t), sizeof(std::time_t));
-//            result = std::to_string(t);
-//            break;
-//        }
-//        default:
-//            result = "";
-//        }
-//    }
-//    size_t padding = (4 - (sizeof(char) + data_size) % 4) % 4;
-//    if (padding > 0) {
-//        in.seekg(padding, std::ios::cur);
-//    }
-//
-//    return result;
-//}

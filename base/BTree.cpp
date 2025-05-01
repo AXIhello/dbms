@@ -1,17 +1,8 @@
 #include "BTree.h"
-#include <iostream>
-#include <fstream>
-#include <cstring>
-#include <stdexcept>
-#include <vector>
-#include <cstdio>
-
-// B树节点构造
-BTreeNode::BTreeNode(bool isLeaf) : isLeaf(isLeaf) {}
 
 // B树构造
-BTree::BTree(const IndexBlock* indexBlock) :  m_index(indexBlock) {
-    root = new BTreeNode(true);
+BTree::BTree(const IndexBlock* indexBlock) : m_index(indexBlock) {
+    root = new BTreeNode(true, nullptr);  // 根节点是叶子节点，父节点为nullptr
 }
 
 // B树析构
@@ -26,10 +17,11 @@ BTree::~BTree() {
     }
 
     // 调用 remove() 删除文件，返回 0 表示成功，非 0 表示失败
-    if (std::remove(filename.c_str()) == 0) {  
-       std::cout << "索引数据文件 " << filename << " 删除成功。" << std::endl;  
-    } else {  
-       std::perror(("索引数据文件 " + filename + " 删除失败。").c_str());  
+    if (std::remove(filename.c_str()) == 0) {
+        std::cout << "索引数据文件 " << filename << " 删除成功。" << std::endl;
+    }
+    else {
+        std::perror(("索引数据文件 " + filename + " 删除失败。").c_str());
     }
 }
 
@@ -46,7 +38,7 @@ void BTree::deleteNodes(BTreeNode* node) {
 void BTree::insert(const std::string& fieldValue, const RecordPointer& recordPtr) {
     BTreeNode* r = root;
     if (r->fields.size() == degree - 1) {
-        BTreeNode* newRoot = new BTreeNode(false);
+        BTreeNode* newRoot = new BTreeNode(false, nullptr);
         newRoot->children.push_back(r);
         splitChild(newRoot, 0);
         root = newRoot;
@@ -84,7 +76,7 @@ void BTree::insertNonFull(BTreeNode* node, const FieldPointer& fieldPtr) {
 // 分裂子节点
 void BTree::splitChild(BTreeNode* parent, int index) {
     BTreeNode* fullNode = parent->children[index];
-    BTreeNode* newNode = new BTreeNode(fullNode->isLeaf);
+    BTreeNode* newNode = new BTreeNode(fullNode->isLeaf, nullptr);
 
     int mid = degree / 2;
     parent->fields.insert(parent->fields.begin() + index, fullNode->fields[mid]);
@@ -100,28 +92,6 @@ void BTree::splitChild(BTreeNode* parent, int index) {
             newNode->children.push_back(fullNode->children[i]);
         }
         fullNode->children.resize(mid + 1);
-    }
-}
-
-// 查找字段
-FieldPointer* BTree::find(const std::string& fieldValue) {
-    return findInNode(root, fieldValue);
-}
-
-// 在节点内查找
-FieldPointer* BTree::findInNode(BTreeNode* node, const std::string& fieldValue) {
-    int i = 0;
-    while (i < node->fields.size() && node->fields[i].fieldValue < fieldValue) {
-        i++;
-    }
-    if (i < node->fields.size() && node->fields[i].fieldValue == fieldValue) {
-        return &node->fields[i];
-    }
-    if (node->isLeaf) {
-        return nullptr;
-    }
-    else {
-        return findInNode(node->children[i], fieldValue);
     }
 }
 
@@ -164,7 +134,6 @@ void BTree::saveBTreeIndex() const {
     out.close();
 }
 
-// 加载 B树索引
 void BTree::loadBTreeIndex() {
     std::ifstream in(m_index->index_file, std::ios::binary);
     if (!in.is_open()) {
@@ -172,16 +141,18 @@ void BTree::loadBTreeIndex() {
     }
 
     deleteNodes(root);
-    root = new BTreeNode(true);
+    root = new BTreeNode(true, nullptr);  // 设置根节点为叶子节点，父节点为空
 
     size_t total;
     in.read(reinterpret_cast<char*>(&total), sizeof(size_t));
     std::vector<BTreeNode*> nodes(total);
 
+    // 加载所有节点
     for (size_t i = 0; i < total; ++i) {
-        nodes[i] = new BTreeNode();
+        nodes[i] = new BTreeNode(true, nullptr);  // 默认为叶子节点，父节点为空
         size_t n;
         in.read(reinterpret_cast<char*>(&n), sizeof(size_t));
+
         for (size_t j = 0; j < n; ++j) {
             size_t len;
             in.read(reinterpret_cast<char*>(&len), sizeof(size_t));
@@ -192,13 +163,23 @@ void BTree::loadBTreeIndex() {
             in.read(reinterpret_cast<char*>(&offset), sizeof(int));
             nodes[i]->fields.push_back({ field, {blockId, offset} });
         }
+
         size_t childCount;
         in.read(reinterpret_cast<char*>(&childCount), sizeof(size_t));
         nodes[i]->children.resize(childCount);
     }
 
+    // 恢复父子关系
+    for (size_t i = 0; i < total; ++i) {
+        if (!nodes[i]->isLeaf) {
+            for (size_t j = 0; j < nodes[i]->children.size(); ++j) {
+                nodes[i]->children[j]->parent = nodes[i];  // 设置子节点的父节点
+            }
+        }
+    }
+
+    // 设置根节点
     root = nodes[0];
-    // 注意：这里还要重新恢复父子关系，这里略了，如果你要做持久化完全恢复，我可以再给你补
 
     in.close();
 }
