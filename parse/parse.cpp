@@ -87,7 +87,7 @@ void Parse::registerPatterns() {
   
     patterns.push_back({
     std::regex(R"(DROP\s+INDEX\s+(\w+)\s+ON\s+(\w+);?)", std::regex::icase),
-    [this](const std::smatch& m) { handleCreateIndex(m); }
+    [this](const std::smatch& m) { handleDropIndex(m); }
         });
 
 
