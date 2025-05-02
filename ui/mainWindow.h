@@ -23,6 +23,7 @@ public:
 private slots:
     void onRunButtonClicked();  // 声明槽函数
     void onTreeItemClicked(QTreeWidgetItem* item, int column);
+    void onTreeWidgetContextMenu(const QPoint& pos);
 
 
 private:

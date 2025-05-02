@@ -372,6 +372,17 @@ bool Record::matches_condition(const std::unordered_map<std::string, std::string
         throw std::runtime_error("字段 '" + key + "' 无法匹配到记录中");
         };
 
+    auto normalize_string = [](const std::string& str) -> std::string {
+        std::string res = str;
+        // 去除尾部的 '\0' 或其他不可打印字符
+        while (!res.empty() && (res.back() == '\0' || !isprint(res.back()))) {
+            res.pop_back();
+        }
+
+        return res;
+        };
+
+
     auto evaluate_single = [&](const std::string& cond) -> bool {
         std::regex expr_regex(R"(^\s*(\w+(?:\.\w+)?)\s*(=|!=|>=|<=|>|<)\s*(.+?)\s*$)");
         std::smatch m;
@@ -424,13 +435,27 @@ bool Record::matches_condition(const std::unordered_map<std::string, std::string
             if (op == "!=") return left_val != right_val;
         }
         // 字符串
-        else {
-            if (op == "=") return left_val == right_val;
-            if (op == "!=") return left_val != right_val;
-            if (op == ">") return left_val > right_val;
-            if (op == "<") return left_val < right_val;
-            if (op == ">=") return left_val >= right_val;
-            if (op == "<=") return left_val <= right_val;
+        else if (left_type == "CHAR" || left_type == "VARCHAR" || left_type == "TEXT") {
+            std::string clean_left = normalize_string(left_val);
+            std::string clean_right = normalize_string(right_val);
+
+            if (op == "=") return clean_left == clean_right;
+            if (op == "!=") return clean_left != clean_right;
+            if (op == ">") return clean_left > clean_right;
+            if (op == "<") return clean_left < clean_right;
+            if (op == ">=") return clean_left >= clean_right;
+            if (op == "<=") return clean_left <= clean_right;
+        }
+
+        else if (left_type == "DATETIME") {
+            std::string clean_left = normalize_string(left_val);
+            std::string clean_right = normalize_string(right_val);
+            if (op == "=") return clean_left == clean_right;
+            if (op == "!=") return clean_left != clean_right;
+            if (op == ">") return clean_left > clean_right;
+            if (op == "<") return clean_left < clean_right;
+            if (op == ">=") return clean_left >= clean_right;
+            if (op == "<=") return clean_left <= clean_right;
         }
 
         return false;
@@ -447,7 +472,6 @@ bool Record::matches_condition(const std::unordered_map<std::string, std::string
 
     return result;
 }
-
 
 // 从.trd文件读取记录
 std::vector<std::unordered_map<std::string, std::string>> Record::read_records(const std::string table_name) {

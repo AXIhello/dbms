@@ -51,12 +51,14 @@ MainWindow::MainWindow(QWidget* parent)
         }
     )";
     ui->inputEdit->setInputMethodHints(Qt::ImhPreferLatin); // 设置为英文输入
-
+    ui->treeWidget->setContextMenuPolicy(Qt::CustomContextMenu);//为QTreeWidget 设置右键菜单策略
     this->setStyleSheet(styleSheet);
 
     // 连接按钮点击事件到槽函数
     connect(ui->runButton, &QPushButton::clicked, this, &MainWindow::onRunButtonClicked);
     connect(ui->treeWidget, &QTreeWidget::itemClicked, this, &MainWindow::onTreeItemClicked);
+    connect(ui->treeWidget, &QTreeWidget::customContextMenuRequested,
+        this, &MainWindow::onTreeWidgetContextMenu);
     setWindowTitle("My Database Client"); // 设置窗口标题
     setGeometry(100, 100, 1000, 600);  // 设置窗口大小
 
@@ -115,6 +117,8 @@ MainWindow::MainWindow(QWidget* parent)
     mainLayout->addWidget(mainSplitter);
     setCentralWidget(centralWidget);
 
+    ui->inputEdit->setPlainText("SQL>> ");
+
     refreshTree(); 
    }
 
@@ -124,7 +128,22 @@ MainWindow::~MainWindow() {
 }
 
 void MainWindow::onRunButtonClicked() {
-    QString sql = ui->inputEdit->toPlainText().trimmed(); // 获取 SQL 语句
+    QString fullText = ui->inputEdit->toPlainText().trimmed(); // 获取全部语句
+
+    // 从最后一个 "SQL>>" 开始截取
+    int lastPromptIndex = fullText.lastIndexOf("SQL>>");
+    if (lastPromptIndex == -1) {
+        QMessageBox::warning(this, "警告", "找不到 SQL>> 提示符，请先输入命令！");
+        return;
+    }
+
+    // 获取 SQL>> 后面的文本内容
+    QString sql = fullText.mid(lastPromptIndex + 6).trimmed(); // +6 是跳过 "SQL>>"
+
+    if (sql.isEmpty()) {
+        QMessageBox::warning(this, "警告", "SQL 语句不能为空！");
+        return;
+    }
 
     if (sql.isEmpty()) {
         QMessageBox::warning(this, "警告", "SQL 语句不能为空！");
@@ -152,9 +171,12 @@ void MainWindow::onRunButtonClicked() {
             parser.execute(trimmedSql);  // 执行每条 SQL 语句
         }
     }
+    QString currentText = ui->inputEdit->toPlainText();
+    if (!currentText.endsWith("\n") && !currentText.isEmpty())
+        currentText += "\n";
+    currentText += "\nSQL>>\x20" ;  // 自动加提示符
+    ui->inputEdit->setPlainText(currentText);
 }
-
-
 
 
 void MainWindow::refreshTree() {
@@ -212,24 +234,125 @@ void MainWindow::onTreeItemClicked(QTreeWidgetItem* item, int column) {
         QString dbName = item->text(0);
         
         // 显示 SQL 并执行
-        QString sql = "USE DATABASE " + dbName + ";\n";
-        ui->inputEdit->setPlainText(sql);
+        QString sql = "USE DATABASE " + dbName + ";\n\n";
+        QString currentText = ui->inputEdit->toPlainText();
+        ui->inputEdit->setPlainText(currentText + sql +"SQL>> ");
         Parse parser(ui->outputEdit, this);
         parser.execute(sql);
         return;
     }
 
     // === 点击表节点 ===
-    QString tableName = item->text(0);
-    QString sql = "SELECT * FROM " + tableName + ";\n";
-    ui->inputEdit->setPlainText(sql);
     QString dbName = parent->text(0);
-
+    QString tableName = item->text(0);
+    
+    QString useDb = "USE DATABASE " + dbName + ";\n\n";// 自动设置数据库
+    QString sql = "SELECT * FROM " + tableName + ";\n\n"; 
+    QString currentText = ui->inputEdit->toPlainText();
+    ui->inputEdit->setPlainText(currentText  + useDb + sql + "SQL>> ");
+    
         try {
             Parse parser(ui->outputEdit, this);
+            parser.execute(useDb);
             parser.execute(sql);
         }
         catch (const std::exception& e) {
             Output::printError(ui->outputEdit, QString("加载表失败: ") + e.what());
         }
     }
+
+/**
+ * 在TreeWidget右键选择数据库、表、用户的添加删除、修改操作.
+ * 
+ * \param pos
+ */
+void MainWindow::onTreeWidgetContextMenu(const QPoint& pos) {
+    QTreeWidgetItem* item = ui->treeWidget->itemAt(pos);
+    QMenu menu(this);
+
+    if (!item) {
+        // === 空白区域右键 ===
+        menu.addAction("添加数据库", [=]() {
+            // 将来弹出你自定义的建库窗口
+            QMessageBox::information(this, "添加数据库", "这里将来会弹出建库窗口");
+            });
+
+        menu.addAction("添加用户", [=]() {
+            // 将来弹出你自定义的建用户窗口
+            QMessageBox::information(this, "添加用户", "这里将来会弹出创建用户窗口");
+            });
+
+    }
+    else {
+        QTreeWidgetItem* parent = item->parent();
+        QString dbName, tableName;
+
+        if (!parent) {
+            // 数据库节点
+            dbName = item->text(0);
+            menu.addAction("新建表", [=]() {
+                QMessageBox::information(this, "新建数据表", "这里将来会弹出新建表窗口（属于数据库：" + dbName + "）");
+                });
+
+            menu.addAction("删除数据库", [=]() {
+                // 弹出确认删除窗口
+                QMessageBox::StandardButton reply = QMessageBox::question(this, "确认删除",
+                    "您确定要删除数据库 " + dbName + " 吗？",
+                    QMessageBox::Yes | QMessageBox::No);
+
+                if (reply == QMessageBox::Yes) {
+                    QString sql = "DROP DATABASE " + dbName + ";\n\n";
+                    QString currentText = ui->inputEdit->toPlainText();
+                    ui->inputEdit->setPlainText(currentText + sql + "SQL>> ");
+
+                    try {
+                        Parse parser(ui->outputEdit, this);
+                        parser.execute(sql);
+                    }
+                    catch (const std::exception& e) {
+                        Output::printError(ui->outputEdit, QString("删除数据库失败: ") + e.what());
+                    }
+                }
+                });
+
+        }
+        else {
+            // 表节点
+            dbName = parent->text(0);
+            tableName = item->text(0);
+
+            menu.addAction("修改表", [=]() {
+                QMessageBox::information(this, "修改表", "这里将来会弹出修改表窗口（表名：" + tableName + "）");
+
+                });
+
+            menu.addAction("删除表", [=]() {
+                QMessageBox::information(this, "删除表", "这里将来会处理删除表：" + tableName);
+                QMessageBox::StandardButton reply = QMessageBox::question(this, "确认删除",
+                    "您确定要删除表 " + tableName + " 吗？",
+                    QMessageBox::Yes | QMessageBox::No);
+
+                if (reply == QMessageBox::Yes) {
+                    QString useDb = "USE DATABASE " + dbName + ";\n\n";
+                    QString sql = "DROP TABLE " + tableName + ";\n\n";
+                    QString currentText = ui->inputEdit->toPlainText();
+                    if (!currentText.endsWith('\n') && !currentText.isEmpty())
+                        currentText += '\n';
+                    ui->inputEdit->setPlainText(currentText + useDb + sql + "SQL>> ");
+
+                    try {
+                        Parse parser(ui->outputEdit, this);
+                        parser.execute(useDb);
+                        parser.execute(sql);
+                    }
+                    catch (const std::exception& e) {
+                        Output::printError(ui->outputEdit, QString("删除表失败: ") + e.what());
+                    }
+                }
+                });
+        }
+    }
+
+    menu.exec(ui->treeWidget->viewport()->mapToGlobal(pos));
+}
+
