@@ -1,5 +1,6 @@
 #include "output.h"
 #include <QDateTime>
+#include <iostream>
 
 // 获取当前时间戳字符串
 static QString currentTimestamp() {
@@ -55,18 +56,21 @@ void Output::printMessage(QTextEdit* outputEdit, const QString& message) {
     if (!outputEdit) return;
     outputEdit->append(currentTimestamp() + message);
     outputEdit->append(""); // 添加空行
+
 }
 
 void Output::printError(QTextEdit* outputEdit, const QString& error) {
     if (!outputEdit) return;
     outputEdit->append(currentTimestamp() + "<span style='color:red;'>[错误] " + error + "</span>");
     outputEdit->append(""); // 添加空行
+
 }
 
 void Output::printInfo(QTextEdit* outputEdit, const QString& message) {
     if (!outputEdit) return;
     outputEdit->append(currentTimestamp() + "<span style='color:blue;'>[信息] " + message + "</span>");
     outputEdit->append(""); // 添加空行
+
 }
 
 void Output::printDatabaseList(QTextEdit* outputEdit, const std::vector<std::string>& dbs) {
