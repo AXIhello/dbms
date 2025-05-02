@@ -6,6 +6,11 @@
 #include "base/block/fieldBlock.h"
 #include "base/block/constraintBlock.h"
 #include <filesystem> 
+#include <fstream>
+#include <sstream>
+#include <algorithm>
+#include <regex>
+#include <map>
 
 struct JoinPair {
     std::string left_table;
@@ -103,7 +108,45 @@ public:
     std::string get_table_name() const;
     const std::vector<std::string>& get_columns() const;
     const std::vector<std::string>& get_values() const;
+
+	//索引相关函数
+
+    //std::string normalize_condition_string(const std::string& input);
+    // 支持等值或范围查找的索引方法
+    static std::vector<std::unordered_map<std::string, std::string>>
+        read_by_index(const std::string& table_name,
+            const std::string& column,
+            const std::string& op,
+            const std::string& value);
+
+    // 判断条件是否可以用于索引查找，并提取字段、操作符和值
+    static bool can_use_index(const std::string& condition, std::string& field_out, std::string& value_out, std::string& op_out);
+
+    // 检查未使用索引的表达式是否满足
+    static bool evaluate_fallback_conditions(
+        const std::unordered_map<std::string, std::string>& rec,
+        bool use_prefix,
+        const std::vector<size_t>& fallback_indices,
+        const std::vector<std::string>& expressions,
+        const std::vector<std::string>& logic_ops);
+
+
+    // 尝试使用索引加速 select 查询
+    static std::vector<std::unordered_map<std::string, std::string>> try_index_select(
+        const std::string& table_name,
+        const std::string& condition);
 };
+// 条件表达式判断工具
+bool evaluate_single_expression(
+    const std::unordered_map<std::string, std::string>& rec,
+    const std::string& expression,
+    bool use_prefix);
+
+std::map<std::string, int> read_index_map(const std::string& filename);
+bool file_exists(const std::string& filename);
+std::unordered_map<std::string, std::string> read_record_by_index(const std::string& table_name, int offset);
+std::vector<std::string> get_fields_from_line(const std::string& line);
+
 std::tm custom_strptime(const std::string& datetime_str, const std::string& format);
 
 #endif // RECORD_H
