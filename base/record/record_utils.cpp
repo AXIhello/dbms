@@ -253,7 +253,7 @@ bool Record::validate_field_block(const std::string& value, const FieldBlock& fi
         return value.length() <= static_cast<size_t>(field.param);
     case 4: // BOOL
         std::transform(val.begin(), val.end(), val.begin(), ::tolower);
-        return val == "0" || val == "1"||val=="true"||val=="false";
+        return val=="true"||val=="false";
 
     case 5: // DATETIME
         // 使用前面定义的正则表达式
@@ -523,7 +523,7 @@ std::vector<std::unordered_map<std::string, std::string>> Record::read_records(c
                 case 4: { // BOOL
                     char b;
                     file.read(&b, sizeof(char));
-                    record_data[field.name] = (b == 1) ? "1" : "0";
+                    record_data[field.name] = (b == 1) ? "TRUE" : "FALSE";
                     bytes_read += sizeof(char);
                     break;
                 }
@@ -605,7 +605,7 @@ bool Record::read_single_record(std::ifstream& file, const std::vector<FieldBloc
             case 4: {
                 char b;
                 file.read(&b, sizeof(char));
-                record_data[field.name] = (b == 1 ? "1" : "0");
+                record_data[field.name] = (b == 1 ? "TRUE" : "FALSE");
                 bytes_read += sizeof(char);
                 break;
             }
@@ -675,7 +675,7 @@ void Record::write_field(std::ofstream& out, const FieldBlock& field, const std:
         case 4: {
             std::string val = value;
 			std::transform(val.begin(), val.end(), val.begin(), ::tolower);
-            char b = (val == "1"||val=="true") ? 1 : 0;
+            char b = (val=="true") ? 1 : 0;
             out.write(&b, sizeof(char));
             break;
         }
