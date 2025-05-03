@@ -134,10 +134,11 @@ void Parse::handleSelect(const std::smatch& m) {
         }
         // 结束计时
         auto end_time = std::chrono::high_resolution_clock::now();
-        auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(end_time - start_time).count();
+        auto duration_micro = std::chrono::duration_cast<std::chrono::microseconds>(end_time - start_time).count();
+        double duration_milli = duration_micro / 1000.0;  // 微秒转毫秒，保留小数
 
         if (!records.empty()) {
-            Output::printSelectResult(outputEdit, records,duration);
+            Output::printSelectResult(outputEdit, records,duration_milli);
         }
         else {
             Table* table = dbManager::getInstance().get_current_database()->getTable(join_info.tables[0]);

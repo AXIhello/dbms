@@ -6,7 +6,7 @@ static QString currentTimestamp() {
     return "[" + QDateTime::currentDateTime().toString("yyyy-MM-dd hh:mm:ss") + "] ";
 }
 
-void Output::printSelectResult(QTextEdit* outputEdit, const std::vector<Record>& results, long long duration_ms) {
+void Output::printSelectResult(QTextEdit* outputEdit, const std::vector<Record>& results, double duration_ms) {
     if (!outputEdit) return;
 
     const auto& columns = results[0].get_columns();

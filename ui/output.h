@@ -9,7 +9,7 @@ class Output {
 public:
     // 打印 SELECT 查询结果
 	static void printSelectResultEmpty(QTextEdit* outputEdit,const std::vector<std::string> &cols);
-    static void printSelectResult(QTextEdit* outputEdit, const std::vector<Record>& results, long long duration_ms);
+    static void printSelectResult(QTextEdit* outputEdit, const std::vector<Record>& results, double duration_ms);
     static void printDatabaseList(QTextEdit* outputEdit, const std::vector<std::string>& dbs);
     static void printTableList(QTextEdit* outputEdit, const std::vector<std::string>& tables);
 
