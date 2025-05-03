@@ -118,13 +118,6 @@ void Record::insert_into() {
 
         if (value == "NULL") continue;
 
-        // 如果是布尔型且是 true/false 字符串，先进行转换
-        if (field.type == 4) {
-            std::string lower = value;
-            std::transform(lower.begin(), lower.end(), lower.begin(), ::tolower);
-            if (lower == "true") value = "1";
-            else if (lower == "false") value = "0";
-        }
 
         // 再检查类型是否合法
         if (!is_valid_type(value, get_type_string(field.type))) {

@@ -228,7 +228,8 @@ std::vector<FieldBlock> Record::read_field_blocks(const std::string& table_name)
 bool Record::validate_field_block(const std::string& value, const FieldBlock& field) {
     // 在函数开始处定义正则表达式，而不是在case中
     std::regex date_regex(R"('(\d{4}-\d{2}-\d{2})')");
-
+    std::string val = value;
+    
     switch (field.type) {
     case 1: // INTEGER
         try {
@@ -251,7 +252,8 @@ bool Record::validate_field_block(const std::string& value, const FieldBlock& fi
     case 3: // VARCHAR
         return value.length() <= static_cast<size_t>(field.param);
     case 4: // BOOL
-        return value == "0" || value == "1";
+        std::transform(val.begin(), val.end(), val.begin(), ::tolower);
+        return val == "0" || val == "1"||val=="true"||val=="false";
 
     case 5: // DATETIME
         // 使用前面定义的正则表达式
@@ -671,7 +673,9 @@ void Record::write_field(std::ofstream& out, const FieldBlock& field, const std:
         }
 
         case 4: {
-            char b = (value == "1") ? 1 : 0;
+            std::string val = value;
+			std::transform(val.begin(), val.end(), val.begin(), ::tolower);
+            char b = (val == "1"||val=="true") ? 1 : 0;
             out.write(&b, sizeof(char));
             break;
         }
