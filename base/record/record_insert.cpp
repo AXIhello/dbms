@@ -118,17 +118,16 @@ void Record::insert_into() {
 
         if (value == "NULL") continue;
 
+        // 再检查类型是否合法
+        if (!is_valid_type(value, get_type_string(field.type))) {
+            throw std::runtime_error("字段 '" + std::string(field.name) + "' 的值 '" + value + "' 不符合类型要求");
+        }
         // 如果是布尔型且是 true/false 字符串，先进行转换
         if (field.type == 4) {
             std::string lower = value;
             std::transform(lower.begin(), lower.end(), lower.begin(), ::tolower);
             if (lower == "true") value = "1";
             else if (lower == "false") value = "0";
-        }
-
-        // 再检查类型是否合法
-        if (!is_valid_type(value, get_type_string(field.type))) {
-            throw std::runtime_error("字段 '" + std::string(field.name) + "' 的值 '" + value + "' 不符合类型要求");
         }
     }
 
