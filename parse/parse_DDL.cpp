@@ -211,7 +211,7 @@ if (def.find("UNIQUE") == 0) {
         }
         else if (typeStr == "VARCHAR") {
             field.type = 3;
-            field.param = paramStr.empty() ? 255 : std::stoi(paramStr);
+            field.param = paramStr.empty() ? 255 + 2 : (std::stoi(paramStr) + 2);
         }
         else if (typeStr == "DATETIME") {
             field.type = 5; field.param = 16;
@@ -336,7 +336,7 @@ void Parse::handleAddColumn(const std::smatch& m) {
     }
     else if (typeStr == "VARCHAR") {
         field.type = 3;
-        field.param = paramStr.empty() ? 255 : std::stoi(paramStr);
+        field.param = paramStr.empty() ? 255+2 : (std::stoi(paramStr)+2);
     }
     else if (typeStr == "DATETIME") {
         field.type = 5; field.param = 16;
