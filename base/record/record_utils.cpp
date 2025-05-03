@@ -94,41 +94,29 @@ std::string Record::get_type_string(int type) {
 
 bool Record::is_valid_type(const std::string& value, const std::string& type) {
     if (type == "INT") {
-        // 检查是否为整数
-        try {
-            std::stoi(value);
-            return true;
-        }
-        catch (...) {
-            return false;
-        }
+        try { std::stoi(value); return true; }
+        catch (...) { return false; }
     }
     else if (type == "FLOAT" || type == "DOUBLE") {
-        // 检查是否为浮点数
-        try {
-            std::stod(value);
-            return true;
-        }
-        catch (...) {
-            return false;
-        }
+        try { std::stod(value); return true; }
+        catch (...) { return false; }
     }
-    else if (type == "VARCHAR"  || type == "TEXT") {
-        // 检查字符串是否被引号括起来
+    else if (type == "VARCHAR" || type == "TEXT") {
         return (value.front() == '\'' && value.back() == '\'') ||
-            (value.front() == '\"' && value.back() == '\"');
+               (value.front() == '\"' && value.back() == '\"');
     }
     else if (type == "BOOL") {
-        return value == "0" || value == "1";
+        std::string val = value;
+        std::transform(val.begin(), val.end(), val.begin(), ::tolower);
+        return val == "0" || val == "1" || val == "true" || val == "false";
     }
     else if (type == "DATE" || type == "DATETIME") {
-        // 简单检查日期格式，待拓展
         std::regex date_regex(R"('(\d{4}-\d{2}-\d{2})')");
         return std::regex_match(value, date_regex);
     }
-
     return true;
 }
+
 
 // 修改validate_types方法使用FieldBlock进行验证
 void Record::validate_types() {

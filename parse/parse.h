@@ -27,16 +27,19 @@
 
 class Parse {
 public:
+    Parse();
     Parse(QTextEdit* outputEdit, MainWindow* mainWindow = nullptr);
+    Parse(Database* database); 
+    std::string executeSQL(const std::string& sql);
     void execute(const QString& sql);
     
-    Parse(Database* database);
 
     //util
     static std::string trim(const std::string& s);
     
 private:
 	QTextEdit* outputEdit;  // 输出编辑器指针
+
     MainWindow* mainWindow;
     struct SqlPattern {
         std::regex pattern;

@@ -108,18 +108,29 @@ void Record::insert_into() {
         throw std::runtime_error("插入数据违反表约束");
     }
 
-    // 【新增】同步 DEFAULT 修改后的 all_values 回 record_values
+    // 同步 DEFAULT 修改后的 all_values 回 record_values
     record_values = all_values;
 
     // 校验类型
     for (size_t i = 0; i < fields.size(); ++i) {
         const FieldBlock& field = fields[i];
-        const std::string& value = record_values[i];
+        std::string& value = record_values[i];  // 不是 const 引用
+
         if (value == "NULL") continue;
+
+        // 再检查类型是否合法
         if (!is_valid_type(value, get_type_string(field.type))) {
             throw std::runtime_error("字段 '" + std::string(field.name) + "' 的值 '" + value + "' 不符合类型要求");
         }
+        // 如果是布尔型且是 true/false 字符串，先进行转换
+        if (field.type == 4) {
+            std::string lower = value;
+            std::transform(lower.begin(), lower.end(), lower.begin(), ::tolower);
+            if (lower == "true") value = "1";
+            else if (lower == "false") value = "0";
+        }
     }
+
 
     // 写入数据
     std::string file_name = dbManager::getInstance().get_current_database()->getDBPath() + "/" + this->table_name + ".trd";

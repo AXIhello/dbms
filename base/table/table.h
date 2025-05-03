@@ -69,6 +69,7 @@ public:
     void dropField(const std::string fieldName);
 	void updateField(const std::string fieldName, const FieldBlock& updatedField);
 	void renameField(const std::string oldName, const std::string newName);
+    std::vector<std::vector<std::string>> selectAll() const;
 
 
     //表完整性文件
@@ -138,11 +139,11 @@ private:
 	vector<FieldBlock> m_fields; // 存储表的字段信息
 	vector<ConstraintBlock> m_constraints; // 存储表的完整性约束信息
 	vector<IndexBlock> m_indexes; // 存储表的索引信息
-    //std::vector<std::unique_ptr<BTree>> m_btrees;
-
+    std::vector<std::vector<std::string>> m_records;//表格内容存储
     // 辅助方法：将时间戳转为字符串格式
     string timeToString(time_t time) const;
-
+ public:
+     void SetRecords(vector<vector<string>>& records);
 };
 
 #endif // TABLE_H

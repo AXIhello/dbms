@@ -291,11 +291,33 @@ std::vector<Record> Record::select(
         rec.set_table_name(table_name);
         for (const auto& col : selected_cols) {
             auto it = rec_map.find(col);
+            std::string val = (it != rec_map.end()) ? it->second : "NULL";
+
+            // 判断布尔字段并转换显示值
+            auto type_it = combined_structure.find(col);
+            if (type_it == combined_structure.end() && !join_info && !rec_map.empty()) {
+                // 去掉前缀再查找（支持非前缀匹配）
+                for (const auto& [k, t] : combined_structure) {
+                    size_t dot_pos = k.find('.');
+                    std::string suffix = (dot_pos != std::string::npos) ? k.substr(dot_pos + 1) : k;
+                    if (suffix == col) {
+                        type_it = combined_structure.find(k);
+                        break;
+                    }
+                }
+            }
+
+            if (type_it != combined_structure.end() && type_it->second == "BOOL") {
+                if (val == "1") val = "true";
+                else if (val == "0") val = "false";
+            }
+
             rec.add_column(col);
-            rec.add_value(it != rec_map.end() ? it->second : "NULL");
+            rec.add_value(val);
         }
         records.push_back(rec);
     }
+
 
     return records;
 }
