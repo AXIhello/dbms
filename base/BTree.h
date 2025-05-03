@@ -8,6 +8,8 @@
 #include <cstring>
 #include <fstream>
 #include <cstdio>
+#include <cassert>
+
 
 #include "base/block/indexBlock.h"
 #include "base/block/fieldBlock.h"
@@ -31,11 +33,12 @@ class BTreeNode {
 public:
     bool isLeaf;
     std::vector<FieldPointer> fields;
+
     std::vector<BTreeNode*> children;
     BTreeNode* parent;  // 新增的父节点指针
 
     // B树节点构造
-    BTreeNode(bool isLeaf, BTreeNode* parent) : isLeaf(isLeaf), parent(parent) {}
+    BTreeNode(bool isLeaf, BTreeNode* parent) : isLeaf(isLeaf), parent(parent), fields(3, FieldPointer{ "", {0, 0} }) {}
 };
 
 class BTree {
@@ -66,6 +69,8 @@ private:
 public:
     BTree(const IndexBlock* indexBlock);
     ~BTree();
+
+	BTreeNode* getRoot() const { return root; }
 
     void insert(const std::string& fieldValue, const RecordPointer& recordPtr);
 

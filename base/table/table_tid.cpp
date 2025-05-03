@@ -62,8 +62,10 @@ void Table::createIndex(const IndexBlock& index) {
         throw std::runtime_error("字段 " + fieldName2 + " 不存在！");
     }
 
+	IndexBlock* indexCopy = new IndexBlock(index);
+
     // 2. 创建 BTree 对象
-    BTree* btree = new BTree(&index);
+    std::unique_ptr<BTree> btree = std::make_unique<BTree>(indexCopy);
 
     // 3. 打开表记录文件，准备插入到 B 树
     std::ifstream file(m_trd, std::ios::binary); // 假设数据文件是以二进制方式存储
@@ -136,7 +138,7 @@ void Table::createIndex(const IndexBlock& index) {
             }
         }
 
-        // 4. 创建记录指针（记录在文件中的位置）
+        // 创建记录指针（记录在文件中的位置）
         RecordPointer recordPtr = { recordIndex, static_cast<int>(file.tellg()) }; // 使用文件位置作为记录指针
 
         // 根据字段数量，将字段值插入到 B 树中
@@ -152,15 +154,14 @@ void Table::createIndex(const IndexBlock& index) {
         recordIndex++; // 增加记录索引（偏移量）
 
     }
+    // 4.将 B 树对象添加到表的 B 树列表中
+	//m_btrees.push_back(std::move(btree));
 
     // 5. 保存 B 树到文件
     btree->saveBTreeIndex();
 
     // 6. 输出索引创建成功的消息
     std::cout << "为字段 " << fieldName1 << (index.field_num == 2 ? " 和 " + fieldName2 : "") << " 创建索引成功！" << std::endl;
-
-    // 7. 释放 BTree 内存
-    delete btree;
 
     // 关闭文件
     file.close();
@@ -180,15 +181,37 @@ void Table::addIndex(const IndexBlock& index){
 	saveMetadataBinary();
 }
 
-void Table::dropIndex(const std::string indexName)
-{
-	auto it = std::remove_if(m_indexes.begin(), m_indexes.end(), [&](const IndexBlock& index) {
-		return index.name == indexName;
-		});
-	m_indexes.erase(it, m_indexes.end());
-	saveIndex();
-	saveMetadataBinary();
+void Table::dropIndex(const std::string indexName) {
+    // 查找索引
+    auto it = std::find_if(m_indexes.begin(), m_indexes.end(), [&](const IndexBlock& index) {
+        return index.name == indexName;
+    });
+
+    if (it == m_indexes.end()) {
+        throw std::runtime_error("索引 " + indexName + " 不存在！");
+    }
+
+    // 获取索引的文件路径
+    std::string indexFilePath = it->index_file;
+
+    // 删除索引文件 (.ix 文件)
+    if (std::remove(indexFilePath.c_str()) == 0) {
+        std::cout << "索引文件 " << indexFilePath << " 删除成功。" << std::endl;
+    } else {
+        std::perror(("索引文件 " + indexFilePath + " 删除失败。").c_str());
+    }
+
+    // 删除索引
+    m_indexes.erase(it);
+
+    // 更新时间戳
+    m_lastModifyTime = std::time(nullptr);
+
+    // 保存到索引文件和元数据文件
+    saveIndex();
+    saveMetadataBinary();
 }
+
 
 void Table::updateIndex(const std::string indexName, const IndexBlock& updatedIndex)
 {

@@ -48,27 +48,65 @@ void BTree::insert(const std::string& fieldValue, const RecordPointer& recordPtr
     insertNonFull(root, fp);
 }
 
+#include <QDebug>  // 引入 QDebug
+
 // 向非满节点插入
 void BTree::insertNonFull(BTreeNode* node, const FieldPointer& fieldPtr) {
     int i = node->fields.size() - 1;
 
+    // 打印进入 insertNonFull 函数的调试信息
+    qDebug() << "Entering insertNonFull: Node isLeaf=" << node->isLeaf << ", Fields size=" << node->fields.size();
+
+    // 如果是叶子节点
     if (node->isLeaf) {
+        qDebug() << "Node is a leaf. Starting search for insert position...";
+
         while (i >= 0 && node->fields[i].fieldValue > fieldPtr.fieldValue) {
+            qDebug() << "Comparing fieldValue: " << node->fields[i].fieldValue << " > " << fieldPtr.fieldValue;
             i--;
         }
+
+        // 断言调试
+        assert(node != nullptr);
+        assert(i + 1 >= 0 && i + 1 <= node->fields.size());
+
+        // 插入到 fields 中
+        qDebug() << "Inserting field at index " << i + 1 << ": " << fieldPtr.fieldValue;
         node->fields.insert(node->fields.begin() + i + 1, fieldPtr);
+
+        // 输出插入后的节点信息
+        qDebug() << "After insertion, fields size: " << node->fields.size();
+        for (const auto& field : node->fields) {
+            qDebug() << "Field: " << field.fieldValue;
+        }
     }
     else {
+        // 如果是非叶子节点，进入递归处理子节点
+        qDebug() << "Node is not a leaf. Searching for correct child to insert into...";
+
         while (i >= 0 && node->fields[i].fieldValue > fieldPtr.fieldValue) {
+            qDebug() << "Comparing fieldValue: " << node->fields[i].fieldValue << " > " << fieldPtr.fieldValue;
             i--;
         }
-        i++;
+
+        i++; // 移动到正确的子节点位置
+
+        qDebug() << "Correct child index for insertion: " << i;
+
+        // 检查子节点是否需要分裂
         if (node->children[i]->fields.size() == degree - 1) {
+            qDebug() << "Child node " << i << " is full, splitting...";
             splitChild(node, i);
+
+            // 如果需要，更新 i
             if (fieldPtr.fieldValue > node->fields[i].fieldValue) {
+                qDebug() << "Field value greater than split value, incrementing i.";
                 i++;
             }
         }
+
+        // 递归调用插入子节点
+        qDebug() << "Inserting into child node at index " << i;
         insertNonFull(node->children[i], fieldPtr);
     }
 }
