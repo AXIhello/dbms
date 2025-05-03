@@ -3,26 +3,47 @@
 void Parse::handleInsertInto(const std::smatch& m) {
     std::string table_name = m[1];
     std::string cols = m[2];  // 可能为空
-    std::string vals = m[3];
+    std::string vals = m[3];  // 可能是多个 (....), (....)
 
-    // 安全地去除括号（如果存在）
+    // 去掉列名部分的括号（如果有）
     auto trimParens = [](std::string& s) {
         if (!s.empty() && s.front() == '(' && s.back() == ')') {
             s = s.substr(1, s.length() - 2);
         }
         };
     trimParens(cols);
-    trimParens(vals);
 
     try {
+        // 拆分多个 VALUES (...) 块
+        std::vector<std::string> values_list;
+        std::regex val_regex(R"(\(([^)]*)\))");
+        auto vals_begin = std::sregex_iterator(vals.begin(), vals.end(), val_regex);
+        auto vals_end = std::sregex_iterator();
+        for (auto it = vals_begin; it != vals_end; ++it) {
+            values_list.push_back((*it)[1].str());  // 提取括号内的内容
+        }
+
+        if (values_list.empty()) {
+            throw std::runtime_error("未检测到有效的VALUES数据");
+        }
+
+        // 执行插入
         Record r;
-        r.insert_record(table_name, cols, vals);
-        Output::printMessage(outputEdit, QString::fromStdString("INSERT INTO 执行成功。"));
+        int count = 0;
+        for (const auto& val_block : values_list) {
+            r.insert_record(table_name, cols, val_block);
+            ++count;
+        }
+
+        Output::printMessage(outputEdit, QString::fromStdString(
+            "INSERT INTO 执行成功：已插入 " + std::to_string(count) + " 条记录。"
+        ));
     }
     catch (const std::exception& e) {
         Output::printError(outputEdit, QString::fromStdString(e.what()));
     }
 }
+
 
 
 
