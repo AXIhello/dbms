@@ -48,6 +48,10 @@ int Record::delete_(const std::string& tableName, const std::string& condition) 
     }
     // 写入保留的记录
     for (const auto& record : records_to_keep) {
+
+        char delete_flag = 0;
+        outfile.write(&delete_flag, sizeof(char));
+
         for (const auto& field : fields) {
             // 将 char[128] 转换为 std::string 以用作键
             std::string field_name(field.name);

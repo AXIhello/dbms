@@ -74,6 +74,8 @@ int Record::update(const std::string& tableName, const std::string& setClause, c
 
     // 写入所有记录
     for (const auto& record : all_records) {
+        char delete_flag = 0;
+        outfile.write(&delete_flag, sizeof(char));
         for (const auto& field : fields) {
             std::string field_name(field.name);
             write_field(outfile, field, record.at(field_name));

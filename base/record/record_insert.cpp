@@ -124,13 +124,6 @@ void Record::insert_into() {
         if (!is_valid_type(value, get_type_string(field.type))) {
             throw std::runtime_error("字段 '" + std::string(field.name) + "' 的值 '" + value + "' 不符合类型要求");
         }
-        // 如果是布尔型且是 true/false 字符串，先进行转换
-        if (field.type == 4) {
-            std::string lower = value;
-            std::transform(lower.begin(), lower.end(), lower.begin(), ::tolower);
-            if (lower == "true") value = "1";
-            else if (lower == "false") value = "0";
-        }
     }
 
 
@@ -140,7 +133,8 @@ void Record::insert_into() {
     if (!file) {
         throw std::runtime_error("打开文件" + file_name + "失败。");
     }
-
+    char delete_flag = 0;
+    file.write(&delete_flag, sizeof(char));
     for (size_t i = 0; i < fields.size(); ++i) {
         write_field(file, fields[i], record_values[i]);
     }

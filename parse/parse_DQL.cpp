@@ -41,8 +41,13 @@ void Parse::handleShowTables(const std::smatch& m) {
     }
 }
 
+#include <chrono>  // 加头文件
+
 void Parse::handleSelect(const std::smatch& m) {
     try {
+        // 开始计时
+        auto start_time = std::chrono::high_resolution_clock::now();
+
         std::string columns = m[1];
         std::string table_part = m[2];
         std::string join_part;
@@ -127,17 +132,21 @@ void Parse::handleSelect(const std::smatch& m) {
         else {
             records = Record::select(columns, join_info.tables[0], condition, group_by, order_by, having, nullptr);
         }
+        // 结束计时
+        auto end_time = std::chrono::high_resolution_clock::now();
+        auto duration_micro = std::chrono::duration_cast<std::chrono::microseconds>(end_time - start_time).count();
+        double duration_milli = duration_micro / 1000.0;  // 微秒转毫秒，保留小数
 
         if (!records.empty()) {
-            Output::printSelectResult(outputEdit, records);
+            Output::printSelectResult(outputEdit, records,duration_milli);
         }
         else {
             Table* table = dbManager::getInstance().get_current_database()->getTable(join_info.tables[0]);
             Output::printSelectResultEmpty(outputEdit, table->getFieldNames());
         }
+
     }
     catch (const std::exception& e) {
         Output::printError(outputEdit, "查询失败: " + QString::fromStdString(e.what()));
     }
 }
-
