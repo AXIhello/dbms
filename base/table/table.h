@@ -104,6 +104,10 @@ public:
     void incrementRecordCount(int delta) {
         m_recordCount += delta;
     }
+	// 获取记录计数
+	int getRecordCount() const {
+		return m_recordCount;
+	}
 
 
     //表索引文件
