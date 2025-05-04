@@ -108,7 +108,7 @@ bool Record::is_valid_type(const std::string& value, const std::string& type) {
     else if (type == "BOOL") {
         std::string val = value;
         std::transform(val.begin(), val.end(), val.begin(), ::tolower);
-        return val == "0" || val == "1" || val == "true" || val == "false";
+        return  val == "true" || val == "false";
     }
     else if (type == "DATE" || type == "DATETIME") {
         std::regex date_regex(R"('(\d{4}-\d{2}-\d{2})')");
