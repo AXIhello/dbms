@@ -106,11 +106,12 @@
     <ClCompile Include="base\BTree_delete.cpp" />
     <ClCompile Include="base\BTree_find.cpp" />
     <ClCompile Include="base\record\record_delete.cpp" />
-    <ClCompile Include="base\record\record_index.cpp" />
     <ClCompile Include="base\record\record_insert.cpp" />
     <ClCompile Include="base\record\record_select.cpp" />
+    <ClCompile Include="base\record\record_select_index.cpp" />
     <ClCompile Include="base\record\record_update.cpp" />
     <ClCompile Include="base\BTree.cpp" />
+    <ClCompile Include="base\record\record_update_index.cpp" />
     <ClCompile Include="base\table\table.cpp" />
     <ClCompile Include="debug.cpp" />
     <ClCompile Include="manager\dbManager.cpp" />

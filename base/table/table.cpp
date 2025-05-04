@@ -6,6 +6,8 @@
 #include <iomanip>
 #include <windows.h>
 
+using namespace std;
+
 
 // 构造函数，初始化表的相关信息√
 Table::Table(const std::string& dbName, const std::string& tableName)
@@ -26,10 +28,13 @@ Table::Table(const std::string& dbName, const std::string& tableName)
 		//save();  // 保存表的元数据
 	}
 }
+
+
 void Table::SetRecords(vector<vector<string>>& records)
 {
     m_records = records;
 }
+
 std::string Gbk(const std::string& utf8)
 {
     int len = MultiByteToWideChar(CP_UTF8, 0, utf8.c_str(), -1, NULL, 0);
@@ -47,6 +52,7 @@ std::string Gbk(const std::string& utf8)
     if (!gbk.empty() && gbk.back() == '\0') gbk.pop_back();
     return gbk;
 }
+
 std::vector<std::vector<std::string>> Table::selectAll() const {
     std::vector<std::vector<std::string>> records;
     std::ifstream trdFile(m_trd);

@@ -111,31 +111,58 @@ public:
 
 	//索引相关函数
 
-    //std::string normalize_condition_string(const std::string& input);
-    // 支持等值或范围查找的索引方法
-    static std::vector<std::unordered_map<std::string, std::string>>
-        read_by_index(const std::string& table_name,
-            const std::string& column,
-            const std::string& op,
-            const std::string& value);
-
-    // 判断条件是否可以用于索引查找，并提取字段、操作符和值
+    // 判断是否是可使用索引的条件
     static bool can_use_index(const std::string& condition, std::string& field_out, std::string& value_out, std::string& op_out);
 
-    // 检查未使用索引的表达式是否满足
+    // 尝试通过索引查找记录
+    static std::vector<std::unordered_map<std::string, std::string>> try_index_select(
+        const std::string& table_name,
+        const std::string& condition
+    );
+
+    // 从索引中读取记录
+    static std::vector<std::unordered_map<std::string, std::string>> read_by_index(
+        const std::string& table_name,
+        const std::string& column,
+        const std::string& op,
+        const std::string& value
+    );
+
+    // 评估回退条件（无法用索引的表达式）
     static bool evaluate_fallback_conditions(
         const std::unordered_map<std::string, std::string>& rec,
         bool use_prefix,
         const std::vector<size_t>& fallback_indices,
         const std::vector<std::string>& expressions,
-        const std::vector<std::string>& logic_ops);
-
-
-    // 尝试使用索引加速 select 查询
-    static std::vector<std::unordered_map<std::string, std::string>> try_index_select(
-        const std::string& table_name,
-        const std::string& condition);
+        const std::vector<std::string>& logic_ops
+    );
 };
+
+// 工具函数
+std::map<std::string, int> read_index_map(const std::string& filename);
+bool file_exists(const std::string& filename);
+std::unordered_map<std::string, std::string> read_record_by_index(const std::string& table_name, int offset);
+std::vector<std::string> get_fields_from_line(const std::string& line);
+bool has_index(const std::string& table, const std::string& column);
+void parse_condition_expressions(const std::string& cond, std::vector<std::string>& expressions, std::vector<std::string>& logic_ops);
+std::tuple<std::string, std::string, std::string> parse_single_condition(const std::string& expr);
+std::vector<std::unordered_map<std::string, std::string>> merge_index_results(
+    const std::vector<std::vector<std::unordered_map<std::string, std::string>>>& results,
+    const std::vector<std::string>& logic_ops
+);
+bool check_remaining_conditions(
+    const std::unordered_map<std::string, std::string>& rec,
+    const std::vector<std::string>& expressions,
+    const std::vector<size_t>& fallback_indices,
+    const std::vector<std::string>& logic_ops,
+    const Record& checker,
+    bool use_prefix
+);
+bool evaluate_single_expression(
+    const std::unordered_map<std::string, std::string>& rec,
+    const std::string& expression,
+    bool use_prefix
+);
 // 条件表达式判断工具
 bool evaluate_single_expression(
     const std::unordered_map<std::string, std::string>& rec,
