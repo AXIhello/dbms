@@ -469,119 +469,16 @@ std::vector<std::unordered_map<std::string, std::string>> Record::read_records(c
     std::string trd_filename = dbManager::getInstance().get_current_database()->getDBPath() + "/" + table_name + ".trd";
     std::ifstream file(trd_filename, std::ios::binary);
 
-    if (!file) {
-        return records;
-    }
+    if (!file) return records;
 
     std::vector<FieldBlock> fields = read_field_blocks(table_name);
 
     while (file.peek() != EOF) {
         std::unordered_map<std::string, std::string> record_data;
+        uint64_t row_id = 0;
 
-        // 读取 delete_flag
-        char delete_flag;
-        file.read(&delete_flag, sizeof(char));
-        if (!file) break;
-        if (delete_flag == 1) {
-            // 跳过整条记录内容
-            for (const auto& field : fields) {
-                char null_flag;
-                file.read(&null_flag, sizeof(char));
-                size_t bytes_read = sizeof(char);
-                if (null_flag == 1) {
-                    switch (field.type) {
-                    case 1: file.seekg(sizeof(int), std::ios::cur); bytes_read += sizeof(int); break;
-                    case 2: file.seekg(sizeof(double), std::ios::cur); bytes_read += sizeof(double); break;
-                    case 3: file.seekg(field.param, std::ios::cur); bytes_read += field.param; break;
-                    case 4: file.seekg(sizeof(char), std::ios::cur); bytes_read += sizeof(char); break;
-                    case 5: file.seekg(sizeof(std::time_t), std::ios::cur); bytes_read += sizeof(std::time_t); break;
-                    default: break;
-                    }
-                }
-                else {
-                    switch (field.type) {
-                    case 1: file.seekg(sizeof(int), std::ios::cur); bytes_read += sizeof(int); break;
-                    case 2: file.seekg(sizeof(double), std::ios::cur); bytes_read += sizeof(double); break;
-                    case 3: file.seekg(field.param, std::ios::cur); bytes_read += field.param; break;
-                    case 4: file.seekg(sizeof(char), std::ios::cur); bytes_read += sizeof(char); break;
-                    case 5: file.seekg(sizeof(std::time_t), std::ios::cur); bytes_read += sizeof(std::time_t); break;
-                    default: break;
-                    }
-                }
-
-                size_t padding = (4 - (bytes_read % 4)) % 4;
-                if (padding > 0) file.seekg(padding, std::ios::cur);
-            }
-
-            continue;
-        }
-
-        // 正常读取字段数据
-        for (const auto& field : fields) {
-            char null_flag;
-            file.read(&null_flag, sizeof(char));
-            if (file.eof()) break;
-            size_t bytes_read = sizeof(char);
-
-            if (null_flag == 1) {
-                record_data[field.name] = "NULL";
-                switch (field.type) {
-                case 1: bytes_read += sizeof(int); file.seekg(sizeof(int), std::ios::cur); break;
-                case 2: bytes_read += sizeof(double); file.seekg(sizeof(double), std::ios::cur); break;
-                case 3: bytes_read += field.param; file.seekg(field.param, std::ios::cur); break;
-                case 4: bytes_read += sizeof(char); file.seekg(sizeof(char), std::ios::cur); break;
-                case 5: bytes_read += sizeof(std::time_t); file.seekg(sizeof(std::time_t), std::ios::cur); break;
-                default: break;
-                }
-            }
-            else {
-                switch (field.type) {
-                case 1: {
-                    int val;
-                    file.read(reinterpret_cast<char*>(&val), sizeof(int));
-                    record_data[field.name] = std::to_string(val);
-                    bytes_read += sizeof(int);
-                    break;
-                }
-                case 2: {
-                    double val;
-                    file.read(reinterpret_cast<char*>(&val), sizeof(double));
-                    record_data[field.name] = std::to_string(val);
-                    bytes_read += sizeof(double);
-                    break;
-                }
-                case 3: {
-                    std::vector<char> buf(field.param);
-                    file.read(buf.data(), field.param);
-                    record_data[field.name] = std::string(buf.data(), field.param);
-                    bytes_read += field.param;
-                    break;
-                }
-                case 4: {
-                    char b;
-                    file.read(&b, sizeof(char));
-                    record_data[field.name] = (b == 1 ? "TRUE" : "FALSE");
-                    bytes_read += sizeof(char);
-                    break;
-                }
-                case 5: {
-                    std::time_t t;
-                    file.read(reinterpret_cast<char*>(&t), sizeof(std::time_t));
-                    char buf[30];
-                    std::strftime(buf, sizeof(buf), "%Y-%m-%d %H:%M:%S", std::localtime(&t));
-                    record_data[field.name] = "'" + std::string(buf) + "'";
-                    bytes_read += sizeof(std::time_t);
-                    break;
-                }
-                default: break;
-                }
-            }
-
-            size_t padding = (4 - (bytes_read % 4)) % 4;
-            if (padding > 0) file.seekg(padding, std::ios::cur);
-        }
-
-        if (!record_data.empty()) {
+        if (read_record_from_file(file, fields, record_data, row_id, /*skip_deleted=*/true)) {
+            record_data["ROW_ID"] = std::to_string(row_id);  // 可选：存入 ROW_ID
             records.push_back(record_data);
         }
     }
@@ -589,75 +486,99 @@ std::vector<std::unordered_map<std::string, std::string>> Record::read_records(c
     return records;
 }
 
+
 //只在delete和update中使用
-bool Record::read_single_record(std::ifstream& file, const std::vector<FieldBlock>& fields,
-    std::unordered_map<std::string, std::string>& record_data) {
+bool Record::read_record_from_file(std::ifstream& file, const std::vector<FieldBlock>& fields,
+    std::unordered_map<std::string, std::string>& record_data, uint64_t& row_id, bool skip_deleted) {
 
     record_data.clear();
 
-    // 读取 delete_flag（不处理，仅跳过）
+    // 读取 row_id
+    file.read(reinterpret_cast<char*>(&row_id), sizeof(uint64_t));
+    if (!file) return false;
+
+    // 读取 delete_flag
     char delete_flag;
     file.read(&delete_flag, sizeof(char));
     if (!file) return false;
 
+    if (skip_deleted && delete_flag == 1) {
+        // 跳过字段数据
+        for (const auto& field : fields) {
+            char null_flag;
+            file.read(&null_flag, sizeof(char));
+            size_t bytes_read = sizeof(char);
+            size_t field_size = get_field_data_size(field.type, field.param);
+            file.seekg(field_size, std::ios::cur);
+            bytes_read += field_size;
+            size_t padding = (4 - (bytes_read % 4)) % 4;
+            if (padding > 0) file.seekg(padding, std::ios::cur);
+        }
+        return false; // 跳过该条记录
+    }
+
+    // 读取每个字段数据
     for (const auto& field : fields) {
         char null_flag;
         file.read(&null_flag, sizeof(char));
         if (!file) return false;
 
-        size_t field_data_size = get_field_data_size(field.type, field.param);
-
+        size_t bytes_read = sizeof(char);
         if (null_flag == 1) {
             record_data[field.name] = "NULL";
-            file.seekg(field_data_size, std::ios::cur);  // 跳过真实数据
+            file.seekg(get_field_data_size(field.type, field.param), std::ios::cur);
+            bytes_read += get_field_data_size(field.type, field.param);
         }
         else {
             switch (field.type) {
-            case 1: { // int
+            case 1: {
                 int val;
                 file.read(reinterpret_cast<char*>(&val), sizeof(int));
                 record_data[field.name] = std::to_string(val);
+                bytes_read += sizeof(int);
                 break;
             }
-            case 2: { // double
+            case 2: {
                 double val;
                 file.read(reinterpret_cast<char*>(&val), sizeof(double));
                 record_data[field.name] = std::to_string(val);
+                bytes_read += sizeof(double);
                 break;
             }
-            case 3: { // char(n)
+            case 3: {
                 std::vector<char> buf(field.param);
                 file.read(buf.data(), field.param);
-                // 去除尾部 null 填充
-                std::string str(buf.data(), strnlen(buf.data(), field.param));
-                record_data[field.name] = str;
+                record_data[field.name] = std::string(buf.data(), strnlen(buf.data(), field.param));
+                bytes_read += field.param;
                 break;
             }
-            case 4: { // bool
+            case 4: {
                 char b;
                 file.read(&b, sizeof(char));
                 record_data[field.name] = (b == 1 ? "TRUE" : "FALSE");
+                bytes_read += sizeof(char);
                 break;
             }
-            case 5: { // datetime
+            case 5: {
                 std::time_t t;
                 file.read(reinterpret_cast<char*>(&t), sizeof(std::time_t));
                 char buf[30];
                 std::strftime(buf, sizeof(buf), "%Y-%m-%d %H:%M:%S", std::localtime(&t));
                 record_data[field.name] = "'" + std::string(buf) + "'";
+                bytes_read += sizeof(std::time_t);
                 break;
             }
-            default: return false;
+            default: break;
             }
         }
 
-        // 每个字段结束后补齐到4字节对齐
-        size_t padding = (4 - (sizeof(char) + field_data_size) % 4) % 4;
+        size_t padding = (4 - (bytes_read % 4)) % 4;
         if (padding > 0) file.seekg(padding, std::ios::cur);
     }
 
     return true;
 }
+
 
 
 

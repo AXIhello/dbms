@@ -126,20 +126,33 @@ void Record::insert_into() {
         }
     }
 
-
     // 写入数据
     std::string file_name = dbManager::getInstance().get_current_database()->getDBPath() + "/" + this->table_name + ".trd";
     std::ofstream file(file_name, std::ios::app | std::ios::binary);
     if (!file) {
         throw std::runtime_error("打开文件" + file_name + "失败。");
     }
+
+    // 生成 row_id：当前记录数量 + 1（或其他唯一生成逻辑）
+    uint64_t row_id = static_cast<uint64_t>(dbManager::getInstance().get_current_database()->getTable(table_name)->getRecordCount()) + 1;
+
+    // 写入 row_id
+    file.write(reinterpret_cast<const char*>(&row_id), sizeof(uint64_t));
+
+    // 写入 delete_flag（默认为未删除）
     char delete_flag = 0;
     file.write(&delete_flag, sizeof(char));
+
+    // 写入字段内容
     for (size_t i = 0; i < fields.size(); ++i) {
-        write_field(file, fields[i], record_values[i]);
+        write_field(file, fields[i], record_values[i]); // 保持原逻辑
     }
 
     file.close();
-    std::cout << "记录插入表 " << this->table_name << " 成功。" << std::endl;
+
+    dbManager::getInstance().get_current_database()->getTable(table_name)->incrementRecordCount(1);
+    dbManager::getInstance().get_current_database()->getTable(table_name)->setLastModifyTime(std::time(nullptr));
+
+    std::cout << "记录插入表 " << this->table_name << " 成功，row_id = " << row_id << "。" << std::endl;
 }
 
