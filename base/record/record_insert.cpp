@@ -132,7 +132,8 @@ void Record::insert_into() {
     if (!file) {
         throw std::runtime_error("打开文件" + file_name + "失败。");
     }
-
+    char delete_flag = 0;
+    file.write(&delete_flag, sizeof(char));
     for (size_t i = 0; i < fields.size(); ++i) {
         write_field(file, fields[i], record_values[i]);
     }

@@ -589,23 +589,19 @@ std::vector<std::unordered_map<std::string, std::string>> Record::read_records(c
     return records;
 }
 
-
+//只在delete和update中使用
 bool Record::read_single_record(std::ifstream& file, const std::vector<FieldBlock>& fields,
     std::unordered_map<std::string, std::string>& record_data) {
     record_data.clear();
-
+    size_t bytes_read = sizeof(char);
     // 读取 delete_flag（不处理，仅跳过）
     char delete_flag;
     file.read(&delete_flag, sizeof(char));
     if (!file) return false;
-
     for (const auto& field : fields) {
         char null_flag;
         file.read(&null_flag, sizeof(char));
         if (!file) return false;
-
-        size_t bytes_read = sizeof(char);
-
         if (null_flag == 1) {
             record_data[field.name] = "NULL";
             switch (field.type) {
@@ -681,10 +677,6 @@ size_t Record::get_field_data_size(int type, int param) {
 }
 
 void Record::write_field(std::ofstream& out, const FieldBlock& field, const std::string& value) {
-
-    char delete_flag = 0;
-    out.write(&delete_flag, sizeof(char));
-
     bool is_null = (value == "NULL");
     char null_flag = is_null ? 1 : 0;
     out.write(&null_flag, sizeof(char));

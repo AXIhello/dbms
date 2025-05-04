@@ -332,6 +332,8 @@ void Table::updateRecord_add(FieldBlock& new_field) {
     for (size_t i = 0; i < records.size(); ++i) {
         const auto& record = records[i];
         qDebug() << "Step 7: 写回第" << i << "条记录：";
+        char delete_flag = 0;
+        file.write(&delete_flag, sizeof(char));
         for (const auto& fieldBlock : updated_fields) {
             auto it = record.find(std::string(fieldBlock.name));
             const std::string& value = it->second;
