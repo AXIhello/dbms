@@ -153,6 +153,12 @@ void Record::insert_into() {
     dbManager::getInstance().get_current_database()->getTable(table_name)->incrementRecordCount(1);
     dbManager::getInstance().get_current_database()->getTable(table_name)->setLastModifyTime(std::time(nullptr));
 
+   
+    
     std::cout << "记录插入表 " << this->table_name << " 成功，row_id = " << row_id << "。" << std::endl;
+
+    if (TransactionManager::instance().isActive()) {
+        TransactionManager::instance().addUndo(DmlType::INSERT, this->table_name, row_id);
+    }
 }
 

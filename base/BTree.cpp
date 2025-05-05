@@ -62,7 +62,7 @@ void BTree::insertNonFull(BTreeNode* node, const FieldPointer& fieldPtr) {
         qDebug() << "Node is a leaf. Starting search for insert position...";
 
         while (i >= 0 && node->fields[i].fieldValue > fieldPtr.fieldValue) {
-            qDebug() << "Comparing fieldValue: " << node->fields[i].fieldValue << " > " << fieldPtr.fieldValue;
+       //     qDebug() << "Comparing fieldValue: " << node->fields[i].fieldValue << " > " << fieldPtr.fieldValue;
             i--;
         }
 
@@ -71,13 +71,13 @@ void BTree::insertNonFull(BTreeNode* node, const FieldPointer& fieldPtr) {
         assert(i + 1 >= 0 && i + 1 <= node->fields.size());
 
         // 插入到 fields 中
-        qDebug() << "Inserting field at index " << i + 1 << ": " << fieldPtr.fieldValue;
+        //qDebug() << "Inserting field at index " << i + 1 << ": " << fieldPtr.fieldValue;
         node->fields.insert(node->fields.begin() + i + 1, fieldPtr);
 
         // 输出插入后的节点信息
         qDebug() << "After insertion, fields size: " << node->fields.size();
         for (const auto& field : node->fields) {
-            qDebug() << "Field: " << field.fieldValue;
+           // qDebug() << "Field: " << field.fieldValue;
         }
     }
     else {
@@ -85,7 +85,7 @@ void BTree::insertNonFull(BTreeNode* node, const FieldPointer& fieldPtr) {
         qDebug() << "Node is not a leaf. Searching for correct child to insert into...";
 
         while (i >= 0 && node->fields[i].fieldValue > fieldPtr.fieldValue) {
-            qDebug() << "Comparing fieldValue: " << node->fields[i].fieldValue << " > " << fieldPtr.fieldValue;
+           // qDebug() << "Comparing fieldValue: " << node->fields[i].fieldValue << " > " << fieldPtr.fieldValue;
             i--;
         }
 

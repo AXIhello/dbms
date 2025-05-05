@@ -14,25 +14,28 @@ void Parse::handleInsertInto(const std::smatch& m) {
     trimParens(cols);
 
     try {
-        // 拆分多个 VALUES (...) 块
-        std::vector<std::string> values_list;
+        // 流式正则：一条条匹配
         std::regex val_regex(R"(\(([^)]*)\))");
         auto vals_begin = std::sregex_iterator(vals.begin(), vals.end(), val_regex);
         auto vals_end = std::sregex_iterator();
-        for (auto it = vals_begin; it != vals_end; ++it) {
-            values_list.push_back((*it)[1].str());  // 提取括号内的内容
-        }
 
-        if (values_list.empty()) {
+        if (vals_begin == vals_end) {
             throw std::runtime_error("未检测到有效的VALUES数据");
         }
 
-        // 执行插入
-        Record r;
         int count = 0;
-        for (const auto& val_block : values_list) {
+        
+
+        for (auto it = vals_begin; it != vals_end; ++it) {
+            std::string val_block = (*it)[1].str();  // 取出括号内的内容
+            Record r;
             r.insert_record(table_name, cols, val_block);
             ++count;
+
+            // 可选：每插入1000条，提示一下
+            if (count % 1000 == 0) {
+                qDebug() << "已插入" << count << "条...";
+            }
         }
 
         Output::printMessage(outputEdit, QString::fromStdString(
@@ -43,6 +46,8 @@ void Parse::handleInsertInto(const std::smatch& m) {
         Output::printError(outputEdit, QString::fromStdString(e.what()));
     }
 }
+
+
 
 
 
