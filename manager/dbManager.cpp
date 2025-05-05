@@ -5,11 +5,28 @@
 #include <filesystem>
 #include <unordered_map>
 #include <unordered_set>
+#include<Windows.h>
 #include "base/user.h"
 
 namespace fs = std::filesystem;
 std::string dbManager::basePath = std::filesystem::current_path().string() + "/DBMS_ROOT";
+std::string Utf8ToGbk1(const std::string& utf8)
+{
+    int len = MultiByteToWideChar(CP_UTF8, 0, utf8.c_str(), -1, NULL, 0);
+    if (len == 0) return "";
 
+    std::wstring wstr(len, 0);
+    MultiByteToWideChar(CP_UTF8, 0, utf8.c_str(), -1, &wstr[0], len);
+
+    len = WideCharToMultiByte(936, 0, wstr.c_str(), -1, NULL, 0, NULL, NULL);
+    if (len == 0) return "";
+
+    std::string gbk(len, 0);
+    WideCharToMultiByte(936, 0, wstr.c_str(), -1, &gbk[0], len, NULL, NULL);
+
+    if (!gbk.empty() && gbk.back() == '\0') gbk.pop_back();
+    return gbk;
+}
 // 构造函数
 dbManager::dbManager() {
 
@@ -41,7 +58,7 @@ dbManager::~dbManager() {
 // 初始化系统数据库（创建并写入 ruanko.db 文件）
 void dbManager::create_system_db() {
     std::string sysDBPath = basePath + "/" + systemDBFile;
-
+   
     std::ofstream sysDBFile(sysDBPath, std::ios::binary);
     if (!sysDBFile) {
         throw std::runtime_error("无法创建系统数据库文件 ruanko.db");
@@ -64,6 +81,7 @@ void dbManager::create_system_db() {
 }
 
 void dbManager::save_database_info(const std::string& dbName, const std::string& dbPath, const std::string& abledUsername) {
+    std::string sysDBPath = basePath + "/" + systemDBFile;
     std::ofstream sysDBFile(basePath + "/" + systemDBFile, std::ios::binary | std::ios::app);
     if (!sysDBFile) {
         throw std::runtime_error("无法打开系统数据库文件 ruanko.db" );
@@ -115,15 +133,35 @@ void dbManager::remove_database_info(const std::string& db_name)
 
 // 加载系统数据库信息(未完成。应该从.db文件中读取,但不知道有什么用……)
 void dbManager::load_system_db_info() {
-    std::ifstream sysDBFile(basePath + "/" + systemDBFile, std::ios::binary);
+    std::string sysDBPath = basePath + "/" + systemDBFile;
+   // std::cout << Utf8ToGbk1("读取系统数据库文件: ") << sysDBPath << std::endl;
+
+    std::ifstream sysDBFile(sysDBPath, std::ios::binary);
     if (!sysDBFile) {
         throw std::runtime_error("无法读取系统数据库文件 ruanko.db");
     }
 
+    DatabaseBlock dbInfo;
+    int count = 0;
+    while (sysDBFile.read(reinterpret_cast<char*>(&dbInfo), sizeof(DatabaseBlock))) {
+        std::string dbName(dbInfo.dbName, strnlen(dbInfo.dbName, sizeof(dbInfo.dbName)));
+        std::string dbPath(dbInfo.filepath, strnlen(dbInfo.filepath, sizeof(dbInfo.filepath)));
+        std::string typeStr = dbInfo.type ? Utf8ToGbk1("用户数据库") : Utf8ToGbk1("系统数据库");
+        std::time_t t = dbInfo.crtime;
+        char timebuf[64] = { 0 };
+        std::tm tm_buf;
+        localtime_s(&tm_buf, &t);
+        std::strftime(timebuf, sizeof(timebuf), "%Y-%m-%d %H:%M:%S", &tm_buf);
 
+       
+        ++count;
+    }
     sysDBFile.close();
-}
 
+    if (count == 0) {
+        std::cout << Utf8ToGbk1("系统数据库文件中没有任何数据库记录。") << std::endl;
+    }
+}
 // 创建数据库
 void dbManager::create_user_db(const std::string& db_name) {
     if (db_name.length() > 128) {
@@ -179,10 +217,11 @@ void dbManager::delete_user_db(const std::string& db_name) {
 std::vector<std::string> dbManager::get_database_list_by_db()
 {
     std::vector<std::string> databases;
-    std::ifstream file("DBMS_ROOT/ruanko.db", std::ios::binary);  // 请根据你的路径调整
+    std::string sysDBPath = basePath + "/" + systemDBFile;
+    std::ifstream file(sysDBPath, std::ios::binary);
 
     if (!file.is_open()) {
-		throw std::runtime_error("无法打开数据库文件 ruanko.db");
+        throw std::runtime_error("无法打开数据库文件 ruanko.db");
     }
 
     DatabaseBlock block{};
@@ -198,9 +237,7 @@ std::vector<std::string> dbManager::get_database_list_by_db()
 
     file.close();
     return databases;
-
 }
-
 
 
 // 创建数据库文件夹
@@ -303,15 +340,17 @@ bool dbManager::database_exists_on_disk(const std::string& dbName) {
 }
 
 bool dbManager::database_exists_in_db(const std::string& db_name) {
-    std::ifstream file("DBMS_ROOT/ruanko.db", std::ios::binary); // 路径请按实际修改
-
+    std::string sysDBPath = basePath + "/" + systemDBFile;
+    std::ifstream file(sysDBPath, std::ios::binary);
     if (!file.is_open()) {
-		throw std::runtime_error("无法打开数据库文件 ruanko.db");
+        throw std::runtime_error("无法打开数据库文件 ruanko.db");
     }
 
     DatabaseBlock block;
     while (file.read(reinterpret_cast<char*>(&block), sizeof(DatabaseBlock))) {
-        if (std::string(block.dbName) == db_name) {
+        std::string name(block.dbName, strnlen(block.dbName, sizeof(block.dbName)));
+        std::cout << "比对: [" << name << "] <-> [" << db_name << "]" << std::endl;
+        if (name == db_name) {
             file.close();
             return true;
         }

@@ -1,19 +1,14 @@
 #include "output.h"
 #include <QDateTime>
+#include <iostream>
 
 // 获取当前时间戳字符串
 static QString currentTimestamp() {
     return "[" + QDateTime::currentDateTime().toString("yyyy-MM-dd hh:mm:ss") + "] ";
 }
 
-void Output::printSelectResult(QTextEdit* outputEdit, const std::vector<Record>& results) {
+void Output::printSelectResult(QTextEdit* outputEdit, const std::vector<Record>& results, double duration_ms) {
     if (!outputEdit) return;
-
-    //if (results.empty()) {
-    //    outputEdit->append(currentTimestamp() + "<p style='color:gray;'>无查询结果。</p>");
-    //    outputEdit->append(""); // 添加空行
-    //    return;
-    //}
 
     const auto& columns = results[0].get_columns();
 
@@ -48,6 +43,7 @@ void Output::printSelectResult(QTextEdit* outputEdit, const std::vector<Record>&
 
     outputEdit->append(currentTimestamp() + "查询结果：");
     outputEdit->append(html);
+	outputEdit->append("查询耗时：" + QString::number(duration_ms) + " ms");
     outputEdit->append(""); // 添加空行
 }
 
@@ -55,18 +51,21 @@ void Output::printMessage(QTextEdit* outputEdit, const QString& message) {
     if (!outputEdit) return;
     outputEdit->append(currentTimestamp() + message);
     outputEdit->append(""); // 添加空行
+
 }
 
 void Output::printError(QTextEdit* outputEdit, const QString& error) {
     if (!outputEdit) return;
     outputEdit->append(currentTimestamp() + "<span style='color:red;'>[错误] " + error + "</span>");
     outputEdit->append(""); // 添加空行
+
 }
 
 void Output::printInfo(QTextEdit* outputEdit, const QString& message) {
     if (!outputEdit) return;
     outputEdit->append(currentTimestamp() + "<span style='color:blue;'>[信息] " + message + "</span>");
     outputEdit->append(""); // 添加空行
+
 }
 
 void Output::printDatabaseList(QTextEdit* outputEdit, const std::vector<std::string>& dbs) {

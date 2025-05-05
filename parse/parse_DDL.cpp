@@ -211,7 +211,7 @@ if (def.find("UNIQUE") == 0) {
         }
         else if (typeStr == "VARCHAR") {
             field.type = 3;
-            field.param = paramStr.empty() ? 255 : std::stoi(paramStr);
+            field.param = paramStr.empty() ? 255 + 2 : (std::stoi(paramStr) + 2);
         }
         else if (typeStr == "DATETIME") {
             field.type = 5; field.param = 16;
@@ -336,7 +336,7 @@ void Parse::handleAddColumn(const std::smatch& m) {
     }
     else if (typeStr == "VARCHAR") {
         field.type = 3;
-        field.param = paramStr.empty() ? 255 : std::stoi(paramStr);
+        field.param = paramStr.empty() ? 255+2 : (std::stoi(paramStr)+2);
     }
     else if (typeStr == "DATETIME") {
         field.type = 5; field.param = 16;
@@ -572,22 +572,44 @@ void Parse::handleCreateIndex(const std::smatch& m) {
     try {
         Table* table = dbManager::getInstance().get_current_database()->getTable(tableName);
 
+        // ===== 创建 IndexBlock 对象 =====
         IndexBlock index;
         strcpy_s(index.name, sizeof(index.name), indexName.c_str());
-
         index.field_num = (!m[4].str().empty() && m[4].matched) ? 2 : 1;
 
-        strncpy_s(index.field[0], sizeof(index.field[0]), column1.c_str(), 2);
-        index.field[0][1] = '\0'; // 手动加结尾，防止脏数据
+        strncpy_s(index.field[0], sizeof(index.field[0]), column1.c_str(), sizeof(index.field[0]) - 1);
+        index.field[0][sizeof(index.field[0]) - 1] = '\0';
 
         if (index.field_num == 2) {
-            strncpy_s(index.field[1], sizeof(index.field[1]), column2.c_str(), 2);
-            index.field[1][1] = '\0';
+            strncpy_s(index.field[1], sizeof(index.field[1]), column2.c_str(), sizeof(index.field[1]) - 1);
+            index.field[1][sizeof(index.field[1]) - 1] = '\0';
         }
 
+        // ===== 检查是否已存在同名索引 =====
+        const auto& indexes = table->getIndexes();  // 获取当前表的索引列表
+        for (const auto& existingIndex : indexes) {
+            // 1. 检查索引名重复
+            if (indexName == existingIndex.name) {
+                throw std::runtime_error("索引名重复，已存在名为 " + indexName + " 的索引！");
+            }
 
-        std::string recordPath = "data/" + tableName + ".trd";
-        std::string indexPath = "data/" + tableName + "_" + indexName + ".idx";
+            // 2. 检查索引字段是否重复
+            if (existingIndex.field_num == 1 && index.field_num == 1) {
+                // 比较单字段索引
+                if (existingIndex.field[0] == column1) {
+                    throw std::runtime_error("已存在基于字段 " + column1 + " 的索引！");
+                }
+            }
+            else if (existingIndex.field_num == 2 && index.field_num == 2) {
+                // 比较双字段索引
+                if (existingIndex.field[0] == column1 && existingIndex.field[1] == column2) {
+                    throw std::runtime_error("已存在基于字段 " + column1 + " 和 " + column2 + " 的索引！");
+                }
+            }
+        }
+
+        std::string recordPath = dbManager::basePath + "/data/" + dbManager::getInstance().get_current_database()->getDBName() + "/" + tableName + ".tid";
+        std::string indexPath = dbManager::basePath + "/data/" + dbManager::getInstance().get_current_database()->getDBName() + "/" + indexName + ".ix";
 
         strcpy_s(index.record_file, sizeof(index.record_file), recordPath.c_str());
         strcpy_s(index.index_file, sizeof(index.index_file), indexPath.c_str());
@@ -595,7 +617,8 @@ void Parse::handleCreateIndex(const std::smatch& m) {
         index.unique = false;
         index.asc = true;
 
-        table->createIndex(index);
+        // 创建索引
+        table->addIndex(index);
 
         Output::printMessage(outputEdit, QString::fromStdString("CREATE INDEX 创建索引成功"));
     }
@@ -603,6 +626,8 @@ void Parse::handleCreateIndex(const std::smatch& m) {
         Output::printError(outputEdit, QString::fromStdString(e.what()));
     }
 }
+
+
 
 
 void Parse::handleDropIndex(const std::smatch& m) {

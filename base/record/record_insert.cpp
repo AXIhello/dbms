@@ -41,6 +41,8 @@ void Record::insert_record(const std::string& table_name, const std::string& col
         validate_types();
     }
     insert_into();
+    // 新增：插入后更新所有相关索引
+    //updateIndexesAfterInsert();
 }
 
 void Record::parse_columns(const std::string& cols) {
@@ -122,15 +124,7 @@ void Record::insert_into() {
         if (!is_valid_type(value, get_type_string(field.type))) {
             throw std::runtime_error("字段 '" + std::string(field.name) + "' 的值 '" + value + "' 不符合类型要求");
         }
-        // 如果是布尔型且是 true/false 字符串，先进行转换
-        if (field.type == 4) {
-            std::string lower = value;
-            std::transform(lower.begin(), lower.end(), lower.begin(), ::tolower);
-            if (lower == "true") value = "1";
-            else if (lower == "false") value = "0";
-        }
     }
-
 
     // 写入数据
     std::string file_name = dbManager::getInstance().get_current_database()->getDBPath() + "/" + this->table_name + ".trd";
@@ -139,11 +133,32 @@ void Record::insert_into() {
         throw std::runtime_error("打开文件" + file_name + "失败。");
     }
 
+    // 生成 row_id：当前记录数量 + 1（或其他唯一生成逻辑）
+    uint64_t row_id = static_cast<uint64_t>(dbManager::getInstance().get_current_database()->getTable(table_name)->getRecordCount()) + 1;
+
+    // 写入 row_id
+    file.write(reinterpret_cast<const char*>(&row_id), sizeof(uint64_t));
+
+    // 写入 delete_flag（默认为未删除）
+    char delete_flag = 0;
+    file.write(&delete_flag, sizeof(char));
+
+    // 写入字段内容
     for (size_t i = 0; i < fields.size(); ++i) {
-        write_field(file, fields[i], record_values[i]);
+        write_field(file, fields[i], record_values[i]); // 保持原逻辑
     }
 
     file.close();
-    std::cout << "记录插入表 " << this->table_name << " 成功。" << std::endl;
+
+    dbManager::getInstance().get_current_database()->getTable(table_name)->incrementRecordCount(1);
+    dbManager::getInstance().get_current_database()->getTable(table_name)->setLastModifyTime(std::time(nullptr));
+
+   
+    
+    std::cout << "记录插入表 " << this->table_name << " 成功，row_id = " << row_id << "。" << std::endl;
+
+    if (TransactionManager::instance().isActive()) {
+        TransactionManager::instance().addUndo(DmlType::INSERT, this->table_name, row_id);
+    }
 }
 

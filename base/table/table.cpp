@@ -4,6 +4,9 @@
 #include "parse/parse.h"
 #include <cstring>
 #include <iomanip>
+#include <windows.h>
+
+using namespace std;
 
 
 // 构造函数，初始化表的相关信息√
@@ -27,6 +30,49 @@ Table::Table(const std::string& dbName, const std::string& tableName)
 }
 
 
+void Table::SetRecords(vector<vector<string>>& records)
+{
+    m_records = records;
+}
+
+std::string Gbk(const std::string& utf8)
+{
+    int len = MultiByteToWideChar(CP_UTF8, 0, utf8.c_str(), -1, NULL, 0);
+    if (len == 0) return "";
+
+    std::wstring wstr(len, 0);
+    MultiByteToWideChar(CP_UTF8, 0, utf8.c_str(), -1, &wstr[0], len);
+
+    len = WideCharToMultiByte(936, 0, wstr.c_str(), -1, NULL, 0, NULL, NULL);
+    if (len == 0) return "";
+
+    std::string gbk(len, 0);
+    WideCharToMultiByte(936, 0, wstr.c_str(), -1, &gbk[0], len, NULL, NULL);
+
+    if (!gbk.empty() && gbk.back() == '\0') gbk.pop_back();
+    return gbk;
+}
+
+std::vector<std::vector<std::string>> Table::selectAll() const {
+    std::vector<std::vector<std::string>> records;
+    std::ifstream trdFile(m_trd);
+    if (!trdFile.is_open()) {
+        throw std::runtime_error("无法打开数据文件: " + m_trd);
+    }
+
+    std::string line;
+    while (std::getline(trdFile, line)) {
+        std::vector<std::string> record;
+        std::stringstream ss(line);
+        std::string value;
+        while (std::getline(ss, value, ',')) {
+            record.push_back(value);
+        }
+        records.push_back(record);
+    }
+    trdFile.close();
+    return records;
+}
 // 析构函数（一般为空）
 Table::~Table() {
 
@@ -97,8 +143,10 @@ string Table::timeToString(time_t time) const {
     return string(buffer);
 }
 
-void Table::loadMetadataBinary() {
+void Table::loadMetadataBinary()
+{
     ifstream tbFile(m_tb, ios::binary);
+   
     if (!tbFile) {
 		throw std::runtime_error("无法打开元数据文件: " + m_tb);
     }
@@ -116,12 +164,42 @@ void Table::loadMetadataBinary() {
             m_tid = tableBlock.tid;
             m_createTime = tableBlock.crtime;
             m_lastModifyTime = tableBlock.mtime;  // 复制数据
+
+           
+            tbFile.close();
+            m_records.clear();
+            std::ifstream trdFile(m_trd);
+            if (trdFile.is_open()) {
+                std::string line;
+                while (std::getline(trdFile, line)) {
+                    std::vector<std::string> record;
+                    std::stringstream ss(line);
+                    std::string value;
+                    while (std::getline(ss, value, ',')) {
+                        record.push_back(value);
+                    }
+                    m_records.push_back(record);
+                }
+                trdFile.close();
+            }
+            else {
+                std::cerr << Gbk("无法打开数据文件: ") << m_trd << std::endl;
+            }
+
+            // 输出表格内容
+            std::cout << Gbk("表格内容:") << std::endl;
+            for (const auto& record : m_records) {
+                for (const auto& value : record) {
+                    std::cout << Gbk(value) << "\t";
+                }
+                std::cout << std::endl;
+            }
             return;  // 找到后退出方法
         }
     }
 
     // 如果没有找到指定的表格
-	cerr << "未找到表格: " << m_tableName << endl;
+	cerr << Gbk("未找到表格: ")<< m_tableName << endl;
     tbFile.close();
 }
 
