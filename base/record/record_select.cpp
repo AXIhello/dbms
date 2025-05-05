@@ -28,7 +28,6 @@ std::vector<Record> Record::select(
     std::unordered_map<std::string, std::string> combined_structure;
 
     if (join_info && !join_info->tables.empty()) {
-        // 读第一个表
         std::vector<std::pair<uint64_t, std::unordered_map<std::string, std::string>>> result = read_records(join_info->tables[0]);
         for (auto& [row_id, rec] : result) {
             std::unordered_map<std::string, std::string> prefixed;
@@ -37,12 +36,11 @@ std::vector<Record> Record::select(
                 prefixed[full_key] = v;
                 combined_structure[full_key] = read_table_structure_static(join_info->tables[0]).at(k);
             }
-            rec = prefixed;
+            rec = std::move(prefixed);
         }
 
-        // 连接其他表
         for (size_t i = 1; i < join_info->tables.size(); ++i) {
-            std::vector<std::pair<uint64_t, std::unordered_map<std::string, std::string>>> right_records = read_records(join_info->tables[i]);
+            auto right_records = read_records(join_info->tables[i]);
             for (auto& [row_id, rec] : right_records) {
                 std::unordered_map<std::string, std::string> prefixed;
                 for (const auto& [k, v] : rec) {
@@ -50,12 +48,10 @@ std::vector<Record> Record::select(
                     prefixed[full_key] = v;
                     combined_structure[full_key] = read_table_structure_static(join_info->tables[i]).at(k);
                 }
-                rec = prefixed;
+                rec = std::move(prefixed);
             }
 
-            // 正确连接（每次只使用相关的 JoinPair）
             std::vector<std::pair<uint64_t, std::unordered_map<std::string, std::string>>> new_result;
-
             for (const auto& [row_r1, r1] : result) {
                 for (const auto& [row_r2, r2] : right_records) {
                     bool match = true;
@@ -81,13 +77,13 @@ std::vector<Record> Record::select(
                     if (match) {
                         std::unordered_map<std::string, std::string> combined = r1;
                         combined.insert(r2.begin(), r2.end());
-                        new_result.emplace_back(0, std::move(combined)); // 合并后的记录 row_id 设置为 0（可自定义）
+                        new_result.emplace_back(0, std::move(combined));
                     }
                 }
             }
             result = std::move(new_result);
-            filtered = result;
         }
+        filtered = std::move(result);
     }
     else {
         if (!table_exists(table_name)) {
@@ -107,22 +103,24 @@ std::vector<Record> Record::select(
     std::vector<std::string> logic_ops;
     std::vector<std::pair<uint64_t, std::unordered_map<std::string, std::string>>> condition_filtered;
 
+    // 1. 如果没有任何条件，直接返回所有记录
     if (condition.empty()) {
-        // 没有 WHERE 条件，直接使用所有记录
         condition_filtered = filtered;
     }
     else {
-        // 有 WHERE 条件，执行解析 + 条件筛选逻辑
+        // 2. 拆解表达式
         parse_condition_expressions(condition, expressions, logic_ops);
 
-        std::vector<std::pair<uint64_t, std::unordered_map<std::string, std::string>>> index_results;
+        std::vector<std::vector<std::pair<uint64_t, std::unordered_map<std::string, std::string>>>> index_results;
+        // 注意：这里每一个indexed对应一个表达式的结果
         std::vector<size_t> fallback_indices;
 
         for (size_t i = 0; i < expressions.size(); ++i) {
             auto [col, op, val] = parse_single_condition(expressions[i]);
             if (!col.empty()) {
                 if (has_index(table_name, col)) {
-                    index_results.push_back(read_by_index(table_name, col, op, val));
+                    auto indexed = read_by_index(table_name, col, op, val);
+                    index_results.push_back(indexed); // 每个条件一个结果集
                 }
                 else {
                     fallback_indices.push_back(i);
@@ -130,10 +128,11 @@ std::vector<Record> Record::select(
             }
         }
 
-        // 这里需要修改，因为现在index_results包含的是pair<uint64_t, unordered_map>
+        // 4. 用索引合并初步筛选结果（如果有）
         std::vector<std::pair<uint64_t, std::unordered_map<std::string, std::string>>> base =
             index_results.empty() ? filtered : merge_index_results(index_results, logic_ops);
 
+        // 5. 对 base 中的数据进一步检查不支持索引的条件
         for (const auto& [row_id, rec] : base) {
             if (check_remaining_conditions(rec, expressions, fallback_indices, logic_ops, temp, join_info && !join_info->tables.empty())) {
                 condition_filtered.emplace_back(row_id, rec);
@@ -145,7 +144,6 @@ std::vector<Record> Record::select(
     std::vector<std::string> selected_cols;
     if (columns == "*") {
         if (!condition_filtered.empty()) {
-            // 修改：现在需要访问pair的第二个元素
             for (const auto& [k, _] : condition_filtered[0].second) {
                 selected_cols.push_back(k);
             }
@@ -155,7 +153,6 @@ std::vector<Record> Record::select(
         selected_cols = parse_column_list(columns);
     }
 
-    // 输出最终结果
     for (const auto& [row_id, rec_map] : condition_filtered) {
         Record rec;
         rec.set_table_name(table_name);
@@ -163,10 +160,8 @@ std::vector<Record> Record::select(
             auto it = rec_map.find(col);
             std::string val = (it != rec_map.end()) ? it->second : "NULL";
 
-            // 判断布尔字段并转换显示值
             auto type_it = combined_structure.find(col);
             if (type_it == combined_structure.end() && !join_info && !rec_map.empty()) {
-                // 去掉前缀再查找（支持非前缀匹配）
                 for (const auto& [k, t] : combined_structure) {
                     size_t dot_pos = k.find('.');
                     std::string suffix = (dot_pos != std::string::npos) ? k.substr(dot_pos + 1) : k;

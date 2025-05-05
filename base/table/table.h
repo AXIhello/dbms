@@ -40,7 +40,7 @@ public:
 
     //修改表的最后修改时间
     void setLastModifyTime(std::time_t time) {
-		m_lastModifyTime = time;
+        m_lastModifyTime = time;
     }
 
     // .tb文件相关
@@ -96,18 +96,19 @@ public:
     void addRecord(const std::string& recordData);
     void deleteRecord(int recordID);
     std::string getDefaultValue(const std::string& fieldName) const;
-    void print_records(const std::vector<std::unordered_map<std::string, std::string>>& records);
+    void print_records(const std::vector<std::pair<uint64_t, std::unordered_map<std::string, std::string>>>& records);
     void updateRecord_add(FieldBlock& field);
     void updateRecord_delete(const std::string& fieldName);
-    
+
     // 增加记录计数（正数为增加，负数为减少）
     void incrementRecordCount(int delta) {
         m_recordCount += delta;
+        saveMetadataBinary();
     }
-	// 获取记录计数
-	int getRecordCount() const {
-		return m_recordCount;
-	}
+    // 获取记录计数
+    int getRecordCount() const {
+        return m_recordCount;
+    }
 
 
     //表索引文件
@@ -117,11 +118,22 @@ public:
     void addIndex(const IndexBlock& index);
     void dropIndex(const std::string indexName);
     void updateIndex(const std::string indexName, const IndexBlock& updatedIndex);
-	void renameIndex(const std::string oldName, const std::string newName);
+    void renameIndex(const std::string oldName, const std::string newName);
 
     const std::vector<IndexBlock>& getIndexes() const {
         return m_indexes;
     }
+
+    //获取索引对应b树
+    BTree* getBTreeByIndexName(const std::string& indexName) {
+        for (const auto& btree : m_btrees) {
+            if (btree->getIndexName() == indexName) {
+                return btree.get();
+            }
+        }
+        return nullptr;
+    }
+
 
     // 判断表是否存在
     bool isTableExist() const;
@@ -149,6 +161,9 @@ private:
     std::vector<ConstraintBlock> m_constraints;     // 存储表的完整性约束信息
     std::vector<IndexBlock> m_indexes;              // 存储表的索引信息
     std::vector<std::vector<std::string>> m_records; // 表格内容存储
+    std::vector<std::unique_ptr<BTree>> m_btrees; // 存储 B 树对象
+
+
 
     // 辅助方法：将时间戳转为字符串格式
     std::string timeToString(std::time_t time) const;

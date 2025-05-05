@@ -122,7 +122,7 @@ public:
     );
 
     // 从索引中读取记录
-    static std::vector<std::unordered_map<std::string, std::string>> read_by_index(
+    static std::vector<std::pair<uint64_t, std::unordered_map<std::string, std::string>>>  read_by_index(
         const std::string& table_name,
         const std::string& column,
         const std::string& op,
@@ -159,8 +159,8 @@ std::vector<std::string> get_fields_from_line(const std::string& line);
 bool has_index(const std::string& table, const std::string& column);
 void parse_condition_expressions(const std::string& cond, std::vector<std::string>& expressions, std::vector<std::string>& logic_ops);
 std::tuple<std::string, std::string, std::string> parse_single_condition(const std::string& expr);
-std::vector<std::unordered_map<std::string, std::string>> merge_index_results(
-    const std::vector<std::vector<std::unordered_map<std::string, std::string>>>& results,
+std::vector<std::pair<uint64_t, std::unordered_map<std::string, std::string>>> merge_index_results(
+    const std::vector<std::vector<std::pair<uint64_t, std::unordered_map<std::string, std::string>>>>& results,
     const std::vector<std::string>& logic_ops
 );
 bool check_remaining_conditions(
