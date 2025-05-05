@@ -98,6 +98,7 @@ public:
         const JoinInfo* join_info=nullptr);
     int update(const std::string& tableName, const std::string& setClause, const std::string& condition);
     int delete_(const std::string& tableName, const std::string& condition);
+    int delete_by_rowid(const std::string& tableName, uint64_t rowID);
     // 辅助函数
     static bool table_exists(const std::string& table_name);
     static std::unordered_map<std::string, std::string> read_table_structure_static(const std::string& table_name);

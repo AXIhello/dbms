@@ -25,7 +25,20 @@ void TransactionManager::rollback() {
         const UndoOperation& op = *it;
         switch (op.type) {
         case DmlType::INSERT:
-           
+            // 读取所有记录
+        {
+            auto records = Record::read_records(op.tableName);
+            
+
+            for (const auto& [rowID, recordData] : records) {
+                if (rowID == op.rowId) {
+                    // 找到要删除的记录
+                    Record record;
+                    record.delete_by_rowid(op.tableName, op.rowId);
+                    break;
+                }
+            }
+        }
         case DmlType::DELETE:
             // 回滚DELETE：恢复行数据
             // e.g. Table::insertRow(op.tableName, op.oldValues);
