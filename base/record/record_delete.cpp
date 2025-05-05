@@ -54,15 +54,17 @@ int Record::delete_(const std::string& tableName, const std::string& condition) 
     std::ofstream outfile(trd_path, std::ios::binary | std::ios::trunc);
     if (!outfile) throw std::runtime_error("无法打开数据文件进行写入操作。");
 
-    for (const auto& [row_id, record] : records_to_keep) {
-        // 先写入 row_id
-        outfile.write(reinterpret_cast<const char*>(&row_id), sizeof(uint64_t));
+    uint64_t new_row_id = 1; // 从1开始
+    for (const auto& [old_row_id, record] : records_to_keep) {
+        // 使用新的递增 row_id
+        outfile.write(reinterpret_cast<const char*>(&new_row_id), sizeof(uint64_t));
         char delete_flag = 0;
         outfile.write(&delete_flag, sizeof(char));
         for (const auto& field : fields) {
             std::string field_name(field.name);
             write_field(outfile, field, record.at(field_name));
         }
+        new_row_id++; // 递增 row_id
     }
     outfile.close();
 
