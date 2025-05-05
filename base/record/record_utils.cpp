@@ -479,6 +479,7 @@ Record::read_records(const std::string& table_name) {
         uint64_t row_id = 0;
 
         if (read_record_from_file(file, fields, record_data, row_id, /*skip_deleted=*/true)) {
+			//record_data["row_id"] = std::to_string(row_id);
             records.emplace_back(row_id, std::move(record_data));
         }
     }

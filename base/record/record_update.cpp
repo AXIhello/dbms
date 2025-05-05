@@ -55,13 +55,22 @@ int Record::update(const std::string& tableName, const std::string& setClause, c
 
         if (read_record_from_file(infile, fields, record_data, row_id, /*skip_deleted=*/true)) {
             if (condition.empty() || matches_condition(record_data, false)) {
+                // 记录旧值
+                std::vector<std::string> oldValues, newValues;
+                for (const auto& [col, _] : updates) {
+                    oldValues.push_back(record_data[col]);
+                }
+
+                // 更新记录
 				// 记录原始数据用于回滚
 				undo_records.emplace_back(row_id, record_data);
 
                 for (const auto& [col, val] : updates) {
                     record_data[col] = val;
+                    newValues.push_back(val);
                 }
 
+                // 检查约束
                 std::vector<std::string> cols, vals;
                 for (const auto& field : fields) {
                     std::string field_name(field.name);
@@ -73,8 +82,12 @@ int Record::update(const std::string& tableName, const std::string& setClause, c
                     throw std::runtime_error("更新数据违反表约束");
                 }
 
+                // 更新索引（注意此时 row_id 是已读出的）
+                updateIndexesAfterUpdate(table_name, oldValues, newValues, RecordPointer{ row_id });
+
                 updated++;
             }
+
 
             // 保留原 row_id
             all_records.emplace_back(row_id, record_data);
