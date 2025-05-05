@@ -163,9 +163,6 @@ private:
     
 
     std::vector<std::vector<std::string>> m_records; // 表格内容存储
-    std::vector<std::unique_ptr<BTree>> m_btrees; // 存储 B 树对象
-
-
 
     // 辅助方法：将时间戳转为字符串格式
     std::string timeToString(std::time_t time) const;
