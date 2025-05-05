@@ -31,7 +31,7 @@ std::vector<Record> Record::select(
 
     if (has_implicit_join) {
         // 解析逗号分隔的表名
-        std::istringstream ss(table_name);
+        std::istringstream ss(table_name); 
         std::string table;
         while (std::getline(ss, table, ',')) {
             // 去除前后空格
