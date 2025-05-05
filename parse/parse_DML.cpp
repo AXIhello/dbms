@@ -23,15 +23,17 @@ void Parse::handleInsertInto(const std::smatch& m) {
             throw std::runtime_error("未检测到有效的VALUES数据");
         }
 
-        Record r;
         int count = 0;
+        std::vector<Record> records;  // 存储所有生成的 Record
 
         for (auto it = vals_begin; it != vals_end; ++it) {
             std::string val_block = (*it)[1].str();  // 取出括号内的内容
+            Record r;
             r.insert_record(table_name, cols, val_block);
+            records.push_back(std::move(r));  // 生成一个独立 Record
             ++count;
 
-            // 可选：每插入1000条，提示一下（防止用户误操作）
+            // 可选：每插入1000条，提示一下
             if (count % 1000 == 0) {
                 qDebug() << "已插入" << count << "条...";
             }
@@ -45,6 +47,7 @@ void Parse::handleInsertInto(const std::smatch& m) {
         Output::printError(outputEdit, QString::fromStdString(e.what()));
     }
 }
+
 
 
 
