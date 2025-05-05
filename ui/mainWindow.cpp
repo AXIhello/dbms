@@ -27,6 +27,7 @@ MainWindow::MainWindow(QWidget* parent)
         QMenuBar {
             font-size: 11pt;
             font-weight: bold;
+            background-color: lightgray;
         }
 
         /* 设置菜单项的字体 */
@@ -62,8 +63,11 @@ MainWindow::MainWindow(QWidget* parent)
     setWindowTitle("My Database Client"); // 设置窗口标题
     setGeometry(100, 100, 1000, 600);  // 设置窗口大小
 
-    // 设置菜单栏的样式
-    menuBar()->setStyleSheet("QMenuBar { background-color: lightgray; }");
+    // 设置菜单栏
+    //menuBar()->setStyleSheet("QMenuBar { background-color: lightgray; }");
+    QAction* switchUserAction = new QAction("切换用户", this);
+    menuBar()->addAction(switchUserAction);
+    connect(switchUserAction, &QAction::triggered, this, &MainWindow::onSwitchUser);
     ui->outputEdit->setReadOnly(true);
 
     // 设置按钮的宽度
@@ -126,6 +130,12 @@ MainWindow::~MainWindow() {
     delete ui;  // 释放 UI 资源
     dbManager::getInstance().clearCache();
 }
+
+void MainWindow::onSwitchUser() {
+    emit requestSwitchUser(); // 自定义信号
+    close(); // 关闭主窗口
+}
+
 
 void MainWindow::onRunButtonClicked() {
     QString fullText = ui->inputEdit->toPlainText().trimmed(); // 获取全部语句
@@ -246,7 +256,7 @@ void MainWindow::onTreeItemClicked(QTreeWidgetItem* item, int column) {
     QString dbName = parent->text(0);
     QString tableName = item->text(0);
     
-    QString useDb = "USE DATABASE " + dbName + ";\n\n";// 自动设置数据库
+    QString useDb = "USE DATABASE " + dbName + ";    ";// 自动设置数据库
     QString sql = "SELECT * FROM " + tableName + ";\n\n"; 
     QString currentText = ui->inputEdit->toPlainText();
     ui->inputEdit->setPlainText(currentText  + useDb + sql + "SQL>> ");
@@ -327,17 +337,14 @@ void MainWindow::onTreeWidgetContextMenu(const QPoint& pos) {
                 });
 
             menu.addAction("删除表", [=]() {
-                QMessageBox::information(this, "删除表", "这里将来会处理删除表：" + tableName);
                 QMessageBox::StandardButton reply = QMessageBox::question(this, "确认删除",
                     "您确定要删除表 " + tableName + " 吗？",
                     QMessageBox::Yes | QMessageBox::No);
 
                 if (reply == QMessageBox::Yes) {
-                    QString useDb = "USE DATABASE " + dbName + ";\n\n";
+                    QString useDb = "USE DATABASE " + dbName + ";   ";
                     QString sql = "DROP TABLE " + tableName + ";\n\n";
                     QString currentText = ui->inputEdit->toPlainText();
-                    if (!currentText.endsWith('\n') && !currentText.isEmpty())
-                        currentText += '\n';
                     ui->inputEdit->setPlainText(currentText + useDb + sql + "SQL>> ");
 
                     try {

@@ -5,22 +5,33 @@
 #include "ui/mainWindow.h"
 #include"debug.h"
 using namespace std;
+
+void showLogin();
+
+static void showMainWindow() {
+    MainWindow* w = new MainWindow;
+    w->showMaximized();
+
+    // 连接“切换用户”信号
+    QObject::connect(w, &MainWindow::requestSwitchUser, [=]() {
+        w->close();  // 会触发 deleteLater
+        showLogin(); // 重新显示登录界面
+        });
+}
+
+void showLogin() {
+    login* loginWidget = new login;
+    loginWidget->show();
+
+    QObject::connect(loginWidget, &login::acceptedLogin, [=]() {
+        loginWidget->close();
+        showMainWindow();
+        });
+}
 int main(int argc, char *argv[])
 {
     QApplication a(argc, argv);
-	//debug::printDB(dbManager::basePath + "/ruanko.db");
-	//debug::printTB(dbManager::basePath + "/data/1/1.tb");
-	debug::printTDF(dbManager::basePath + "/data/7/TEST4.tdf");
-    debug::printTIC(dbManager::basePath + "/data/7/TEST4.tic"); 
-
-    MainWindow w;
-    dbManager& db = dbManager::getInstance();/*
     user::createSysDBA();
-	login loginWidget;
-    loginWidget.show();
-    QObject::connect(&loginWidget, &login::acceptedLogin, [&w]() {*/
-        w.showMaximized();
-    //    });
-	////loginWidget.show();
+    showLogin();
     return a.exec();
 }

@@ -140,6 +140,7 @@
     <ClCompile Include="transaction\TransactionManager.cpp" />
     <ClCompile Include="parse\parse.cpp" />
     <ClCompile Include="base\BTree_find.cpp" />
+    <ClCompile Include="base\record\record_index.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="debug.h">
@@ -179,5 +180,8 @@
   </ItemGroup>
   <ItemGroup>
     <QtRcc Include="resource\Resource.qrc" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="users.dat" />
   </ItemGroup>
 </Project>

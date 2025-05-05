@@ -39,12 +39,12 @@
     <QtModules>core;gui;widgets</QtModules>
     <QtBuildConfig>debug</QtBuildConfig>
     <QtInstall>6.2.13_msvc2019_64</QtInstall>
-    <QtInstall>6.7.0_msvc2019_64</QtInstall>
+    <QtInstall>Qt 6.2.12 MSVC</QtInstall>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)' == 'Release|x64'" Label="QtSettings">
     <QtModules>core;gui;widgets</QtModules>
     <QtBuildConfig>release</QtBuildConfig>
-    <QtInstall>6.7.0_msvc2019_64</QtInstall>
+    <QtInstall>Qt 6.2.12 MSVC</QtInstall>
   </PropertyGroup>
   <Target Name="QtMsBuildNotFound" BeforeTargets="CustomBuild;ClCompile" Condition="!Exists('$(QtMsBuild)\qt.targets') or !Exists('$(QtMsBuild)\qt.props')">
     <Message Importance="High" Text="QtMsBuild: could not locate qt.targets, qt.props; project may not build correctly." />
@@ -106,6 +106,7 @@
     <ClCompile Include="base\BTree_delete.cpp" />
     <ClCompile Include="base\BTree_find.cpp" />
     <ClCompile Include="base\record\record_delete.cpp" />
+    <ClCompile Include="base\record\record_index.cpp" />
     <ClCompile Include="base\record\record_insert.cpp" />
     <ClCompile Include="base\record\record_select.cpp" />
     <ClCompile Include="base\record\record_update.cpp" />
@@ -156,6 +157,9 @@
     <ClInclude Include="ui\output.h" />
     <ClInclude Include="base\record\Record.h" />
     <ClInclude Include="base\user.h" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="users.dat" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Condition="Exists('$(QtMsBuild)\qt.targets')">
