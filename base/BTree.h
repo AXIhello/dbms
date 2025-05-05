@@ -19,9 +19,9 @@
 
 // 指向磁盘中记录的位置
 struct RecordPointer {
-    int blockId;     // 块号
-    int offset;      // 块内偏移
+    uint64_t row_id;
 };
+
 
 // 字段值 + 记录指针
 struct FieldPointer {
@@ -35,12 +35,16 @@ public:
     std::vector<FieldPointer> fields;
 
     std::vector<BTreeNode*> children;
-    BTreeNode* parent;  // 新增的父节点指针
+    BTreeNode* parent;  // 新增的父节点指针  
 
-    // B树节点构造
-    BTreeNode(bool isLeaf, BTreeNode* parent) : isLeaf(isLeaf), parent(parent), fields(3, FieldPointer{ "", {0, 0} }) {}
+    // B树节点构造  
+    BTreeNode(bool isLeaf, BTreeNode* parent) : isLeaf(isLeaf), parent(parent), fields(3) {
+        for (auto& field : fields) {
+            field.fieldValue = "";
+            field.recordPtr = { 0 };
+        }
+    }
 };
-
 class BTree {
 private:
     int degree = 3;        // B树的度
@@ -71,6 +75,10 @@ public:
     ~BTree();
 
 	BTreeNode* getRoot() const { return root; }
+    //获取索引名
+	std::string getIndexName() const {
+		return m_index->name;
+	}
 
     void insert(const std::string& fieldValue, const RecordPointer& recordPtr);
 

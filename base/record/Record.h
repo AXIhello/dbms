@@ -3,6 +3,7 @@
 #include <string>
 #include <vector>
 #include <unordered_map>
+#include"base/BTree.h"
 #include "base/block/fieldBlock.h"
 #include "base/block/constraintBlock.h"
 #include <filesystem> 
@@ -136,6 +137,18 @@ public:
         const std::vector<std::string>& expressions,
         const std::vector<std::string>& logic_ops
     );
+
+    //更新索引操作
+    void updateIndexesAfterInsert(const std::string& table_name);
+    void updateIndexesAfterDelete(const std::string& table_name, const std::vector<std::string>& deletedValues, const RecordPointer& recordPtr);
+    void updateIndexesAfterUpdate(const std::string& table_name, const std::vector<std::string>& oldValues, const std::vector<std::string>& newValues, const RecordPointer& recordPtr);
+    RecordPointer get_last_inserted_record_pointer(const std::string& table_name);
+
+
+    // 获取最后插入记录的磁盘指针（实现中维护最后插入位置）
+    RecordPointer get_last_inserted_record_pointer();
+
+
 };
 
 // 工具函数
@@ -168,6 +181,7 @@ bool evaluate_single_expression(
     const std::unordered_map<std::string, std::string>& rec,
     const std::string& expression,
     bool use_prefix);
+
 
 std::map<std::string, int> read_index_map(const std::string& filename);
 bool file_exists(const std::string& filename);

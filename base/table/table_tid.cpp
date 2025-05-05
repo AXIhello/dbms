@@ -44,11 +44,8 @@ void Table::createIndex(const IndexBlock& index) {
     // 1. 查找字段
     std::string fieldName1(index.field[0]);  // 第一个索引字段名
     std::string fieldName2(index.field[1]);  // 第二个索引字段名，如果有的话
-
     FieldBlock* field1 = getFieldByName(fieldName1);
-    FieldBlock* field2 = nullptr;
-
-    // 如果索引字段是两个字段，查找第二个字段
+    FieldBlock* field2 = nullptr;  // 如果是两个字段索引，查找第二个字段
     if (index.field_num == 2) {
         field2 = getFieldByName(fieldName2);
     }
@@ -56,116 +53,49 @@ void Table::createIndex(const IndexBlock& index) {
     if (!field1) {
         throw std::runtime_error("字段 " + fieldName1 + " 不存在！");
     }
-
-    // 如果是两个字段索引，确保第二个字段存在
     if (index.field_num == 2 && !field2) {
         throw std::runtime_error("字段 " + fieldName2 + " 不存在！");
     }
 
-	IndexBlock* indexCopy = new IndexBlock(index);
-
     // 2. 创建 BTree 对象
+    IndexBlock* indexCopy = new IndexBlock(index);
     std::unique_ptr<BTree> btree = std::make_unique<BTree>(indexCopy);
 
-    // 3. 打开表记录文件，准备插入到 B 树
-    std::ifstream file(m_trd, std::ios::binary); // 假设数据文件是以二进制方式存储
-    if (!file.is_open()) {
-        throw std::runtime_error("无法打开表记录文件以插入BTree！");
-    }
-
-    // 遍历所有记录
-    size_t recordIndex = 0; // 用于记录当前记录的偏移量（或者在内存中的位置）
-    while (file.peek() != EOF) {
-        std::vector<std::string> record_values;
-        std::string field_value1;
+    // 3. 读取所有记录
+    auto records = Record::read_records(m_tableName); // m_name 是表名
+    for (const auto& [row_id, data] : records) {  // row_id 是 uint64_t 类型
+        auto it1 = data.find(fieldName1);
+        if (it1 == data.end()) continue;
+        std::string field_value1 = it1->second;
         std::string field_value2;
 
-        for (size_t i = 0; i < m_fields.size(); ++i) {
-            FieldBlock& current_field = m_fields[i];
-            bool is_null = false;
-            file.read(reinterpret_cast<char*>(&is_null), sizeof(bool));
-
-            if (is_null) {
-                record_values.push_back("NULL");
-                continue;
-            }
-
-            std::string value;
-            switch (current_field.type) {
-            case 1: { // INTEGER
-                int int_val;
-                file.read(reinterpret_cast<char*>(&int_val), sizeof(int));
-                value = std::to_string(int_val);
-                break;
-            }
-            case 2: { // DOUBLE
-                double double_val;
-                file.read(reinterpret_cast<char*>(&double_val), sizeof(double));
-                value = std::to_string(double_val);
-                break;
-            }
-            case 3: { // VARCHAR
-                char* buffer = new char[current_field.param];
-                file.read(buffer, current_field.param);
-                value = std::string(buffer, current_field.param);
-                delete[] buffer;
-                break;
-            }
-            case 4: { // BOOL
-                bool bool_val;
-                file.read(reinterpret_cast<char*>(&bool_val), sizeof(bool));
-                value = bool_val ? "TRUE" : "FALSE";
-                break;
-            }
-            case 5: { // DATETIME
-                std::time_t timestamp;
-                file.read(reinterpret_cast<char*>(&timestamp), sizeof(std::time_t));
-                value = std::to_string(timestamp); // 或者转化为日期字符串
-                break;
-            }
-            default:
-                throw std::runtime_error("未知字段类型");
-            }
-
-            record_values.push_back(value);
-
-            // 如果是我们要为其创建索引的字段，将字段值存储到相应变量
-            if (current_field.name == fieldName1) {
-                field_value1 = value;  // 存储第一个字段的值
-            }
-            else if (field2 && current_field.name == fieldName2) {
-                field_value2 = value;  // 存储第二个字段的值
-            }
+        if (index.field_num == 2) {
+            auto it2 = data.find(fieldName2);
+            if (it2 == data.end()) continue;
+            field_value2 = it2->second;
         }
 
-        // 创建记录指针（记录在文件中的位置）
-        RecordPointer recordPtr = { recordIndex, static_cast<int>(file.tellg()) }; // 使用文件位置作为记录指针
+        RecordPointer recordPtr;
+        recordPtr.row_id = row_id;  // 这里的 row_id 是 uint64_t 类型
 
-        // 根据字段数量，将字段值插入到 B 树中
         if (index.field_num == 1) {
-            // 如果只有一个字段索引，插入第一个字段的值
             btree->insert(field_value1, recordPtr);
         }
-        else if (index.field_num == 2) {
-            // 如果是两个字段索引，插入两个字段的组合值
-            btree->insert(field_value1 + "," + field_value2, recordPtr);  // 将两个字段的值组合为一个字符串插入
+        else {
+            btree->insert(field_value1 + "," + field_value2, recordPtr);
         }
-
-        recordIndex++; // 增加记录索引（偏移量）
-
     }
-    // 4.将 B 树对象添加到表的 B 树列表中
-	//m_btrees.push_back(std::move(btree));
 
-    // 5. 保存 B 树到文件
+    // 4. 保存 B 树到文件
     btree->saveBTreeIndex();
 
-    // 6. 输出索引创建成功的消息
-    std::cout << "为字段 " << fieldName1 << (index.field_num == 2 ? " 和 " + fieldName2 : "") << " 创建索引成功！" << std::endl;
+    // 5. 添加到表中的 B 树索引列表
+    m_btrees.push_back(std::move(btree));
 
-    // 关闭文件
-    file.close();
+    // 6. 提示信息
+    std::cout << "为字段 " << fieldName1 << (index.field_num == 2 ? " 和 " + fieldName2 : "") << " 创建索引成功！" << std::endl;
 }
+
 
 
 void Table::addIndex(const IndexBlock& index){
@@ -203,6 +133,14 @@ void Table::dropIndex(const std::string indexName) {
 
     // 删除索引
     m_indexes.erase(it);
+
+	// 删除 B 树对象
+	auto btreeIt = std::find_if(m_btrees.begin(), m_btrees.end(), [&](const std::unique_ptr<BTree>& btree) {
+		return btree->getIndexName() == indexName;
+		});
+	if (btreeIt != m_btrees.end()) {
+		m_btrees.erase(btreeIt);
+	}
 
     // 更新时间戳
     m_lastModifyTime = std::time(nullptr);

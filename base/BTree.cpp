@@ -142,7 +142,6 @@ void BTree::serializeNode(BTreeNode* node, std::vector<BTreeNode*>& nodes) const
     }
 }
 
-// 保存 B树索引到文件
 void BTree::saveBTreeIndex() const {
     std::ofstream out(m_index->index_file, std::ios::binary);
     if (!out.is_open()) {
@@ -162,8 +161,10 @@ void BTree::saveBTreeIndex() const {
             size_t len = fp.fieldValue.size();
             out.write(reinterpret_cast<const char*>(&len), sizeof(size_t));
             out.write(fp.fieldValue.data(), len);
-            out.write(reinterpret_cast<const char*>(&fp.recordPtr.blockId), sizeof(int));
-            out.write(reinterpret_cast<const char*>(&fp.recordPtr.offset), sizeof(int));
+
+            // 👇 写入 row_id
+            uint64_t row_id = fp.recordPtr.row_id;
+            out.write(reinterpret_cast<const char*>(&row_id), sizeof(uint64_t));
         }
         size_t childCount = node->children.size();
         out.write(reinterpret_cast<const char*>(&childCount), sizeof(size_t));
@@ -171,6 +172,7 @@ void BTree::saveBTreeIndex() const {
 
     out.close();
 }
+
 
 void BTree::loadBTreeIndex() {
     std::ifstream in(m_index->index_file, std::ios::binary);
@@ -196,10 +198,11 @@ void BTree::loadBTreeIndex() {
             in.read(reinterpret_cast<char*>(&len), sizeof(size_t));
             std::string field(len, '\0');
             in.read(&field[0], len);
-            int blockId, offset;
-            in.read(reinterpret_cast<char*>(&blockId), sizeof(int));
-            in.read(reinterpret_cast<char*>(&offset), sizeof(int));
-            nodes[i]->fields.push_back({ field, {blockId, offset} });
+
+            uint64_t row_id;
+            in.read(reinterpret_cast<char*>(&row_id), sizeof(uint64_t));
+            nodes[i]->fields.push_back({ field, { row_id } });
+
         }
 
         size_t childCount;
