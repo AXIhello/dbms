@@ -24,7 +24,7 @@ void Record::updateIndexesAfterInsert(const std::string& table_name) {
         if (it == columns.end()) continue;
 
         std::string fieldValue = values[it - columns.begin()];
-        BTree* btree = table->getBTreeByIndex(index);
+        BTree* btree = table->getBTreeByIndexName(index.name);
         if (btree) {
             btree->insert(fieldValue, recordPtr);
             btree->saveBTreeIndex();
