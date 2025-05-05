@@ -1,6 +1,7 @@
 // TransactionManager.cpp
 #include"TransactionManager.h"
 
+
 TransactionManager::TransactionManager() : active(false),autoCommit(true) {}
 
 TransactionManager& TransactionManager::instance() {
@@ -15,7 +16,7 @@ void TransactionManager::begin() {
 
 void TransactionManager::commit() {
     active = false;
-    undoStack.clear();  // 提交事务时清空UNDO栈
+    undoStack.clear();  // 提交事务时清空UNDO栈;TODO:将标识为1的数据真正删除后再清空？
 }
 
 void TransactionManager::rollback() {
@@ -24,9 +25,7 @@ void TransactionManager::rollback() {
         const UndoOperation& op = *it;
         switch (op.type) {
         case DmlType::INSERT:
-            // 回滚INSERT：删除对应行
-            // e.g. Table::deleteRow(op.tableName, op.rowId);
-            break;
+           
         case DmlType::DELETE:
             // 回滚DELETE：恢复行数据
             // e.g. Table::insertRow(op.tableName, op.oldValues);
@@ -41,10 +40,31 @@ void TransactionManager::rollback() {
     active = false;
 }
 
-void TransactionManager::addUndo(const UndoOperation& op) {
-    if (active) {
-        undoStack.push_back(op);  // 记录UNDO操作
-    }
+#include <unordered_map> // 添加此行以确保 std::unordered_map 被正确包含
+
+void TransactionManager::addUndo(DmlType type, const std::string& tableName, uint64_t rowId) {
+    if (!active) return;
+
+    UndoOperation op;
+    op.type = type;
+    op.tableName = tableName;
+    op.rowId = rowId;
+    // INSERT 不需要 oldValues
+
+    undoStack.push_back(op);
+}
+
+void TransactionManager::addUndo(DmlType type, const std::string& tableName, uint64_t rowId,
+    const std::vector<std::pair<std::string, std::string>>& oldValues) {
+    if (!active) return;
+
+    UndoOperation op;
+    op.type = type;
+    op.tableName = tableName;
+    op.rowId = rowId;
+    op.oldValues = oldValues;
+
+    undoStack.push_back(op);
 }
 
 bool TransactionManager::isActive() const {

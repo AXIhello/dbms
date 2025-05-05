@@ -6,6 +6,7 @@
 #include"base/BTree.h"
 #include "base/block/fieldBlock.h"
 #include "base/block/constraintBlock.h"
+#include"transaction/TransactionManager.h"
 #include <filesystem> 
 #include <fstream>
 #include <sstream>

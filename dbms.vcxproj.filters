@@ -138,13 +138,15 @@
     </ClCompile>
     <ClCompile Include="base\BTree_delete.cpp" />
     <ClCompile Include="transaction\TransactionManager.cpp" />
-    <ClCompile Include="parse\parse.cpp" />
     <ClCompile Include="base\BTree_find.cpp" />
     <ClCompile Include="base\record\record_update_index.cpp">
       <Filter>base\record</Filter>
     </ClCompile>
     <ClCompile Include="base\record\record_select_index.cpp">
       <Filter>base\record</Filter>
+    </ClCompile>
+    <ClCompile Include="parse\parse.cpp">
+      <Filter>manager\parse</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
@@ -176,7 +178,9 @@
       <Filter>base\table</Filter>
     </ClInclude>
     <ClInclude Include="transaction\TransactionManager.h" />
-    <ClInclude Include="parse\parse.h" />
+    <ClInclude Include="parse\parse.h">
+      <Filter>manager\parse</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <QtUic Include="login.ui">

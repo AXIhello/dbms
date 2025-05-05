@@ -47,12 +47,17 @@ int Record::update(const std::string& tableName, const std::string& setClause, c
     int updated = 0;
     std::vector<std::pair<uint64_t, std::unordered_map<std::string, std::string>>> all_records;
 
+    std::vector<std::pair<uint64_t, std::unordered_map<std::string, std::string>>> undo_records;  // 记录原始数据用于回滚
+
     while (infile.peek() != EOF) {
         std::unordered_map<std::string, std::string> record_data;
         uint64_t row_id = 0;
 
         if (read_record_from_file(infile, fields, record_data, row_id, /*skip_deleted=*/true)) {
             if (condition.empty() || matches_condition(record_data, false)) {
+				// 记录原始数据用于回滚
+				undo_records.emplace_back(row_id, record_data);
+
                 for (const auto& [col, val] : updates) {
                     record_data[col] = val;
                 }

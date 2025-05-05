@@ -288,31 +288,29 @@ void Parse::registerPatterns() {
 
 void Parse::execute(const QString& sql_qt) {
     // 1. 清理 SQL 字符串
-	qDebug() << "原始SQL:" << sql_qt;
+    qDebug() << "原始SQL:" << sql_qt;
     QString cleanedSQL = cleanSQL(sql_qt);  // 使用 cleanSQL 来处理输入
     std::string sql = cleanedSQL.toStdString();  // 转为 std::string 类型
 
-	// 2. 转换为大写（除引号内的内容不变）
+    // 2. 转换为大写（除引号内的内容不变）
     std::string upperSQL = toUpperPreserveQuoted(sql);
-	qDebug() << "清理后SQL:" << QString::fromStdString(upperSQL);
-    //直接判断事务；TODO：判断之后仍会进入正则匹配，此时尚未注册
-    if(upperSQL == "START TRANSACTION") {
+    qDebug() << "清理后SQL:" << QString::fromStdString(upperSQL);
+    qDebug() << "清理后SQL长度：" << upperSQL.size();  // 打印长度确认是否有异常字符
+
+    // 直接判断事务；TODO：判断之后仍会进入正则匹配，此时尚未注册
+    if (std::regex_search(upperSQL, std::regex("^START TRANSACTION;$"))) {
         TransactionManager::instance().begin();
         return;
     }
-    if (upperSQL == "COMMIT") {
+    if (std::regex_search(upperSQL, std::regex("^COMMIT;$"))) {
         TransactionManager::instance().commit();
         return;
     }
-    if (upperSQL == "ROLLBACK") {
+    if (std::regex_search(upperSQL, std::regex("^ROLLBACK;$"))) {
         TransactionManager::instance().rollback();
         return;
     }
 
-   /* if (upperSQL.find("USE DATABASE") != std::string::npos && TransactionManager::instance().isActive()) {
-        Output::printError(outputEdit, "事务正在进行.禁止切换数据库。");
-        return;
-    }*/
     // 3. 遍历所有正则模式并匹配
     for (const auto& p : patterns) {
         std::smatch match;
@@ -326,5 +324,4 @@ void Parse::execute(const QString& sql_qt) {
 
     // 如果没有找到匹配的模式，可以选择抛出异常或返回错误
     Output::printError(outputEdit, "SQL 语句格式错误或不支持的 SQL 类型");
-    
 }
