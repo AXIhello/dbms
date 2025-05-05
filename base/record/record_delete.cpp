@@ -38,9 +38,20 @@ int Record::delete_(const std::string& tableName, const std::string& condition) 
                 if (!check_references_before_delete(table_name, record_data)) {
                     throw std::runtime_error("删除操作违反引用完整性约束");
                 }
+
+                // 提取被删除记录的字段值（按列顺序）
+                std::vector<std::string> deletedValues;
+                for (const auto& field : fields) {
+                    deletedValues.push_back(record_data[field.name]);
+                }
+
+                // 更新索引（删除记录指针）
+                updateIndexesAfterDelete(table_name, deletedValues, RecordPointer{ row_id });
+
                 deleted_count++;
                 continue;
             }
+
             records_to_keep.emplace_back(row_id, record_data);
         }
     }
