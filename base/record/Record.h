@@ -80,7 +80,7 @@ public:
         const std::vector<std::string>& types, const std::vector<int>& params);
     bool validate_field_block(const std::string& value, const FieldBlock& field);
     // 表操作相关函数
-    static std::vector<std::unordered_map<std::string, std::string>> read_records(const std::string table_name);
+    static std::vector<std::pair<uint64_t, std::unordered_map<std::string, std::string>>>read_records(const std::string& table_name);
     void insert_record(const std::string& table_name, const std::string& cols, const std::string& vals);
 
     // 写入一个字段，包括 null_flag + 数据 + padding

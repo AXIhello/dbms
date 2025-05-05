@@ -464,8 +464,9 @@ bool Record::matches_condition(const std::unordered_map<std::string, std::string
 }
 
 // 从.trd文件读取记录
-std::vector<std::unordered_map<std::string, std::string>> Record::read_records(const std::string table_name) {
-    std::vector<std::unordered_map<std::string, std::string>> records;
+std::vector<std::pair<uint64_t, std::unordered_map<std::string, std::string>>>
+Record::read_records(const std::string& table_name) {
+    std::vector<std::pair<uint64_t, std::unordered_map<std::string, std::string>>> records;
     std::string trd_filename = dbManager::getInstance().get_current_database()->getDBPath() + "/" + table_name + ".trd";
     std::ifstream file(trd_filename, std::ios::binary);
 
@@ -478,13 +479,13 @@ std::vector<std::unordered_map<std::string, std::string>> Record::read_records(c
         uint64_t row_id = 0;
 
         if (read_record_from_file(file, fields, record_data, row_id, /*skip_deleted=*/true)) {
-            record_data["ROW_ID"] = std::to_string(row_id);  // 可选：存入 ROW_ID
-            records.push_back(record_data);
+            records.emplace_back(row_id, std::move(record_data));
         }
     }
 
     return records;
 }
+
 
 
 //只在delete和update中使用
@@ -578,9 +579,6 @@ bool Record::read_record_from_file(std::ifstream& file, const std::vector<FieldB
 
     return true;
 }
-
-
-
 
 size_t Record::get_field_data_size(int type, int param) {
     switch (type) {
