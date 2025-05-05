@@ -14,7 +14,7 @@
 using namespace std;
 
 
-std::string Utf8ToGbk(const std::string& utf8)
+static std::string Utf8ToGbk(const std::string& utf8)
 {
     int len = MultiByteToWideChar(CP_UTF8, 0, utf8.c_str(), -1, NULL, 0);
     if (len == 0) return "";
@@ -32,7 +32,7 @@ std::string Utf8ToGbk(const std::string& utf8)
     return gbk;
 }
 
-void RunCliMode()
+static void RunCliMode()
 {
     SetConsoleOutputCP(936);
     SetConsoleCP(936);
@@ -85,11 +85,9 @@ int main(int argc, char *argv[])
         RunCliMode();
         return 0;
     }
-   
-    
-    dbManager& db = dbManager::getInstance();/*
-    dbManager& db = dbManager::getInstance();/*
+    QApplication a(argc, argv);
+    user::createSysDBA();
     showLogin();
-    
+    return a.exec();
   
 }

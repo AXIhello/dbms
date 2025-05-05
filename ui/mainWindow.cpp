@@ -238,6 +238,29 @@ void MainWindow::refreshTree() {
 }
 
 void MainWindow::onTreeItemClicked(QTreeWidgetItem* item, int column) {
+    //如果用户还没点“运行”就点击了数据库或表节点，那就自动把最后一条 SQL>> 之后的 SQL 提交执行，再执行点击触发的系统 SQL
+    QString fullText = ui->inputEdit->toPlainText();
+    int lastPromptIndex = fullText.lastIndexOf("SQL>>");
+
+    if (lastPromptIndex != -1) {
+        QString userInput = fullText.mid(lastPromptIndex + 6).trimmed(); // 6 是 "SQL>>" + 空格的长度
+        if (!userInput.isEmpty()) {
+            QStringList sqlStatements = userInput.split(";", Qt::SkipEmptyParts);
+            Parse parser(ui->outputEdit, this);
+            for (QString statement : sqlStatements) {
+                QString trimmed = statement.trimmed();
+                if (!trimmed.isEmpty()) {
+                    if (!trimmed.endsWith(";"))
+                        trimmed += ";";
+                    parser.execute(trimmed);
+                }
+            }
+            // 自动追加新的提示符
+            fullText = fullText.trimmed() + "\nSQL>> ";
+            ui->inputEdit->setPlainText(fullText);
+        }
+    }
+
     QTreeWidgetItem* parent = item->parent();
 
     if (!parent) {
