@@ -103,6 +103,7 @@ public:
     // 增加记录计数（正数为增加，负数为减少）
     void incrementRecordCount(int delta) {
         m_recordCount += delta;
+        saveMetadataBinary();
     }
 	// 获取记录计数
 	int getRecordCount() const {
@@ -122,6 +123,17 @@ public:
     const std::vector<IndexBlock>& getIndexes() const {
         return m_indexes;
     }
+
+	//获取索引对应b树
+	BTree* getBTreeByIndexName(const std::string& indexName) {
+		for (const auto& btree : m_btrees) {
+			if (btree->getIndexName() == indexName) {
+				return btree.get();
+			}
+		}
+		return nullptr;
+	}
+
 
     // 判断表是否存在
     bool isTableExist() const;
@@ -149,6 +161,9 @@ private:
     std::vector<ConstraintBlock> m_constraints;     // 存储表的完整性约束信息
     std::vector<IndexBlock> m_indexes;              // 存储表的索引信息
     std::vector<std::vector<std::string>> m_records; // 表格内容存储
+	std::vector<std::unique_ptr<BTree>> m_btrees; // 存储 B 树对象
+
+
 
     // 辅助方法：将时间戳转为字符串格式
     std::string timeToString(std::time_t time) const;
