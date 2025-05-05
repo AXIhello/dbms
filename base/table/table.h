@@ -160,9 +160,12 @@ private:
     std::vector<FieldBlock> m_fields;               // 存储表的字段信息
     std::vector<ConstraintBlock> m_constraints;     // 存储表的完整性约束信息
     std::vector<IndexBlock> m_indexes;              // 存储表的索引信息
-    
+
 
     std::vector<std::vector<std::string>> m_records; // 表格内容存储
+    std::vector<std::unique_ptr<BTree>> m_btrees; // 存储 B 树对象
+
+
 
     // 辅助方法：将时间戳转为字符串格式
     std::string timeToString(std::time_t time) const;
