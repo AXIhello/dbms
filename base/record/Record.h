@@ -26,8 +26,8 @@ struct JoinInfo {
 
 class Record {
 private:
-    static bool read_single_record(std::ifstream& file, const std::vector<FieldBlock>& fields,
-        std::unordered_map<std::string, std::string>& record_data);
+    static bool read_record_from_file(std::ifstream& file, const std::vector<FieldBlock>& fields,
+        std::unordered_map<std::string, std::string>& record_data, uint64_t& row_id, bool skip_deleted);
     std::string table_name;
     std::vector<std::string> columns;
     std::vector<std::string> values;
