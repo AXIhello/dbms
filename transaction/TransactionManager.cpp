@@ -25,20 +25,25 @@ void TransactionManager::rollback() {
         const UndoOperation& op = *it;
         switch (op.type) {
         case DmlType::INSERT:
-            // 读取所有记录
         {
             Record record;
             record.delete_by_rowid(op.tableName, op.rowId);
-            
+            break;
         }
+        
         case DmlType::DELETE:
-            
+        {
 
+            Record record;
+			record.rollback_delete_by_rowid(op.tableName, op.rowId);
             break;
+        }
         case DmlType::UPDATE:
-			Record record;
-			record.update_by_rowid(op.tableName, { { op.rowId, op.oldValues } });
+        {
+            Record record;
+            record.update_by_rowid(op.tableName, { { op.rowId, op.oldValues } });
             break;
+        }
         }
     }
     undoStack.clear();  // 完成回滚，清空UNDO栈
@@ -54,7 +59,7 @@ void TransactionManager::addUndo(DmlType type, const std::string& tableName, uin
     op.type = type;
     op.tableName = tableName;
     op.rowId = rowId;
-    // INSERT 不需要 oldValues
+
 
     undoStack.push_back(op);
 }
