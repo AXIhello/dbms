@@ -190,4 +190,7 @@
   <ItemGroup>
     <QtRcc Include="resource\Resource.qrc" />
   </ItemGroup>
+  <ItemGroup>
+    <None Include="users.dat" />
+  </ItemGroup>
 </Project>
