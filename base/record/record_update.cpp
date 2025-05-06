@@ -56,17 +56,18 @@ int Record::update(const std::string& tableName, const std::string& setClause, c
         if (read_record_from_file(infile, fields, record_data, row_id, /*skip_deleted=*/true)) {
             if (condition.empty() || matches_condition(record_data, false)) {
                 //事务处理
-                if (TransactionManager::instance().isActive()) {
-                    try {
-                        std::vector<std::pair<std::string, std::string>> oldValuesForUndo;
-                        for (const auto& [col, _] : updates) {
-                            oldValuesForUndo.emplace_back(col, record_data[col]);
+                    if (TransactionManager::instance().isActive()) {
+                        try {
+                            std::vector<std::pair<std::string, std::string>> oldValuesForUndo;
+                            for (const auto& [col, _] : updates) {
+                                oldValuesForUndo.emplace_back(col, record_data[col]);
+                            }
+                            TransactionManager::instance().addUndo(DmlType::UPDATE, table_name, row_id, oldValuesForUndo);
                         }
-                        TransactionManager::instance().addUndo(DmlType::UPDATE, table_name, row_id, oldValuesForUndo);
-                    }
-                    catch (const std::exception& e) {
-                        std::cerr << "事务操作失败: " << e.what() << std::endl;
-                        throw;
+                        catch (const std::exception& e) {
+                            std::cerr << "事务操作失败: " << e.what() << std::endl;
+                            throw;
+                        }
                     }
 
 
@@ -138,7 +139,7 @@ int Record::update(const std::string& tableName, const std::string& setClause, c
         dbManager::getInstance().get_current_database()->getTable(table_name)->setLastModifyTime(std::time(nullptr));
         return updated;
     }
-}
+
 
 void Record::update_by_rowid(const std::string& table_name, const std::vector<std::pair<uint64_t, std::vector<std::pair<std::string, std::string>>>>& undo_list) {
     // 读取现有数据
