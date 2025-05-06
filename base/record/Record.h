@@ -97,6 +97,7 @@ public:
         const std::string& having,
         const JoinInfo* join_info=nullptr);
     int update(const std::string& tableName, const std::string& setClause, const std::string& condition);
+    void update_by_rowid(const std::string& table_name, const std::vector<std::pair<uint64_t, std::vector<std::pair<std::string, std::string>>>>& undo_list);
     int delete_(const std::string& tableName, const std::string& condition);
     int delete_by_rowid(const std::string& tableName, uint64_t rowID);
     // 辅助函数

@@ -27,25 +27,26 @@ void TransactionManager::rollback() {
         case DmlType::INSERT:
             // 读取所有记录
         {
-            auto records = Record::read_records(op.tableName);
-            
-
-            for (const auto& [rowID, recordData] : records) {
-                if (rowID == op.rowId) {
-                    // 找到要删除的记录
-                    Record record;
-                    record.delete_by_rowid(op.tableName, op.rowId);
-                    break;
-                }
-            }
+            Record record;
+            record.delete_by_rowid(op.tableName, op.rowId);
+            //auto records = Record::read_records(op.tableName);
+            //
+            //for (const auto& [rowID, recordData] : records) {
+            //    if (rowID == op.rowId) {
+            //        // 找到要删除的记录
+            //        Record record;
+            //        record.delete_by_rowid(op.tableName, op.rowId);
+            //        break;
+            //    }
+            //}
         }
         case DmlType::DELETE:
             // 回滚DELETE：恢复行数据
             // e.g. Table::insertRow(op.tableName, op.oldValues);
             break;
         case DmlType::UPDATE:
-            // 回滚UPDATE：恢复旧值
-            // e.g. Table::updateRow(op.tableName, op.rowId, op.oldValues);
+			Record record;
+			record.update_by_rowid(op.tableName, { { op.rowId, op.oldValues } });
             break;
         }
     }

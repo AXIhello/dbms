@@ -55,71 +55,130 @@ int Record::update(const std::string& tableName, const std::string& setClause, c
 
         if (read_record_from_file(infile, fields, record_data, row_id, /*skip_deleted=*/true)) {
             if (condition.empty() || matches_condition(record_data, false)) {
-                // 记录旧值
-                std::vector<std::string> oldValues, newValues;
-                for (const auto& [col, _] : updates) {
-                    oldValues.push_back(record_data[col]);
+                //事务处理
+                if (TransactionManager::instance().isActive()) {
+                    try {
+                        std::vector<std::pair<std::string, std::string>> oldValuesForUndo;
+                        for (const auto& [col, _] : updates) {
+                            oldValuesForUndo.emplace_back(col, record_data[col]);
+                        }
+                        TransactionManager::instance().addUndo(DmlType::UPDATE, table_name, row_id, oldValuesForUndo);
+                    }
+                    catch (const std::exception& e) {
+                        std::cerr << "事务操作失败: " << e.what() << std::endl;
+                        throw;
+                    }
+
+
+                    // 记录旧值
+                    std::vector<std::string> oldValues, newValues;
+                    for (const auto& [col, _] : updates) {
+                        oldValues.push_back(record_data[col]);
+                    }
+
+                    // 更新记录
+                    // 记录原始数据用于回滚
+                    undo_records.emplace_back(row_id, record_data);
+
+                    for (const auto& [col, val] : updates) {
+                        record_data[col] = val;
+                        newValues.push_back(val);
+                    }
+
+                    // 检查约束
+                    std::vector<std::string> cols, vals;
+                    for (const auto& field : fields) {
+                        std::string field_name(field.name);
+                        cols.push_back(field_name);
+                        vals.push_back(record_data[field_name]);
+                    }
+                    std::vector<ConstraintBlock> constraints = read_constraints(table_name);
+                    if (!check_constraints(cols, vals, constraints)) {
+                        throw std::runtime_error("更新数据违反表约束");
+                    }
+
+                    // 更新索引（注意此时 row_id 是已读出的）
+                    updateIndexesAfterUpdate(table_name, oldValues, newValues, RecordPointer{ row_id });
+
+                    updated++;
                 }
 
-                // 更新记录
-				// 记录原始数据用于回滚
-				undo_records.emplace_back(row_id, record_data);
 
-                for (const auto& [col, val] : updates) {
-                    record_data[col] = val;
-                    newValues.push_back(val);
-                }
-
-                // 检查约束
-                std::vector<std::string> cols, vals;
-                for (const auto& field : fields) {
-                    std::string field_name(field.name);
-                    cols.push_back(field_name);
-                    vals.push_back(record_data[field_name]);
-                }
-                std::vector<ConstraintBlock> constraints = read_constraints(table_name);
-                if (!check_constraints(cols, vals, constraints)) {
-                    throw std::runtime_error("更新数据违反表约束");
-                }
-
-                // 更新索引（注意此时 row_id 是已读出的）
-                updateIndexesAfterUpdate(table_name, oldValues, newValues, RecordPointer{ row_id });
-
-                updated++;
+                // 保留原 row_id
+                all_records.emplace_back(row_id, record_data);
             }
+        }
+        infile.close();
 
+        // 使用稳定排序，保持相同 row_id 的记录按原始顺序排列
+        std::stable_sort(all_records.begin(), all_records.end(), [](const auto& a, const auto& b) {
+            return a.first < b.first;
+            });
 
-            // 保留原 row_id
-            all_records.emplace_back(row_id, record_data);
+        std::ofstream outfile(trd_path, std::ios::binary | std::ios::trunc);
+        if (!outfile) throw std::runtime_error("无法打开数据文件进行写入。");
+
+        for (const auto& [row_id, record] : all_records) {
+            // 先写入 row_id
+            outfile.write(reinterpret_cast<const char*>(&row_id), sizeof(uint64_t));
+
+            // 再写入 delete_flag
+            char delete_flag = 0;
+            outfile.write(&delete_flag, sizeof(char));
+
+            // 最后写入字段值
+            for (const auto& field : fields) {
+                std::string field_name(field.name);
+                write_field(outfile, field, record.at(field_name));
+            }
+        }
+        outfile.close();
+
+        // 更新最后修改时间（注意：update 不改记录数）
+        dbManager::getInstance().get_current_database()->getTable(table_name)->setLastModifyTime(std::time(nullptr));
+        return updated;
+    }
+}
+
+void Record::update_by_rowid(const std::string& table_name, const std::vector<std::pair<uint64_t, std::vector<std::pair<std::string, std::string>>>>& undo_list) {
+    // 读取现有数据
+    auto records = read_records(table_name);
+
+    // 把undo_list快速变成map便于查找
+    std::unordered_map<uint64_t, std::unordered_map<std::string, std::string>> undo_map;
+    for (const auto& [row_id, cols] : undo_list) {
+        for (const auto& [col, val] : cols) {
+            undo_map[row_id][col] = val;
         }
     }
-    infile.close();
 
-    // 使用稳定排序，保持相同 row_id 的记录按原始顺序排列
-    std::stable_sort(all_records.begin(), all_records.end(), [](const auto& a, const auto& b) {
-        return a.first < b.first;
-        });
+    // 逐个覆盖原记录
+    for (auto& [row_id, record_data] : records) {
+        if (undo_map.count(row_id)) {
+            for (const auto& [col, val] : undo_map[row_id]) {
+                record_data[col] = val;
+            }
+        }
+    }
 
+    // 覆盖写回.trd文件
+    std::string trd_path = dbManager::getInstance().get_current_database()->getDBPath() + "/" + table_name + ".trd";
     std::ofstream outfile(trd_path, std::ios::binary | std::ios::trunc);
     if (!outfile) throw std::runtime_error("无法打开数据文件进行写入。");
 
-    for (const auto& [row_id, record] : all_records) {
-        // 先写入 row_id
-        outfile.write(reinterpret_cast<const char*>(&row_id), sizeof(uint64_t));
+    std::vector<FieldBlock> fields = read_field_blocks(table_name);
 
-        // 再写入 delete_flag
+    for (const auto& [row_id, record] : records) {
+        outfile.write(reinterpret_cast<const char*>(&row_id), sizeof(uint64_t));
         char delete_flag = 0;
         outfile.write(&delete_flag, sizeof(char));
 
-        // 最后写入字段值
         for (const auto& field : fields) {
             std::string field_name(field.name);
             write_field(outfile, field, record.at(field_name));
         }
     }
     outfile.close();
-
-    // 更新最后修改时间（注意：update 不改记录数）
-    dbManager::getInstance().get_current_database()->getTable(table_name)->setLastModifyTime(std::time(nullptr));
-    return updated;
 }
+
+
