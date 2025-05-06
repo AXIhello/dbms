@@ -38,7 +38,6 @@ void Table::updateRecord_add(FieldBlock& new_field) {
     }
 
     auto records = Record::read_records(m_tableName);
-    print_records(records);
 
     std::string default_value = "NULL";
     for (const auto& constraint : m_constraints) {
@@ -50,8 +49,7 @@ void Table::updateRecord_add(FieldBlock& new_field) {
 
     // 添加新字段到每条记录
     for (auto& [row_id, record] : records) {
-        auto result = record.insert({ new_field.name, default_value });
-        if (!result.second) {
+        if (!record.insert({ new_field.name, default_value }).second) {
             throw std::runtime_error("字段 '" + std::string(new_field.name) + "' 已存在，不能添加。");
         }
     }
@@ -67,6 +65,10 @@ void Table::updateRecord_add(FieldBlock& new_field) {
 
     size_t written_count = 0;
     for (const auto& [row_id, record] : records) {
+        // 写入 row_id
+        file.write(reinterpret_cast<const char*>(&row_id), sizeof(uint64_t));
+
+        // 写入 delete_flag
         char delete_flag = 0;
         file.write(&delete_flag, sizeof(char));
 
@@ -112,13 +114,17 @@ void Table::updateRecord_delete(const std::string& fieldName) {
     }
 
     for (const auto& [row_id, record] : full_records) {
+        // 写入 row_id
+        file.write(reinterpret_cast<const char*>(&row_id), sizeof(uint64_t));
+
+        // 写入 delete_flag
         char delete_flag = 0;
         file.write(&delete_flag, sizeof(char));
 
         for (const auto& fieldBlock : m_fields) {
             auto it = record.find(fieldBlock.name);
             if (it == record.end()) {
-                throw std::runtime_error("字段 '" + fieldName + "' 缺失对应值。");
+                throw std::runtime_error("字段 '" + std::string(fieldBlock.name) + "' 缺失对应值。");
             }
             Record::write_field(file, fieldBlock, it->second);
         }
