@@ -300,6 +300,7 @@ void Parse::execute(const QString& sql_qt) {
     // 直接判断事务；TODO：判断之后仍会进入正则匹配，此时尚未注册
     if (std::regex_search(upperSQL, std::regex("^START TRANSACTION;$"))) {
         TransactionManager::instance().begin();
+		Output::printMessage(outputEdit, "事务开始");
         return;
     }
     if (std::regex_search(upperSQL, std::regex("^COMMIT;$"))) {

@@ -6,7 +6,7 @@
 #include <unordered_map>
 #include <stdexcept>
 #include"base/record/Record.h"
-
+#include"manager/dbManager.h"
 
 enum class DmlType {
     INSERT,

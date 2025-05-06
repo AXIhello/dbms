@@ -97,12 +97,14 @@ public:
         const std::string& having,
         const JoinInfo* join_info=nullptr);
     int update(const std::string& tableName, const std::string& setClause, const std::string& condition);
-    void update_by_rowid(const std::string& table_name, const std::vector<std::pair<uint64_t, std::vector<std::pair<std::string, std::string>>>>& undo_list);
+
     int delete_(const std::string& tableName, const std::string& condition);
-    int delete_by_rowid(const std::string& table_name, uint64_t rowID);
+    //int delete_by_rowid(const std::string& table_name, uint64_t rowID);
     void delete_by_flag(const std::string& table_name);
 
+    void rollback_update_by_rowid(const std::string& table_name, const std::vector<std::pair<uint64_t, std::vector<std::pair<std::string, std::string>>>>& undo_list);
     int rollback_delete_by_rowid(const std::string& tableName, uint64_t rowId);
+    int rollback_insert_by_rowid(const std::string& tableName, uint64_t rowId);
     // 辅助函数
     static bool table_exists(const std::string& table_name);
     static std::unordered_map<std::string, std::string> read_table_structure_static(const std::string& table_name);
