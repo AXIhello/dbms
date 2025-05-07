@@ -8,6 +8,7 @@
 #include"ui/output.h"
 #include "parse/parse.h" 
 #include "manager/dbManager.h"
+#include "AddDatabaseDialog.h"
 #include <QGroupBox>
 
 MainWindow::MainWindow(QWidget* parent)
@@ -156,10 +157,10 @@ void MainWindow::onRunButtonClicked() {
         return;
     }
 
-    if (sql.isEmpty()) {
-        QMessageBox::warning(this, "警告", "SQL 语句不能为空！");
-        return;
-    }
+    //if (sql.isEmpty()) {
+      //  QMessageBox::warning(this, "警告", "SQL 语句不能为空！");
+      //  return;
+    //}
 
     // 分割多个 SQL 语句，以分号为分隔符
     QStringList sqlStatements = sql.split(";", Qt::SkipEmptyParts); // 按分号分割，跳过空部分
@@ -306,10 +307,31 @@ void MainWindow::onTreeWidgetContextMenu(const QPoint& pos) {
 
     if (!item) {
         // === 空白区域右键 ===
-        menu.addAction("添加数据库", [=]() {
+        //menu.addAction("添加数据库", [=]() {
             // 将来弹出你自定义的建库窗口
-            QMessageBox::information(this, "添加数据库", "这里将来会弹出建库窗口");
+            //QMessageBox::information(this, "添加数据库", "这里将来会弹出建库窗口");
+            //});
+
+        menu.addAction("添加数据库", [=]() {
+            AddDatabaseDialog dlg(this);
+            if (dlg.exec() == QDialog::Accepted) {
+                QString dbName = dlg.getDatabaseName();
+                if (!dbName.isEmpty()) {
+                    QString sql = "CREATE DATABASE " + dbName + ";\n\n";
+                    QString currentText = ui->inputEdit->toPlainText();
+                    ui->inputEdit->setPlainText(currentText + sql + "SQL>> ");
+
+                    try {
+                        Parse parser(ui->outputEdit, this);
+                        parser.execute(sql);
+                    }
+                    catch (const std::exception& e) {
+                        Output::printError(ui->outputEdit, QString("创建数据库失败: ") + e.what());
+                    }
+                }
+            }
             });
+
 
         menu.addAction("添加用户", [=]() {
             // 将来弹出你自定义的建用户窗口

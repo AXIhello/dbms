@@ -149,6 +149,7 @@
       <Filter>manager\parse</Filter>
     </ClCompile>
     <ClCompile Include="base\record\record_restore.cpp" />
+    <ClCompile Include="AddDatabaseDialog.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="debug.h">
@@ -193,5 +194,8 @@
   </ItemGroup>
   <ItemGroup>
     <None Include="users.dat" />
+  </ItemGroup>
+  <ItemGroup>
+    <QtMoc Include="AddDatabaseDialog.h" />
   </ItemGroup>
 </Project>
