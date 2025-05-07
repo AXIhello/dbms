@@ -305,10 +305,12 @@ void Parse::execute(const QString& sql_qt) {
     }
     if (std::regex_search(upperSQL, std::regex("^COMMIT;$"))) {
         TransactionManager::instance().commit();
+		//output成功提交了几条记录
         return;
     }
     if (std::regex_search(upperSQL, std::regex("^ROLLBACK;$"))) {
         TransactionManager::instance().rollback();
+        //output成功回滚了几条记录
         return;
     }
 

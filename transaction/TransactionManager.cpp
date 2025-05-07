@@ -15,7 +15,15 @@ void TransactionManager::begin() {
 }
 
 void TransactionManager::commit() {
+    std::unordered_set<std::string> affectedTables;
+    for (const auto& op : undoStack) {
+        affectedTables.insert(op.tableName);
+    }
+
     Record record;
+    for (const auto& table_name : affectedTables) {
+        record.delete_by_flag(table_name);  // 删除 delete_flag == 1 的记录
+    }
 	
 
     active = false;
