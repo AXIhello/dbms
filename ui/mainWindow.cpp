@@ -307,11 +307,7 @@ void MainWindow::onTreeWidgetContextMenu(const QPoint& pos) {
 
     if (!item) {
         // === 空白区域右键 ===
-        //menu.addAction("添加数据库", [=]() {
-            // 将来弹出你自定义的建库窗口
-            //QMessageBox::information(this, "添加数据库", "这里将来会弹出建库窗口");
-            //});
-
+    
         menu.addAction("添加数据库", [=]() {
             AddDatabaseDialog dlg(this);
             if (dlg.exec() == QDialog::Accepted) {
