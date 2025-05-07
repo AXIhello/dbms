@@ -390,15 +390,51 @@ void Parse::execute(const QString& sql_qt) {
 
     // 直接判断事务；TODO：判断之后仍会进入正则匹配，此时尚未注册
     if (std::regex_search(upperSQL, std::regex("^START TRANSACTION;$"))) {
+        if (TransactionManager::instance().isActive())
+        {
+            Output::printError(outputEdit, QString("已有事务正在进行中。"));
+            return;
+        }
         TransactionManager::instance().begin();
+		Output::printMessage(outputEdit, "事务开始");
         return;
     }
     if (std::regex_search(upperSQL, std::regex("^COMMIT;$"))) {
+        if (!TransactionManager::instance().isActive())
+        {
+            Output::printError(outputEdit, QString("当前没有活动的事务，无法提交"));
+            return;
+        }
         TransactionManager::instance().commit();
+		Output::printMessage(outputEdit, "事务结束。成功提交。");
         return;
     }
     if (std::regex_search(upperSQL, std::regex("^ROLLBACK;$"))) {
-        TransactionManager::instance().rollback();
+        if (!TransactionManager::instance().isActive())
+        {
+            Output::printError(outputEdit, QString("当前没有活动的事务，无法回滚。"));
+            return;
+        }
+        int rollback_count = TransactionManager::instance().rollback();
+        // 使用 Output 类输出成功回滚的记录数
+        Output::printMessage(outputEdit, QString("事务结束。成功回滚了 %1 条记录。").arg(rollback_count));
+        return;
+    }
+    // 关闭自动提交
+    if (std::regex_search(upperSQL, std::regex(R"(^SET\s+AUTOCOMMIT\s*=\s*0\s*;$)", std::regex::icase))) {
+        TransactionManager::instance().setAutoCommit(false);
+        Output::printMessage(outputEdit, "自动提交已关闭");
+        return;
+    }
+    // 开启自动提交
+    if (std::regex_search(upperSQL, std::regex(R"(^SET\s+AUTOCOMMIT\s*=\s*1\s*;$)", std::regex::icase))) {
+        if (TransactionManager::instance().isActive())
+        {
+            Output::printError(outputEdit, "正处在事务中，自动提交默认关闭");
+            return;
+        }
+        TransactionManager::instance().setAutoCommit(true);  // 注意这里也应该是 true
+        Output::printMessage(outputEdit, "自动提交已开启");
         return;
     }
 
