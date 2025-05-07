@@ -10,7 +10,8 @@
 
 namespace fs = std::filesystem;
 std::string dbManager::basePath = std::filesystem::current_path().string() + "/DBMS_ROOT";
-std::string Utf8ToGbk1(const std::string& utf8)
+
+/*std::string Utf8ToGbk1(const std::string& utf8)
 {
     int len = MultiByteToWideChar(CP_UTF8, 0, utf8.c_str(), -1, NULL, 0);
     if (len == 0) return "";
@@ -27,6 +28,9 @@ std::string Utf8ToGbk1(const std::string& utf8)
     if (!gbk.empty() && gbk.back() == '\0') gbk.pop_back();
     return gbk;
 }
+*/
+
+
 // 构造函数
 dbManager::dbManager() {
 
@@ -170,7 +174,8 @@ void dbManager::load_system_db_info() {
     while (sysDBFile.read(reinterpret_cast<char*>(&dbInfo), sizeof(DatabaseBlock))) {
         std::string dbName(dbInfo.dbName, strnlen(dbInfo.dbName, sizeof(dbInfo.dbName)));
         std::string dbPath(dbInfo.filepath, strnlen(dbInfo.filepath, sizeof(dbInfo.filepath)));
-        std::string typeStr = dbInfo.type ? Utf8ToGbk1("用户数据库") : Utf8ToGbk1("系统数据库");
+        //std::string typeStr = dbInfo.type ? Utf8ToGbk1("用户数据库") : Utf8ToGbk1("系统数据库");
+        std::string typeStr = dbInfo.type ? ("用户数据库") : ("系统数据库");
 
         // 确保 crtime 有效
         std::time_t t = dbInfo.crtime;
@@ -191,11 +196,10 @@ void dbManager::load_system_db_info() {
     }
 
     sysDBFile.close();
-//从这里的上面--------------------------------------------------------
-
 
     if (count == 0) {
-        std::cout << Utf8ToGbk1("系统数据库文件中没有任何数据库记录。") << std::endl;
+        //std::cout << Utf8ToGbk1("系统数据库文件中没有任何数据库记录。") << std::endl;
+        std::cout << "系统数据库文件中没有任何数据库记录。" << std::endl;
     }
 }
 // 创建数据库
@@ -384,7 +388,7 @@ bool dbManager::database_exists_in_db(const std::string& db_name) {
     DatabaseBlock block;
     while (file.read(reinterpret_cast<char*>(&block), sizeof(DatabaseBlock))) {
         std::string name(block.dbName, strnlen(block.dbName, sizeof(block.dbName)));
-        std::cout << "比对: [" << name << "] <-> [" << db_name << "]" << std::endl;
+        //std::cout << "比对: [" << name << "] <-> [" << db_name << "]" << std::endl;
         if (name == db_name) {
             file.close();
             return true;

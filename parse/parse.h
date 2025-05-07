@@ -33,7 +33,6 @@ public:
     std::string executeSQL(const std::string& sql);
     void execute(const QString& sql);
     
-
     //util
     static std::string trim(const std::string& s);
     
