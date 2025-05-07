@@ -7,6 +7,8 @@
 #include "base/block/fieldBlock.h"
 #include "base/block/constraintBlock.h"
 #include"transaction/TransactionManager.h"
+
+#include "base/block/tableBlock.h"
 #include <filesystem> 
 #include <fstream>
 #include <sstream>
@@ -113,31 +115,100 @@ public:
 
 	//索引相关函数
 
-    // 判断是否是可使用索引的条件
-    static bool can_use_index(const std::string& condition, std::string& field_out, std::string& value_out, std::string& op_out);
+    // 运算符类型枚举
+    enum class OperatorType {
+        EQUALS,           // =
+        NOT_EQUALS,       // !=
+        GREATER_THAN,     // >
+        LESS_THAN,        // <
+        GREATER_EQUAL,    // >=
+        LESS_EQUAL,       // <=
+        LIKE,             // LIKE
+        NOT_LIKE,         // NOT LIKE
+        IN,               // IN
+        NOT_IN,           // NOT IN
+        BETWEEN,          // BETWEEN
+        IS_NULL,          // IS NULL
+        IS_NOT_NULL,      // IS NOT NULL
+        UNKNOWN           // 其他
+    };
 
-    // 尝试通过索引查找记录
-    static std::vector<std::unordered_map<std::string, std::string>> try_index_select(
+    // 索引条件结构
+    struct IndexCondition {
+        std::string field_name;      // 字段名
+        OperatorType op_type;        // 操作符类型
+        std::string value;           // 操作值(用于=, >, <, >=, <=, LIKE等)
+        std::string low_value;       // 范围下限(用于BETWEEN)
+        std::string high_value;      // 范围上限(用于BETWEEN)
+        std::vector<std::string> in_values; // IN列表值
+    };
+
+private:
+    // 索引相关辅助方法
+    static void parse_conditions_by_table(
+        const std::string& condition,
+        const std::vector<std::string>& tables,
+        std::unordered_map<std::string, std::string>& table_conditions,
+        std::string& join_condition);
+
+    static void extract_index_conditions(
         const std::string& table_name,
-        const std::string& condition
-    );
+        const std::string& condition,
+        std::vector<IndexCondition>& index_conditions);
 
-    // 从索引中读取记录
-    static std::vector<std::pair<uint64_t, std::unordered_map<std::string, std::string>>>  read_by_index(
-        const std::string& table_name,
-        const std::string& column,
-        const std::string& op,
-        const std::string& value
-    );
+    static std::pair<uint64_t, std::unordered_map<std::string, std::string>>
+        fetch_record_by_pointer(const std::string& table_name, uint64_t row_id);
 
-    // 评估回退条件（无法用索引的表达式）
-    static bool evaluate_fallback_conditions(
-        const std::unordered_map<std::string, std::string>& rec,
-        bool use_prefix,
-        const std::vector<size_t>& fallback_indices,
-        const std::vector<std::string>& expressions,
-        const std::vector<std::string>& logic_ops
-    );
+    BTree* get_index_for_field(const std::string& table_name, const std::string& field_name);
+
+    bool get_btree_for_field(const std::string& table_name, const std::string& field_name,
+        BTree*& btree, const IndexBlock*& index_block);
+
+    // 条件解析辅助方法
+    static void split_condition_by_and(const std::string& condition, std::vector<std::string>& parts);
+
+    static std::string extract_field_name_from_condition(const std::string& condition);
+
+    static bool table_has_field(const std::string& table_name, const std::string& field_name);
+
+    static void remove_table_prefix(std::string& field_name);
+
+    static std::string trim(const std::string& str);
+
+    // 条件匹配方法
+    static bool match_equals_condition(const std::string& condition, std::string& field_name, std::string& value);
+
+    static bool match_greater_than_condition(const std::string& condition, std::string& field_name, std::string& value);
+
+    static bool match_greater_equal_condition(const std::string& condition, std::string& field_name, std::string& value);
+
+    static bool match_less_than_condition(const std::string& condition, std::string& field_name, std::string& value);
+
+    static bool match_less_equal_condition(const std::string& condition, std::string& field_name, std::string& value);
+
+    static bool match_between_condition(const std::string& condition, std::string& field_name,
+        std::string& low_value, std::string& high_value);
+
+    static bool match_like_condition(const std::string& condition, std::string& field_name, std::string& pattern);
+
+    bool is_numeric(const std::string& str);
+
+    int compare_values(const std::string& value1, const std::string& value2, const std::string& type);
+
+    std::vector<std::string> get_primary_key_fields(const std::string& table_name);
+
+    std::string capitalize(const std::string& str);
+
+    bool matches_like_pattern(const std::string& str, const std::string& pattern);
+
+public:
+    /*
+     * 判断条件是否可以使用索引优化
+     * @param condition WHERE条件
+     * @param table_name 表名
+     * @return 如果条件中包含可索引字段并且该字段有索引，返回true
+     */
+    static bool can_use_index(const std::string& condition, const std::string& table_name);
 
     //更新索引操作
     void updateIndexesAfterInsert(const std::string& table_name);
@@ -145,49 +216,11 @@ public:
     void updateIndexesAfterUpdate(const std::string& table_name, const std::vector<std::string>& oldValues, const std::vector<std::string>& newValues, const RecordPointer& recordPtr);
     RecordPointer get_last_inserted_record_pointer(const std::string& table_name);
 
+    static std::string read_field(std::ifstream& file, const FieldBlock& field);
 
-    // 获取最后插入记录的磁盘指针（实现中维护最后插入位置）
-    RecordPointer get_last_inserted_record_pointer();
 
 
 };
-
-// 工具函数
-std::map<std::string, int> read_index_map(const std::string& filename);
-bool file_exists(const std::string& filename);
-std::unordered_map<std::string, std::string> read_record_by_index(const std::string& table_name, int offset);
-std::vector<std::string> get_fields_from_line(const std::string& line);
-bool has_index(const std::string& table, const std::string& column);
-void parse_condition_expressions(const std::string& cond, std::vector<std::string>& expressions, std::vector<std::string>& logic_ops);
-std::tuple<std::string, std::string, std::string> parse_single_condition(const std::string& expr);
-std::vector<std::pair<uint64_t, std::unordered_map<std::string, std::string>>> merge_index_results(
-    const std::vector<std::vector<std::pair<uint64_t, std::unordered_map<std::string, std::string>>>>& results,
-    const std::vector<std::string>& logic_ops
-);
-bool check_remaining_conditions(
-    const std::unordered_map<std::string, std::string>& rec,
-    const std::vector<std::string>& expressions,
-    const std::vector<size_t>& fallback_indices,
-    const std::vector<std::string>& logic_ops,
-    const Record& checker,
-    bool use_prefix
-);
-bool evaluate_single_expression(
-    const std::unordered_map<std::string, std::string>& rec,
-    const std::string& expression,
-    bool use_prefix
-);
-// 条件表达式判断工具
-bool evaluate_single_expression(
-    const std::unordered_map<std::string, std::string>& rec,
-    const std::string& expression,
-    bool use_prefix);
-
-
-std::map<std::string, int> read_index_map(const std::string& filename);
-bool file_exists(const std::string& filename);
-std::unordered_map<std::string, std::string> read_record_by_index(const std::string& table_name, int offset);
-std::vector<std::string> get_fields_from_line(const std::string& line);
 
 std::tm custom_strptime(const std::string& datetime_str, const std::string& format);
 

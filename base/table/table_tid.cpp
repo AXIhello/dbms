@@ -14,8 +14,8 @@ void Table::saveIndex() {
 		throw std::runtime_error("无法保存定义文件: " + m_tableName + " .tid ");
 	}
 
-	for (int i = 0; i < m_indexes.size(); ++i) {
-		IndexBlock& index = m_indexes[i];
+	for (int i = 0; i < indexes.size(); ++i) {
+		IndexBlock& index = indexes[i];
 
 		// 将当前字段块写入文件
 		out.write(reinterpret_cast<const char*>(&index), sizeof(IndexBlock));
@@ -30,12 +30,12 @@ void Table::loadIndex() {
 	if (!in.is_open()) {
 		throw std::runtime_error("无法打开索引文件: " + m_tid);
 	}
-	m_indexes.clear();
+	indexes.clear();
 	while (in.peek() != EOF) {
 		IndexBlock index;
 		in.read(reinterpret_cast<char*>(&index), sizeof(IndexBlock));
 		if (in.gcount() < sizeof(IndexBlock)) break;
-		m_indexes.push_back(index);
+		indexes.push_back(index);
 	}
 	in.close();
 }
@@ -103,7 +103,7 @@ void Table::addIndex(const IndexBlock& index){
 	// 创建索引
 	IndexBlock newIndex = index;
 	// 添加到索引列表
-	m_indexes.push_back(newIndex);
+	indexes.push_back(newIndex);
 	// 更新时间戳
 	m_lastModifyTime = std::time(nullptr);
 	// 保存到索引文件和元数据文件
@@ -113,11 +113,11 @@ void Table::addIndex(const IndexBlock& index){
 
 void Table::dropIndex(const std::string indexName) {
     // 查找索引
-    auto it = std::find_if(m_indexes.begin(), m_indexes.end(), [&](const IndexBlock& index) {
+    auto it = std::find_if(indexes.begin(), indexes.end(), [&](const IndexBlock& index) {
         return index.name == indexName;
     });
 
-    if (it == m_indexes.end()) {
+    if (it == indexes.end()) {
         throw std::runtime_error("索引 " + indexName + " 不存在！");
     }
 
@@ -132,7 +132,7 @@ void Table::dropIndex(const std::string indexName) {
     }
 
     // 删除索引
-    m_indexes.erase(it);
+    indexes.erase(it);
 
 	// 删除 B 树对象
 	auto btreeIt = std::find_if(m_btrees.begin(), m_btrees.end(), [&](const std::unique_ptr<BTree>& btree) {
@@ -154,10 +154,10 @@ void Table::dropIndex(const std::string indexName) {
 void Table::updateIndex(const std::string indexName, const IndexBlock& updatedIndex)
 {
 	// 查找索引
-	auto it = std::find_if(m_indexes.begin(), m_indexes.end(), [&](const IndexBlock& index) {
+	auto it = std::find_if(indexes.begin(), indexes.end(), [&](const IndexBlock& index) {
 		return index.name == indexName;
 		});
-	if (it != m_indexes.end()) {
+	if (it != indexes.end()) {
 		*it = updatedIndex;
 		saveIndex(); // 保存到索引文件
 		m_lastModifyTime = std::time(nullptr); // 更新时间戳

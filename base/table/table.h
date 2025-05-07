@@ -73,6 +73,12 @@ public:
     std::vector<std::vector<std::string>> selectAll() const;
 
     //表完整性文件
+
+    //获取约束
+	std::vector<ConstraintBlock> getConstraints() const {
+		return m_constraints;
+	}
+
     void addConstraint(const std::string& constraintName,
         const std::string& constraintType,
         const std::string& constraintBody);
@@ -121,7 +127,7 @@ public:
     void renameIndex(const std::string oldName, const std::string newName);
 
     const std::vector<IndexBlock>& getIndexes() const {
-        return m_indexes;
+        return indexes;
     }
 
     //获取索引对应b树
@@ -159,7 +165,7 @@ private:
 
     std::vector<FieldBlock> m_fields;               // 存储表的字段信息
     std::vector<ConstraintBlock> m_constraints;     // 存储表的完整性约束信息
-    std::vector<IndexBlock> m_indexes;              // 存储表的索引信息
+    std::vector<IndexBlock> indexes;              // 存储表的索引信息
 
 
     std::vector<std::vector<std::string>> m_records; // 表格内容存储
