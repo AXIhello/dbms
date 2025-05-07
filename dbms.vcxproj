@@ -39,7 +39,7 @@
     <QtModules>core;gui;widgets</QtModules>
     <QtBuildConfig>debug</QtBuildConfig>
     <QtInstall>6.2.13_msvc2019_64</QtInstall>
-    <QtInstall>6.5.3_msvc2019_64</QtInstall>
+    <QtInstall>6.2.13_msvc2019_64</QtInstall>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)' == 'Release|x64'" Label="QtSettings">
     <QtModules>core;gui;widgets</QtModules>
@@ -107,6 +107,7 @@
     <ClCompile Include="base\BTree_find.cpp" />
     <ClCompile Include="base\record\record_delete.cpp" />
     <ClCompile Include="base\record\record_insert.cpp" />
+    <ClCompile Include="base\record\record_restore.cpp" />
     <ClCompile Include="base\record\record_select.cpp" />
     <ClCompile Include="base\record\record_select_index.cpp" />
     <ClCompile Include="base\record\record_update.cpp" />
