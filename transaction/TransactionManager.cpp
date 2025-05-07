@@ -49,15 +49,15 @@ void TransactionManager::rollback() {
         }
     }
 
-    //std::unordered_set<std::string> affectedTables;
-    //for (const auto& op : undoStack) {
-    //    affectedTables.insert(op.tableName);
-    //}
+    std::unordered_set<std::string> affectedTables;
+    for (const auto& op : undoStack) {
+        affectedTables.insert(op.tableName);
+    }
 
-    //Record record;
-    //for (const auto& table_name : affectedTables) {
-    //    record.delete_by_flag(table_name);  // 删除 delete_flag == 1 的记录
-    //}
+    Record record;
+    for (const auto& table_name : affectedTables) {
+        record.delete_by_flag(table_name);  // 删除 delete_flag == 1 的记录
+    }
 
     undoStack.clear();  // 完成回滚，清空UNDO栈
     active = false;
