@@ -14,7 +14,7 @@ MainWindow::MainWindow(QWidget* parent)
     : QMainWindow(parent)
     , ui(new Ui::MainWindow)// 初始化 UI
 {
-    qDebug() << "GUI模式下的basePath:" << QString::fromStdString(dbManager::basePath);
+    //qDebug() << "GUI模式下的basePath:" << QString::fromStdString(dbManager::basePath);
     ui->setupUi(this);  // 让 UI 组件和窗口关联
     // 设置样式表
     QString styleSheet = R"(
@@ -28,6 +28,7 @@ MainWindow::MainWindow(QWidget* parent)
         QMenuBar {
             font-size: 11pt;
             font-weight: bold;
+            background-color: lightgray;
         }
 
         /* 设置菜单项的字体 */
@@ -63,8 +64,11 @@ MainWindow::MainWindow(QWidget* parent)
     setWindowTitle("My Database Client"); // 设置窗口标题
     setGeometry(100, 100, 1000, 600);  // 设置窗口大小
 
-    // 设置菜单栏的样式
-    menuBar()->setStyleSheet("QMenuBar { background-color: lightgray; }");
+    // 设置菜单栏
+    //menuBar()->setStyleSheet("QMenuBar { background-color: lightgray; }");
+    QAction* switchUserAction = new QAction("切换用户", this);
+    menuBar()->addAction(switchUserAction);
+    connect(switchUserAction, &QAction::triggered, this, &MainWindow::onSwitchUser);
     ui->outputEdit->setReadOnly(true);
 
     // 设置按钮的宽度
@@ -127,6 +131,12 @@ MainWindow::~MainWindow() {
     delete ui;  // 释放 UI 资源
     dbManager::getInstance().clearCache();
 }
+
+void MainWindow::onSwitchUser() {
+    emit requestSwitchUser(); // 自定义信号
+    close(); // 关闭主窗口
+}
+
 
 void MainWindow::onRunButtonClicked() {
     QString fullText = ui->inputEdit->toPlainText().trimmed(); // 获取全部语句
@@ -219,15 +229,38 @@ void MainWindow::refreshTree() {
     }
     catch (const std::runtime_error& e) {
         Output::printError(ui->outputEdit, QString("运行时错误: ") + e.what());
-        qDebug() << "运行时错误:" << e.what();
+        // qDebug() << "运行时错误:" << e.what();
     }
     catch (const std::exception& e) {
         Output::printError(ui->outputEdit, QString("其他异常: ") + e.what());
-        qDebug() << "其他异常:" << e.what();
+        //qDebug() << "其他异常:" << e.what();
     }
 }
 
 void MainWindow::onTreeItemClicked(QTreeWidgetItem* item, int column) {
+    //如果用户还没点“运行”就点击了数据库或表节点，那就自动把最后一条 SQL>> 之后的 SQL 提交执行，再执行点击触发的系统 SQL
+    QString fullText = ui->inputEdit->toPlainText();
+    int lastPromptIndex = fullText.lastIndexOf("SQL>>");
+
+    if (lastPromptIndex != -1) {
+        QString userInput = fullText.mid(lastPromptIndex + 6).trimmed(); // 6 是 "SQL>>" + 空格的长度
+        if (!userInput.isEmpty()) {
+            QStringList sqlStatements = userInput.split(";", Qt::SkipEmptyParts);
+            Parse parser(ui->outputEdit, this);
+            for (QString statement : sqlStatements) {
+                QString trimmed = statement.trimmed();
+                if (!trimmed.isEmpty()) {
+                    if (!trimmed.endsWith(";"))
+                        trimmed += ";";
+                    parser.execute(trimmed);
+                }
+            }
+            // 自动追加新的提示符
+            fullText = fullText.trimmed() + "\nSQL>> ";
+            ui->inputEdit->setPlainText(fullText);
+        }
+    }
+
     QTreeWidgetItem* parent = item->parent();
 
     if (!parent) {
@@ -247,7 +280,7 @@ void MainWindow::onTreeItemClicked(QTreeWidgetItem* item, int column) {
     QString dbName = parent->text(0);
     QString tableName = item->text(0);
     
-    QString useDb = "USE DATABASE " + dbName + ";\n\n";// 自动设置数据库
+    QString useDb = "USE DATABASE " + dbName + ";    ";// 自动设置数据库
     QString sql = "SELECT * FROM " + tableName + ";\n\n"; 
     QString currentText = ui->inputEdit->toPlainText();
     ui->inputEdit->setPlainText(currentText  + useDb + sql + "SQL>> ");
@@ -328,17 +361,14 @@ void MainWindow::onTreeWidgetContextMenu(const QPoint& pos) {
                 });
 
             menu.addAction("删除表", [=]() {
-                QMessageBox::information(this, "删除表", "这里将来会处理删除表：" + tableName);
                 QMessageBox::StandardButton reply = QMessageBox::question(this, "确认删除",
                     "您确定要删除表 " + tableName + " 吗？",
                     QMessageBox::Yes | QMessageBox::No);
 
                 if (reply == QMessageBox::Yes) {
-                    QString useDb = "USE DATABASE " + dbName + ";\n\n";
+                    QString useDb = "USE DATABASE " + dbName + ";   ";
                     QString sql = "DROP TABLE " + tableName + ";\n\n";
                     QString currentText = ui->inputEdit->toPlainText();
-                    if (!currentText.endsWith('\n') && !currentText.isEmpty())
-                        currentText += '\n';
                     ui->inputEdit->setPlainText(currentText + useDb + sql + "SQL>> ");
 
                     try {

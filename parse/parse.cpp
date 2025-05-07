@@ -30,7 +30,55 @@ std::string ToGbk(const std::string& utf8)
     if (!gbk.empty() && gbk.back() == '\0') gbk.pop_back();
     return gbk;
 }
+
 std::string Parse::executeSQL(const std::string& sql)
+{
+    std::ostringstream output;
+
+    try {
+        std::string cleanedSQL = trim(sql);
+        std::string upperSQL = toUpperPreserveQuoted(cleanedSQL);
+
+        // 特判事务控制语句
+        if (std::regex_search(upperSQL, std::regex("^START TRANSACTION;$"))) {
+            TransactionManager::instance().begin();
+            return "事务开始";
+        }
+        if (std::regex_search(upperSQL, std::regex("^COMMIT;$"))) {
+            TransactionManager::instance().commit();
+            return "事务已提交";
+        }
+        if (std::regex_search(upperSQL, std::regex("^ROLLBACK;$"))) {
+            TransactionManager::instance().rollback();
+            return "事务已回滚";
+        }
+
+        // 🩸设置 CLI 模式的输出流
+        Output::setOstream(&output);
+
+        for (const auto& p : patterns) {
+            std::smatch match;
+            if (std::regex_match(upperSQL, match, p.pattern)) {
+                p.action(match);  
+                return output.str();  // 输出内容返回
+            }
+        }
+
+        Output::printError("SQL 语法不支持: " + cleanedSQL);
+        return output.str();
+
+    }
+    catch (const std::exception& e) {
+        Output::printError(std::string("SQL 执行异常: ") + e.what());
+        return output.str();
+    }
+}
+
+
+
+
+
+/*std::string Parse::executeSQL(const std::string& sql)
 {
     std::ostringstream output;
     try {
@@ -123,6 +171,7 @@ std::string Parse::executeSQL(const std::string& sql)
         return std::string("SQL执行异常: ") + e.what();
     }
 }
+*/
 void Parse::registerPatterns() {
   
     /*   DDL   */
@@ -288,31 +337,65 @@ void Parse::registerPatterns() {
 
 void Parse::execute(const QString& sql_qt) {
     // 1. 清理 SQL 字符串
-	qDebug() << "原始SQL:" << sql_qt;
+    qDebug() << "原始SQL:" << sql_qt;
     QString cleanedSQL = cleanSQL(sql_qt);  // 使用 cleanSQL 来处理输入
     std::string sql = cleanedSQL.toStdString();  // 转为 std::string 类型
 
-	// 2. 转换为大写（除引号内的内容不变）
+    // 2. 转换为大写（除引号内的内容不变）
     std::string upperSQL = toUpperPreserveQuoted(sql);
-	qDebug() << "清理后SQL:" << QString::fromStdString(upperSQL);
-    //直接判断事务；TODO：判断之后仍会进入正则匹配，此时尚未注册
-    if(upperSQL == "START TRANSACTION") {
+    qDebug() << "清理后SQL:" << QString::fromStdString(upperSQL);
+    qDebug() << "清理后SQL长度：" << upperSQL.size();  // 打印长度确认是否有异常字符
+
+    // 直接判断事务；TODO：判断之后仍会进入正则匹配，此时尚未注册
+    if (std::regex_search(upperSQL, std::regex("^START TRANSACTION;$"))) {
+        if (TransactionManager::instance().isActive())
+        {
+            Output::printError(outputEdit, QString("已有事务正在进行中。"));
+            return;
+        }
         TransactionManager::instance().begin();
+		Output::printMessage(outputEdit, "事务开始");
         return;
     }
-    if (upperSQL == "COMMIT") {
+    if (std::regex_search(upperSQL, std::regex("^COMMIT;$"))) {
+        if (!TransactionManager::instance().isActive())
+        {
+            Output::printError(outputEdit, QString("当前没有活动的事务，无法提交"));
+            return;
+        }
         TransactionManager::instance().commit();
+		Output::printMessage(outputEdit, "事务结束。成功提交。");
         return;
     }
-    if (upperSQL == "ROLLBACK") {
-        TransactionManager::instance().rollback();
+    if (std::regex_search(upperSQL, std::regex("^ROLLBACK;$"))) {
+        if (!TransactionManager::instance().isActive())
+        {
+            Output::printError(outputEdit, QString("当前没有活动的事务，无法回滚。"));
+            return;
+        }
+        int rollback_count = TransactionManager::instance().rollback();
+        // 使用 Output 类输出成功回滚的记录数
+        Output::printMessage(outputEdit, QString("事务结束。成功回滚了 %1 条记录。").arg(rollback_count));
+        return;
+    }
+    // 关闭自动提交
+    if (std::regex_search(upperSQL, std::regex(R"(^SET\s+AUTOCOMMIT\s*=\s*0\s*;$)", std::regex::icase))) {
+        TransactionManager::instance().setAutoCommit(false);
+        Output::printMessage(outputEdit, "自动提交已关闭");
+        return;
+    }
+    // 开启自动提交
+    if (std::regex_search(upperSQL, std::regex(R"(^SET\s+AUTOCOMMIT\s*=\s*1\s*;$)", std::regex::icase))) {
+        if (TransactionManager::instance().isActive())
+        {
+            Output::printError(outputEdit, "正处在事务中，自动提交默认关闭");
+            return;
+        }
+        TransactionManager::instance().setAutoCommit(true);  // 注意这里也应该是 true
+        Output::printMessage(outputEdit, "自动提交已开启");
         return;
     }
 
-   /* if (upperSQL.find("USE DATABASE") != std::string::npos && TransactionManager::instance().isActive()) {
-        Output::printError(outputEdit, "事务正在进行.禁止切换数据库。");
-        return;
-    }*/
     // 3. 遍历所有正则模式并匹配
     for (const auto& p : patterns) {
         std::smatch match;
@@ -326,5 +409,4 @@ void Parse::execute(const QString& sql_qt) {
 
     // 如果没有找到匹配的模式，可以选择抛出异常或返回错误
     Output::printError(outputEdit, "SQL 语句格式错误或不支持的 SQL 类型");
-    
 }

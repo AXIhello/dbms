@@ -44,7 +44,7 @@ public:
     void create_database_files(const std::string& db_name);  // 创建数据库文件（tb, log）
     void delete_database_folder(const std::string& db_name);  // 删除数据库文件夹
 
-    void save_database_info(const std::string& dbName, const std::string& dbPath);  // 保存数据库信息到系统数据库文件
+    void save_database_info(const std::string& dbName, const std::string& dbPath, const std::string& abledUsername);  // 保存数据库信息到系统数据库文件(添加user属性）
     void remove_database_info(const std::string& db_name);  // 从系统数据库文件中移除数据库信息
 
     void create_system_db();  // 创建系统数据库文件

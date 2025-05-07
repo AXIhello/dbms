@@ -14,7 +14,7 @@
 using namespace std;
 
 
-std::string Utf8ToGbk(const std::string& utf8)
+static std::string Utf8ToGbk(const std::string& utf8)
 {
     int len = MultiByteToWideChar(CP_UTF8, 0, utf8.c_str(), -1, NULL, 0);
     if (len == 0) return "";
@@ -32,12 +32,16 @@ std::string Utf8ToGbk(const std::string& utf8)
     return gbk;
 }
 
-void RunCliMode()
+static void RunCliMode()
 {
-    SetConsoleOutputCP(936);
-    SetConsoleCP(936);
+   // SetConsoleOutputCP(936);
+   // SetConsoleCP(936);
+    SetConsoleOutputCP(CP_UTF8);
+    SetConsoleCP(CP_UTF8);
 
-    dbManager::basePath ="E:\\DBMS\\DBMS_ROOT";
+
+    Output::setOstream(&std::cout);  
+
     std::cout << Utf8ToGbk("当前数据库根目录(basePath): ") << dbManager::basePath << std::endl;
     Parse parser;
     std::string sql;
@@ -56,29 +60,41 @@ void RunCliMode()
         std::cout << Utf8ToGbk(result) << std::endl;
     }
 }
+
+
+void showLogin();
+
+static void showMainWindow() {
+    MainWindow* w = new MainWindow;
+    w->showMaximized();
+
+    // 连接“切换用户”信号
+    QObject::connect(w, &MainWindow::requestSwitchUser, [=]() {
+        w->close();  // 会触发 deleteLater
+        showLogin(); // 重新显示登录界面
+        });
+}
+
+void showLogin() {
+    login* loginWidget = new login;
+    loginWidget->show();
+
+    QObject::connect(loginWidget, &login::acceptedLogin, [=]() {
+        loginWidget->close();
+        showMainWindow();
+        });
+    
+
+}
 int main(int argc, char *argv[])
 {   
     if (argc > 1 && std::string(argv[1]) == "--cli") {
         RunCliMode();
         return 0;
     }
-   
-    
     QApplication a(argc, argv);
-    //debug::printDB(dbManager::basePath + "/ruanko.db");
-    //debug::printTB(dbManager::basePath + "/data/1/1.tb");
-    debug::printTDF(dbManager::basePath + "/data/7/TEST4.tdf");
-    debug::printTIC(dbManager::basePath + "/data/7/TEST4.tic");
-    MainWindow w;
-    dbManager& db = dbManager::getInstance();/*
     user::createSysDBA();
-    login loginWidget;
-    loginWidget.show();
-    QObject::connect(&loginWidget, &login::acceptedLogin, [&w]() {*/
-    w.showMaximized();
-    //    });
-    ////loginWidget.show();
+    showLogin();
     return a.exec();
-    
   
 }

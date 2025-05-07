@@ -3,8 +3,10 @@
 #include <string>
 #include <vector>
 #include <unordered_map>
+#include"base/BTree.h"
 #include "base/block/fieldBlock.h"
 #include "base/block/constraintBlock.h"
+#include"transaction/TransactionManager.h"
 #include <filesystem> 
 #include <fstream>
 #include <sstream>
@@ -80,7 +82,7 @@ public:
         const std::vector<std::string>& types, const std::vector<int>& params);
     bool validate_field_block(const std::string& value, const FieldBlock& field);
     // 表操作相关函数
-    static std::vector<std::unordered_map<std::string, std::string>> read_records(const std::string table_name);
+    static std::vector<std::pair<uint64_t, std::unordered_map<std::string, std::string>>>read_records(const std::string& table_name);
     void insert_record(const std::string& table_name, const std::string& cols, const std::string& vals);
 
     // 写入一个字段，包括 null_flag + 数据 + padding
@@ -95,7 +97,14 @@ public:
         const std::string& having,
         const JoinInfo* join_info=nullptr);
     int update(const std::string& tableName, const std::string& setClause, const std::string& condition);
+
     int delete_(const std::string& tableName, const std::string& condition);
+    //int delete_by_rowid(const std::string& table_name, uint64_t rowID);
+    int delete_by_flag(const std::string& table_name);
+
+    int rollback_update_by_rowid(const std::string& table_name, const std::vector<std::pair<uint64_t, std::vector<std::pair<std::string, std::string>>>>& undo_list);
+    int rollback_delete_by_rowid(const std::string& tableName, uint64_t rowId);
+    int rollback_insert_by_rowid(const std::string& tableName, uint64_t rowId);
     // 辅助函数
     static bool table_exists(const std::string& table_name);
     static std::unordered_map<std::string, std::string> read_table_structure_static(const std::string& table_name);
@@ -121,7 +130,7 @@ public:
     );
 
     // 从索引中读取记录
-    static std::vector<std::unordered_map<std::string, std::string>> read_by_index(
+    static std::vector<std::pair<uint64_t, std::unordered_map<std::string, std::string>>>  read_by_index(
         const std::string& table_name,
         const std::string& column,
         const std::string& op,
@@ -136,6 +145,18 @@ public:
         const std::vector<std::string>& expressions,
         const std::vector<std::string>& logic_ops
     );
+
+    //更新索引操作
+    void updateIndexesAfterInsert(const std::string& table_name);
+    void updateIndexesAfterDelete(const std::string& table_name, const std::vector<std::string>& deletedValues, const RecordPointer& recordPtr);
+    void updateIndexesAfterUpdate(const std::string& table_name, const std::vector<std::string>& oldValues, const std::vector<std::string>& newValues, const RecordPointer& recordPtr);
+    RecordPointer get_last_inserted_record_pointer(const std::string& table_name);
+
+
+    // 获取最后插入记录的磁盘指针（实现中维护最后插入位置）
+    RecordPointer get_last_inserted_record_pointer();
+
+
 };
 
 // 工具函数
@@ -146,8 +167,8 @@ std::vector<std::string> get_fields_from_line(const std::string& line);
 bool has_index(const std::string& table, const std::string& column);
 void parse_condition_expressions(const std::string& cond, std::vector<std::string>& expressions, std::vector<std::string>& logic_ops);
 std::tuple<std::string, std::string, std::string> parse_single_condition(const std::string& expr);
-std::vector<std::unordered_map<std::string, std::string>> merge_index_results(
-    const std::vector<std::vector<std::unordered_map<std::string, std::string>>>& results,
+std::vector<std::pair<uint64_t, std::unordered_map<std::string, std::string>>> merge_index_results(
+    const std::vector<std::vector<std::pair<uint64_t, std::unordered_map<std::string, std::string>>>>& results,
     const std::vector<std::string>& logic_ops
 );
 bool check_remaining_conditions(
@@ -168,6 +189,7 @@ bool evaluate_single_expression(
     const std::unordered_map<std::string, std::string>& rec,
     const std::string& expression,
     bool use_prefix);
+
 
 std::map<std::string, int> read_index_map(const std::string& filename);
 bool file_exists(const std::string& filename);

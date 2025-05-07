@@ -6,6 +6,7 @@
 #include <unordered_map>
 #include <unordered_set>
 #include<Windows.h>
+#include "base/user.h"
 
 namespace fs = std::filesystem;
 std::string dbManager::basePath = std::filesystem::current_path().string() + "/DBMS_ROOT";
@@ -79,9 +80,8 @@ void dbManager::create_system_db() {
     sysDBFile.close();
 }
 
-void dbManager::save_database_info(const std::string& dbName, const std::string& dbPath) {
+void dbManager::save_database_info(const std::string& dbName, const std::string& dbPath, const std::string& abledUsername) {
     std::string sysDBPath = basePath + "/" + systemDBFile;
-    //std::cout << "写入系统数据库文件: " << basePath + "/ruanko.db" << std::endl;
     std::ofstream sysDBFile(basePath + "/" + systemDBFile, std::ios::binary | std::ios::app);
     if (!sysDBFile) {
         throw std::runtime_error("无法打开系统数据库文件 ruanko.db" );
@@ -94,6 +94,9 @@ void dbManager::save_database_info(const std::string& dbName, const std::string&
     dbInfo.type = true;  // 默认为用户数据库
     strncpy_s(dbInfo.filepath, dbPath.c_str(), sizeof(dbInfo.filepath) - 1);
     dbInfo.crtime = std::time(nullptr);  // 记录当前时间
+
+    // 设置创建者用户名
+    strncpy_s(dbInfo.abledUsername, abledUsername.c_str(), sizeof(dbInfo.abledUsername) - 1);//√
 
     sysDBFile.write(reinterpret_cast<const char*>(&dbInfo), sizeof(DatabaseBlock));
     sysDBFile.close();
@@ -129,7 +132,7 @@ void dbManager::remove_database_info(const std::string& db_name)
 }
 
 // 加载系统数据库信息(未完成。应该从.db文件中读取,但不知道有什么用……)
-void dbManager::load_system_db_info() {
+/*void dbManager::load_system_db_info() {
     std::string sysDBPath = basePath + "/" + systemDBFile;
    // std::cout << Utf8ToGbk1("读取系统数据库文件: ") << sysDBPath << std::endl;
 
@@ -154,6 +157,42 @@ void dbManager::load_system_db_info() {
         ++count;
     }
     sysDBFile.close();
+*/
+void dbManager::load_system_db_info() {
+    std::string sysDBPath = basePath + "/" + systemDBFile;
+    std::ifstream sysDBFile(sysDBPath, std::ios::binary);
+    if (!sysDBFile) {
+        throw std::runtime_error("无法读取系统数据库文件 ruanko.db");
+    }
+
+    DatabaseBlock dbInfo;
+    int count = 0;
+    while (sysDBFile.read(reinterpret_cast<char*>(&dbInfo), sizeof(DatabaseBlock))) {
+        std::string dbName(dbInfo.dbName, strnlen(dbInfo.dbName, sizeof(dbInfo.dbName)));
+        std::string dbPath(dbInfo.filepath, strnlen(dbInfo.filepath, sizeof(dbInfo.filepath)));
+        std::string typeStr = dbInfo.type ? Utf8ToGbk1("用户数据库") : Utf8ToGbk1("系统数据库");
+
+        // 确保 crtime 有效
+        std::time_t t = dbInfo.crtime;
+        if (t < 0 || t > std::time_t(2147483647)) { // 假设最大时间戳是 2147483647（2011年 8月 13日）
+            std::cerr << "Invalid timestamp: " << t << ", skipping this record." << std::endl;
+            continue; // 跳过无效时间戳的记录
+        }
+
+        char timebuf[64] = { 0 };
+        std::tm tm_buf;
+        if (localtime_s(&tm_buf, &t) != 0) {  // 如果 localtime_s 失败，跳过这条记录
+            std::cerr << "localtime_s failed for timestamp: " << t << std::endl;
+            continue;
+        }
+
+        std::strftime(timebuf, sizeof(timebuf), "%Y-%m-%d %H:%M:%S", &tm_buf);
+        ++count;
+    }
+
+    sysDBFile.close();
+//从这里的上面--------------------------------------------------------
+
 
     if (count == 0) {
         std::cout << Utf8ToGbk1("系统数据库文件中没有任何数据库记录。") << std::endl;
@@ -172,7 +211,14 @@ void dbManager::create_user_db(const std::string& db_name) {
     std::string db_path = basePath + "/data/" + db_name; // 到数据库文件夹为止
     create_database_folder(db_name);
     create_database_files(db_name);
-    save_database_info(db_name, db_path);
+
+    // 获取当前用户的用户名
+    user u;
+    std::string abledUsername = u.getCurrentUser().username;
+
+    save_database_info(db_name, db_path, abledUsername);
+    qDebug() << QString::fromStdString(abledUsername);
+
 }
 
 
@@ -214,13 +260,16 @@ std::vector<std::string> dbManager::get_database_list_by_db()
         throw std::runtime_error("无法打开数据库文件 ruanko.db");
     }
 
-    DatabaseBlock block;
-    while (file.read(reinterpret_cast<char*>(&block), sizeof(DatabaseBlock))) {
-        if (block.type == 1) {  // 用户数据库
+    DatabaseBlock block{};
+    //user u;
+    while (file.read(reinterpret_cast<char*>(&block), sizeof(block))) {
+        // 只加载当前用户创建的数据库
+        if (block.type == 1 && strcmp(block.abledUsername, user::getCurrentUser().username) == 0) {  // 用户数据库
             databases.emplace_back(block.dbName);
+            qDebug() << "比对成功: " << block.abledUsername << " <-> " << user::getCurrentUser().username;
+
         }
     }
-
     file.close();
     return databases;
 }

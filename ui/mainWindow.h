@@ -19,17 +19,19 @@ public:
     explicit MainWindow(QWidget* parent = nullptr);
     ~MainWindow();
     void refreshTree();
-    void refreshDatabaseList();
 private slots:
     void onRunButtonClicked();  // 声明槽函数
     void onTreeItemClicked(QTreeWidgetItem* item, int column);
     void onTreeWidgetContextMenu(const QPoint& pos);
-
+    void onSwitchUser();
 
 private:
     Ui::MainWindow* ui;  // 声明一个 Ui::MainWindow 指针
     QWidget* buttonWidget;  // 声明 buttonWidget
     
+signals:
+    void requestSwitchUser();
+
 };
 
 #endif // MAINWINDOW_H

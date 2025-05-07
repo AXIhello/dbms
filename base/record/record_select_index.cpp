@@ -117,39 +117,41 @@ std::vector<std::string> get_fields_from_line(const std::string& line) {
     return result;
 }
 
-std::vector<std::unordered_map<std::string, std::string>>Record::read_by_index(const std::string& table_name,
+std::vector<std::pair<uint64_t, std::unordered_map<std::string, std::string>>> Record::read_by_index(
+    const std::string& table_name,
     const std::string& column,
     const std::string& op,
     const std::string& value)
 {
-    // 假设你有 read_indexed_records(column, op, value) 实现，这里调用它
-    // 否则 fallback 到 read_records 然后过滤（这里是占位逻辑）
-    std::vector<std::unordered_map<std::string, std::string>> all = read_records(table_name);
+    std::vector<std::pair<uint64_t, std::unordered_map<std::string, std::string>>> all_records = read_records(table_name);
+    std::vector<std::pair<uint64_t, std::unordered_map<std::string, std::string>>> result;
 
-    std::vector<std::unordered_map<std::string, std::string>> result;
-    for (const auto& rec : all) {
-        auto it = rec.find(column);
-        if (it == rec.end()) continue;
-        const std::string& val = it->second;
-
+    auto compare = [&](const std::string& lhs, const std::string& rhs) -> bool {
         try {
-            double a = std::stod(val);
-            double b = std::stod(value);
+            double a = std::stod(lhs);
+            double b = std::stod(rhs);
 
-            if ((op == "=" && a == b) ||
-                (op == ">" && a > b) ||
-                (op == "<" && a < b) ||
-                (op == ">=" && a >= b) ||
-                (op == "<=" && a <= b)) {
-                result.push_back(rec);
-            }
+            if (op == "=") return a == b;
+            if (op == ">") return a > b;
+            if (op == "<") return a < b;
+            if (op == ">=") return a >= b;
+            if (op == "<=") return a <= b;
         }
-        catch (...) {
-            if (op == "=" && val == value) {
-                result.push_back(rec);
-            }
+        catch (const std::exception&) {
+            if (op == "=") return lhs == rhs;
+        }
+        return false;
+        };
+
+    for (const auto& [row_id, record] : all_records) {
+        auto it = record.find(column);
+        if (it == record.end()) continue;
+
+        if (compare(it->second, value)) {
+            result.emplace_back(row_id, record);
         }
     }
+
     return result;
 }
 
@@ -186,34 +188,50 @@ std::tuple<std::string, std::string, std::string> parse_single_condition(const s
     return { m[1], m[2], m[3] };
 }
 
-// 合并多个索引查找结果
-std::vector<std::unordered_map<std::string, std::string>> merge_index_results(
-    const std::vector<std::vector<std::unordered_map<std::string, std::string>>>& results,
+std::vector<std::pair<uint64_t, std::unordered_map<std::string, std::string>>> merge_index_results(
+    const std::vector<std::vector<std::pair<uint64_t, std::unordered_map<std::string, std::string>>>>& results,
     const std::vector<std::string>& logic_ops
 ) {
     if (results.empty()) return {};
-    auto merged = results[0];
-    for (size_t i = 1; i < results.size(); ++i) {
-        std::set<std::string> keys1, keys2;
-        for (const auto& r : merged) keys1.insert(r.at("__pk"));
-        for (const auto& r : results[i]) keys2.insert(r.at("__pk"));
-        std::set<std::string> result_keys;
-        if (logic_ops[i - 1] == "AND") {
-            std::set_intersection(keys1.begin(), keys1.end(), keys2.begin(), keys2.end(),
-                std::inserter(result_keys, result_keys.begin()));
-        }
-        else {
-            std::set_union(keys1.begin(), keys1.end(), keys2.begin(), keys2.end(),
-                std::inserter(result_keys, result_keys.begin()));
-        }
-        std::map<std::string, std::unordered_map<std::string, std::string>> pk_to_rec;
-        for (const auto& r : merged) if (result_keys.count(r.at("__pk"))) pk_to_rec[r.at("__pk")] = r;
-        for (const auto& r : results[i]) if (result_keys.count(r.at("__pk"))) pk_to_rec[r.at("__pk")] = r;
-        merged.clear();
-        for (const auto& [_, rec] : pk_to_rec) merged.push_back(rec);
+
+    // 初始化第一个结果集为 current
+    std::unordered_map<uint64_t, std::unordered_map<std::string, std::string>> current;
+    for (const auto& [id, rec] : results[0]) {
+        current[id] = rec;
     }
-    return merged;
+
+    for (size_t i = 1; i < results.size(); ++i) {
+        std::unordered_map<uint64_t, std::unordered_map<std::string, std::string>> next;
+        for (const auto& [id, rec] : results[i]) {
+            next[id] = rec;
+        }
+
+        std::unordered_map<uint64_t, std::unordered_map<std::string, std::string>> merged;
+
+        if (logic_ops[i - 1] == "AND") {
+            for (const auto& [id, rec] : current) {
+                if (next.count(id)) {
+                    merged[id] = rec; // 或 next[id]
+                }
+            }
+        }
+        else { // 默认按 OR 合并
+            merged = current;
+            for (const auto& [id, rec] : next) {
+                merged[id] = rec;
+            }
+        }
+
+        current = std::move(merged);
+    }
+
+    std::vector<std::pair<uint64_t, std::unordered_map<std::string, std::string>>> result_vec;
+    for (const auto& [id, rec] : current) {
+        result_vec.emplace_back(id, rec);
+    }
+    return result_vec;
 }
+
 
 // 检查未使用索引的表达式是否满足
 bool check_remaining_conditions(

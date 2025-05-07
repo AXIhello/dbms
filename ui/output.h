@@ -18,6 +18,20 @@ public:
     static void printError(QTextEdit* outputEdit, const QString& error);
     static void printInfo(QTextEdit* outputEdit, const QString& message);
 
+    // 设置 CLI 输出流
+    static void setOstream(std::ostream* outStream);
+
+    // CLI 输出函数
+    static void printMessage(const std::string& message);
+    static void printError(const std::string& error);
+    static void printInfo(const std::string& message);
+    static void printDatabaseList(const std::vector<std::string>& dbs);
+    static void printTableList(const std::vector<std::string>& tables);
+    static void printSelectResultEmpty(const std::vector<std::string>& cols);
+
+private:
+    static std::ostream* outputStream;  // CLI输出流指针（默认为nullptr）
 };
+   
 
 #endif // OUTPUT_H
