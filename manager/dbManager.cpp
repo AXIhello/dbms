@@ -132,7 +132,7 @@ void dbManager::remove_database_info(const std::string& db_name)
 }
 
 // 加载系统数据库信息(未完成。应该从.db文件中读取,但不知道有什么用……)
-void dbManager::load_system_db_info() {
+/*void dbManager::load_system_db_info() {
     std::string sysDBPath = basePath + "/" + systemDBFile;
    // std::cout << Utf8ToGbk1("读取系统数据库文件: ") << sysDBPath << std::endl;
 
@@ -157,6 +157,42 @@ void dbManager::load_system_db_info() {
         ++count;
     }
     sysDBFile.close();
+*/
+void dbManager::load_system_db_info() {
+    std::string sysDBPath = basePath + "/" + systemDBFile;
+    std::ifstream sysDBFile(sysDBPath, std::ios::binary);
+    if (!sysDBFile) {
+        throw std::runtime_error("无法读取系统数据库文件 ruanko.db");
+    }
+
+    DatabaseBlock dbInfo;
+    int count = 0;
+    while (sysDBFile.read(reinterpret_cast<char*>(&dbInfo), sizeof(DatabaseBlock))) {
+        std::string dbName(dbInfo.dbName, strnlen(dbInfo.dbName, sizeof(dbInfo.dbName)));
+        std::string dbPath(dbInfo.filepath, strnlen(dbInfo.filepath, sizeof(dbInfo.filepath)));
+        std::string typeStr = dbInfo.type ? Utf8ToGbk1("用户数据库") : Utf8ToGbk1("系统数据库");
+
+        // 确保 crtime 有效
+        std::time_t t = dbInfo.crtime;
+        if (t < 0 || t > std::time_t(2147483647)) { // 假设最大时间戳是 2147483647（2011年 8月 13日）
+            std::cerr << "Invalid timestamp: " << t << ", skipping this record." << std::endl;
+            continue; // 跳过无效时间戳的记录
+        }
+
+        char timebuf[64] = { 0 };
+        std::tm tm_buf;
+        if (localtime_s(&tm_buf, &t) != 0) {  // 如果 localtime_s 失败，跳过这条记录
+            std::cerr << "localtime_s failed for timestamp: " << t << std::endl;
+            continue;
+        }
+
+        std::strftime(timebuf, sizeof(timebuf), "%Y-%m-%d %H:%M:%S", &tm_buf);
+        ++count;
+    }
+
+    sysDBFile.close();
+//从这里的上面--------------------------------------------------------
+
 
     if (count == 0) {
         std::cout << Utf8ToGbk1("系统数据库文件中没有任何数据库记录。") << std::endl;

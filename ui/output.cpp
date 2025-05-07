@@ -47,6 +47,8 @@ void Output::printSelectResult(QTextEdit* outputEdit, const std::vector<Record>&
     outputEdit->append(""); // 添加空行
 }
 
+
+//gui模式输出
 void Output::printMessage(QTextEdit* outputEdit, const QString& message) {
     if (!outputEdit) return;
     outputEdit->append(currentTimestamp() + message);
@@ -136,4 +138,67 @@ void Output::printSelectResultEmpty(QTextEdit* outputEdit, const std::vector<std
     outputEdit->append(currentTimestamp() + "当前表中无数据：");
     outputEdit->append(html);
     outputEdit->append(""); // 添加空行
+}
+
+//cli模式输出
+
+std::ostream* Output::outputStream = nullptr;  // 默认为 nullptr
+//cli输出流设置
+void Output::setOstream(std::ostream* outStream) {
+    outputStream = outStream;
+}
+
+void Output::printMessage(const std::string& message) {
+    if (outputStream) {
+        *outputStream << currentTimestamp().toStdString() + message << std::endl;
+    }
+}
+
+void Output::printError(const std::string& error) {
+    if (outputStream) {
+        *outputStream << currentTimestamp().toStdString() + "[ERROR] " + error << std::endl;
+    }
+}
+
+void Output::printInfo(const std::string& message) {
+    if (outputStream) {
+        *outputStream << currentTimestamp().toStdString() + "[INFO] " + message << std::endl;
+    }
+}
+
+void Output::printDatabaseList(const std::vector<std::string>& dbs) {
+    if (!outputStream) return;
+
+    if (dbs.empty()) {
+        *outputStream << currentTimestamp().toStdString() + "[INFO] 无数据库可用。" << std::endl;
+        return;
+    }
+
+    *outputStream << currentTimestamp().toStdString() + "[INFO] 数据库列表：" << std::endl;
+    for (const auto& name : dbs) {
+        *outputStream << "  " + name << std::endl;
+    }
+}
+
+void Output::printTableList(const std::vector<std::string>& tables) {
+    if (!outputStream) return;
+
+    if (tables.empty()) {
+        *outputStream << currentTimestamp().toStdString() + "[INFO] 当前数据库没有表。" << std::endl;
+        return;
+    }
+
+    *outputStream << currentTimestamp().toStdString() + "[INFO] 当前数据库中的表：" << std::endl;
+    for (const auto& name : tables) {
+        *outputStream << "  " + name << std::endl;
+    }
+}
+
+void Output::printSelectResultEmpty(const std::vector<std::string>& cols) {
+    if (!outputStream) return;
+
+    *outputStream << currentTimestamp().toStdString() + "[INFO] 当前表中无数据：" << std::endl;
+    for (const auto& col : cols) {
+        *outputStream << "  " + col << std::endl;
+    }
 }

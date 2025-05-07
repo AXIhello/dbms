@@ -14,7 +14,7 @@ MainWindow::MainWindow(QWidget* parent)
     : QMainWindow(parent)
     , ui(new Ui::MainWindow)// 初始化 UI
 {
-    qDebug() << "GUI模式下的basePath:" << QString::fromStdString(dbManager::basePath);
+    //qDebug() << "GUI模式下的basePath:" << QString::fromStdString(dbManager::basePath);
     ui->setupUi(this);  // 让 UI 组件和窗口关联
     // 设置样式表
     QString styleSheet = R"(
@@ -229,11 +229,11 @@ void MainWindow::refreshTree() {
     }
     catch (const std::runtime_error& e) {
         Output::printError(ui->outputEdit, QString("运行时错误: ") + e.what());
-        qDebug() << "运行时错误:" << e.what();
+        // qDebug() << "运行时错误:" << e.what();
     }
     catch (const std::exception& e) {
         Output::printError(ui->outputEdit, QString("其他异常: ") + e.what());
-        qDebug() << "其他异常:" << e.what();
+        //qDebug() << "其他异常:" << e.what();
     }
 }
 

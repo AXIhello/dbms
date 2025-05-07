@@ -38,7 +38,8 @@ bool login::authenticate(const QString& username, const QString& password)
 	/*if (username.toStdString() == "sysdba")
 	{
 		return true;
-	}*/
+	}
+	*/
 
 	auto users = user::loadUsers();
 	for (const auto& u : users)

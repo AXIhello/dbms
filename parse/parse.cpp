@@ -30,7 +30,55 @@ std::string ToGbk(const std::string& utf8)
     if (!gbk.empty() && gbk.back() == '\0') gbk.pop_back();
     return gbk;
 }
+
 std::string Parse::executeSQL(const std::string& sql)
+{
+    std::ostringstream output;
+
+    try {
+        std::string cleanedSQL = trim(sql);
+        std::string upperSQL = toUpperPreserveQuoted(cleanedSQL);
+
+        // 特判事务控制语句
+        if (std::regex_search(upperSQL, std::regex("^START TRANSACTION;$"))) {
+            TransactionManager::instance().begin();
+            return "事务开始";
+        }
+        if (std::regex_search(upperSQL, std::regex("^COMMIT;$"))) {
+            TransactionManager::instance().commit();
+            return "事务已提交";
+        }
+        if (std::regex_search(upperSQL, std::regex("^ROLLBACK;$"))) {
+            TransactionManager::instance().rollback();
+            return "事务已回滚";
+        }
+
+        // 🩸设置 CLI 模式的输出流
+        Output::setOstream(&output);
+
+        for (const auto& p : patterns) {
+            std::smatch match;
+            if (std::regex_match(upperSQL, match, p.pattern)) {
+                p.action(match);  
+                return output.str();  // 输出内容返回
+            }
+        }
+
+        Output::printError("SQL 语法不支持: " + cleanedSQL);
+        return output.str();
+
+    }
+    catch (const std::exception& e) {
+        Output::printError(std::string("SQL 执行异常: ") + e.what());
+        return output.str();
+    }
+}
+
+
+
+
+
+/*std::string Parse::executeSQL(const std::string& sql)
 {
     std::ostringstream output;
     try {
@@ -123,6 +171,7 @@ std::string Parse::executeSQL(const std::string& sql)
         return std::string("SQL执行异常: ") + e.what();
     }
 }
+*/
 void Parse::registerPatterns() {
   
     /*   DDL   */

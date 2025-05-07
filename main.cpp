@@ -34,10 +34,14 @@ static std::string Utf8ToGbk(const std::string& utf8)
 
 static void RunCliMode()
 {
-    SetConsoleOutputCP(936);
-    SetConsoleCP(936);
+   // SetConsoleOutputCP(936);
+   // SetConsoleCP(936);
+    SetConsoleOutputCP(CP_UTF8);
+    SetConsoleCP(CP_UTF8);
 
-    dbManager::basePath ="E:\\DBMS\\DBMS_ROOT";
+
+    Output::setOstream(&std::cout);  
+
     std::cout << Utf8ToGbk("当前数据库根目录(basePath): ") << dbManager::basePath << std::endl;
     Parse parser;
     std::string sql;
@@ -56,6 +60,7 @@ static void RunCliMode()
         std::cout << Utf8ToGbk(result) << std::endl;
     }
 }
+
 
 void showLogin();
 
@@ -78,6 +83,8 @@ void showLogin() {
         loginWidget->close();
         showMainWindow();
         });
+    
+
 }
 int main(int argc, char *argv[])
 {   
