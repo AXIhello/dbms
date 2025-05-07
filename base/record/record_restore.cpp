@@ -118,7 +118,8 @@ int Record::rollback_insert_by_rowid(const std::string& tableName, uint64_t rowI
     return 0; // 没找到目标记录
 }
 
-void Record::rollback_update_by_rowid(const std::string& table_name, const std::vector<std::pair<uint64_t, std::vector<std::pair<std::string, std::string>>>>& undo_list) {
+int Record::rollback_update_by_rowid(const std::string& table_name, const std::vector<std::pair<uint64_t, std::vector<std::pair<std::string, std::string>>>>& undo_list) {
+    int updatedCount = 0;
     // 读取现有数据
     auto records = read_records(table_name);
 
@@ -136,6 +137,7 @@ void Record::rollback_update_by_rowid(const std::string& table_name, const std::
             for (const auto& [col, val] : undo_map[row_id]) {
                 record_data[col] = val;
             }
+            updatedCount++;
         }
     }
 
@@ -157,6 +159,7 @@ void Record::rollback_update_by_rowid(const std::string& table_name, const std::
         }
     }
     outfile.close();
+	return updatedCount;
 }
 
 

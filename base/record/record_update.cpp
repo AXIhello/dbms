@@ -14,9 +14,11 @@
 #include <algorithm>
 
 int Record::update(const std::string& tableName, const std::string& setClause, const std::string& condition) {
+    auto& transaction = TransactionManager::instance();
+    transaction.beginImplicitTransaction(); // 如果事务未激活且autoCommit=true，则自动开启
+    
     this->table_name = tableName;
     if (!table_exists(tableName)) throw std::runtime_error("表 '" + table_name + "' 不存在。");
-
     std::vector<FieldBlock> fields = read_field_blocks(table_name);
     this->table_structure = read_table_structure_static(table_name);
     if (!condition.empty()) parse_condition(condition);
@@ -56,16 +58,17 @@ int Record::update(const std::string& tableName, const std::string& setClause, c
         if (read_record_from_file(infile, fields, record_data, row_id, /*skip_deleted=*/true)) {
             if (condition.empty() || matches_condition(record_data, false)) {
                 //事务处理
-                    if (TransactionManager::instance().isActive()) {
+                    if (transaction.isActive()) {
                         try {
                             std::vector<std::pair<std::string, std::string>> oldValuesForUndo;
                             for (const auto& [col, _] : updates) {
                                 oldValuesForUndo.emplace_back(col, record_data[col]);
                             }
-                            TransactionManager::instance().addUndo(DmlType::UPDATE, table_name, row_id, oldValuesForUndo);
+                            transaction.addUndo(DmlType::UPDATE, table_name, row_id, oldValuesForUndo);
                         }
                         catch (const std::exception& e) {
-                            std::cerr << "事务操作失败: " << e.what() << std::endl;
+                            transaction.rollback();
+                            std::cerr << "更新操作失败: " << e.what() << std::endl;
                             throw;
                         }
                     }
