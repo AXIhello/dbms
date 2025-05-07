@@ -148,6 +148,7 @@
     <ClCompile Include="parse\parse.cpp">
       <Filter>manager\parse</Filter>
     </ClCompile>
+    <ClCompile Include="base\record\record_restore.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="debug.h">
