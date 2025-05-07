@@ -6,10 +6,10 @@ QTextEdit* user::outputEdit = nullptr;
 // 读取用户列表
 std::vector<user::User> user::loadUsers() {
     std::vector<User> users;
-    std::ifstream file("D:/Files/Study/Assignment/DB_PracticalTraining/group/3/users.dat", std::ios::binary);
+    std::ifstream file("users.dat", std::ios::binary);
     if (!file) {
         // 文件不存在，创建空文件
-        std::ofstream newFile("D:/Files/Study/Assignment/DB_PracticalTraining/group/3/users.dat",
+        std::ofstream newFile("Dusers.dat",
             std::ios::binary | std::ios::trunc);
         newFile.close();
         return users;
@@ -52,7 +52,7 @@ std::vector<user::User> user::loadUsers() {
 
 // 检查用户是否存在
 bool user::userExists(const std::string& username) {
-    std::ifstream file("D:/Files/Study/Assignment/DB_PracticalTraining/group/3/users.dat", std::ios::binary);
+    std::ifstream file("users.dat", std::ios::binary);
     if (!file) {
         return false;  // 文件不存在，用户肯定不存在
     }
@@ -84,8 +84,8 @@ void user::createSysDBA() {  // 添加 user:: 作用域
     strcpy_s(sysdba.password, sizeof(sysdba.password), "admin123");
     strcpy_s(sysdba.permissions, sizeof(sysdba.permissions), "conn|resource");
 
+    std::ofstream file("users.dat", std::ios::binary | std::ios::app);
 
-    std::ofstream file("D:/Files/Study/Assignment/DB_PracticalTraining/group/3/users.dat", std::ios::binary | std::ios::trunc);
     if (!file) {
         Output::printMessage(outputEdit, "无法打开文件创建用户");
         return;
@@ -94,6 +94,22 @@ void user::createSysDBA() {  // 添加 user:: 作用域
     file.close();
 
     Output::printMessage(outputEdit, "sysdba 用户创建成功，并赋予 conn 和 resource 权限");
+
+    // 读取并输出文件内容，确认是否写入成功
+    std::ifstream readFile("users.dat", std::ios::binary);
+    if (!readFile) {
+        Output::printMessage(outputEdit, "无法打开文件读取用户");
+        return;
+    }
+
+    User tempUser;
+    while (readFile.read(reinterpret_cast<char*>(&tempUser), sizeof(User))) {
+        qDebug() << "文件中的用户信息：";
+        qDebug() << "用户名:" << tempUser.username;
+        qDebug() << "密码:" << tempUser.password;
+        qDebug() << "权限:" << tempUser.permissions;
+    }
+    readFile.close();
 }
 
 //user::User user::currentUser = {};
