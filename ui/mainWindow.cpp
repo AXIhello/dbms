@@ -9,6 +9,7 @@
 #include "parse/parse.h" 
 #include "manager/dbManager.h"
 #include "AddDatabaseDialog.h"
+#include "AddTableDialog.h"
 #include <QGroupBox>
 
 MainWindow::MainWindow(QWidget* parent)
@@ -342,8 +343,38 @@ void MainWindow::onTreeWidgetContextMenu(const QPoint& pos) {
         if (!parent) {
             // 数据库节点
             dbName = item->text(0);
+           // menu.addAction("新建表", [=]() {
+               // QMessageBox::information(this, "新建数据表", "这里将来会弹出新建表窗口（属于数据库：" + dbName + "）");
+                //});
+
             menu.addAction("新建表", [=]() {
-                QMessageBox::information(this, "新建数据表", "这里将来会弹出新建表窗口（属于数据库：" + dbName + "）");
+                AddTableDialog dlg(this, dbName);  // 传入当前数据库名
+                if (dlg.exec() == QDialog::Accepted) {
+                    QString tableName = dlg.getTableName();  // 用户填写的表名
+                    QStringList columns = dlg.getColumnDefinitions(); // 每项格式如 "id INT", "name VARCHAR(50)" 等
+
+                    if (!tableName.isEmpty() && !columns.isEmpty()) {
+                        QString sql = "USE DATABASE " + dbName + ";   ";
+                        sql += "CREATE TABLE " + tableName + " (";
+                        sql += columns.join(", ");
+                        sql += ");\n\n";
+
+                        QString currentText = ui->inputEdit->toPlainText();
+                        ui->inputEdit->setPlainText(currentText + sql + "SQL>> ");
+
+                        try {
+                            Parse parser(ui->outputEdit, this);
+                            parser.execute("USE DATABASE " + dbName + ";");
+                            parser.execute("CREATE TABLE " + tableName + " (" + columns.join(", ") + ");");
+                        }
+                        catch (const std::exception& e) {
+                            Output::printError(ui->outputEdit, QString("创建数据表失败: ") + e.what());
+                        }
+                    }
+                    else {
+                        Output::printError(ui->outputEdit, "表名或列定义不能为空！");
+                    }
+                }
                 });
 
             menu.addAction("删除数据库", [=]() {

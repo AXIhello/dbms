@@ -150,6 +150,7 @@
     </ClCompile>
     <ClCompile Include="base\record\record_restore.cpp" />
     <ClCompile Include="AddDatabaseDialog.cpp" />
+    <ClCompile Include="AddTableDialog.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="debug.h">
@@ -197,5 +198,6 @@
   </ItemGroup>
   <ItemGroup>
     <QtMoc Include="AddDatabaseDialog.h" />
+    <QtMoc Include="AddTableDialog.h" />
   </ItemGroup>
 </Project>
