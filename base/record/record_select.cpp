@@ -11,7 +11,6 @@
 #include <unordered_map>
 #include <vector>
 
-// 修改版 select 方法，支持隐式连接
 std::vector<Record> Record::select(
     const std::string& columns,
     const std::string& table_name,
@@ -25,79 +24,70 @@ std::vector<Record> Record::select(
     std::vector<std::pair<uint64_t, std::unordered_map<std::string, std::string>>> filtered;
     std::unordered_map<std::string, std::string> combined_structure;
 
-    // 检查是否包含隐式连接（逗号分隔的表名）
-    bool has_implicit_join = table_name.find(',') != std::string::npos;
+    // ==================== 1️⃣  表读取处理 ====================
     std::vector<std::string> tables;
-
-    if (has_implicit_join) {
-        // 解析逗号分隔的表名
-        std::istringstream ss(table_name); 
-        std::string table;
-        while (std::getline(ss, table, ',')) {
-            // 去除前后空格
-            table.erase(0, table.find_first_not_of(" \t"));
-            table.erase(table.find_last_not_of(" \t") + 1);
-            if (!table.empty()) {
+    if (join_info && !join_info->tables.empty()) {
+        tables = join_info->tables;
+    }
+    else {
+        if (table_name.find(',') != std::string::npos) {
+            std::istringstream ss(table_name);
+            std::string table;
+            while (std::getline(ss, table, ',')) {
+                table.erase(0, table.find_first_not_of(" \t"));
+                table.erase(table.find_last_not_of(" \t") + 1);
                 tables.push_back(table);
             }
         }
+        else {
+            tables.push_back(table_name);
+        }
     }
 
+    // ==================== 2️⃣  数据读取 ====================
     if (join_info && !join_info->tables.empty()) {
-        // 处理显式JOIN的代码保持不变
-        std::vector<std::pair<uint64_t, std::unordered_map<std::string, std::string>>> result = read_records(join_info->tables[0]);
-        for (auto& [row_id, rec] : result) {
-            std::unordered_map<std::string, std::string> prefixed;
-            auto table_structure = read_table_structure_static(join_info->tables[0]);
+        // 读取第一个表并添加表名前缀
+        auto first_table_records = read_records(join_info->tables[0]);
+        std::vector<std::pair<uint64_t, std::unordered_map<std::string, std::string>>> result;
 
+        for (const auto& [row_id, rec] : first_table_records) {
+            std::unordered_map<std::string, std::string> prefixed;
             for (const auto& [k, v] : rec) {
                 std::string full_key = join_info->tables[0] + "." + k;
                 prefixed[full_key] = v;
-
-                // 使用find代替at，检查键是否存在
-                auto structure_it = table_structure.find(k);
-                if (structure_it != table_structure.end()) {
-                    combined_structure[full_key] = structure_it->second;
-                }
-                else {
-                    // 容错：如果结构信息不存在，设置为默认值
-                    combined_structure[full_key] = "TEXT";
-                }
+                combined_structure[full_key] = read_table_structure_static(join_info->tables[0]).at(k);
             }
-            rec = std::move(prefixed);
+            result.emplace_back(row_id, std::move(prefixed));
         }
 
+        // 连接其他表
         for (size_t i = 1; i < join_info->tables.size(); ++i) {
-            auto right_records = read_records(join_info->tables[i]);
-            auto table_structure = read_table_structure_static(join_info->tables[i]);
+            auto right_table_records = read_records(join_info->tables[i]);
+            std::vector<std::pair<uint64_t, std::unordered_map<std::string, std::string>>> right_prefixed;
 
-            for (auto& [row_id, rec] : right_records) {
+            // 给右表添加前缀
+            for (const auto& [row_id, rec] : right_table_records) {
                 std::unordered_map<std::string, std::string> prefixed;
                 for (const auto& [k, v] : rec) {
                     std::string full_key = join_info->tables[i] + "." + k;
                     prefixed[full_key] = v;
-
-                    // 使用find代替at，检查键是否存在
-                    auto structure_it = table_structure.find(k);
-                    if (structure_it != table_structure.end()) {
-                        combined_structure[full_key] = structure_it->second;
-                    }
-                    else {
-                        // 容错：如果结构信息不存在，设置为默认值
-                        combined_structure[full_key] = "TEXT";
-                    }
+                    combined_structure[full_key] = read_table_structure_static(join_info->tables[i]).at(k);
                 }
-                rec = std::move(prefixed);
+                right_prefixed.emplace_back(row_id, std::move(prefixed));
             }
 
+            // 执行JOIN操作
             std::vector<std::pair<uint64_t, std::unordered_map<std::string, std::string>>> new_result;
             for (const auto& [row_r1, r1] : result) {
-                for (const auto& [row_r2, r2] : right_records) {
+                for (const auto& [row_r2, r2] : right_prefixed) {
                     bool match = true;
+
+                    // 查找并应用相关的JOIN条件
                     for (const auto& join : join_info->joins) {
                         bool relevant =
                             (join.left_table == join_info->tables[i - 1] && join.right_table == join_info->tables[i]) ||
                             (join.left_table == join_info->tables[i] && join.right_table == join_info->tables[i - 1]);
+
                         if (!relevant) continue;
 
                         for (const auto& [left_col, right_col] : join.conditions) {
@@ -107,7 +97,6 @@ std::vector<Record> Record::select(
                             auto left_it = r1.find(left_field);
                             auto right_it = r2.find(right_field);
 
-                            // 判断键是否存在，并比较值
                             if (left_it == r1.end() || right_it == r2.end() ||
                                 left_it->second != right_it->second) {
                                 match = false;
@@ -118,7 +107,7 @@ std::vector<Record> Record::select(
                     }
 
                     if (match) {
-                        std::unordered_map<std::string, std::string> combined = r1;
+                        auto combined = r1;
                         combined.insert(r2.begin(), r2.end());
                         new_result.emplace_back(0, std::move(combined));
                     }
@@ -128,165 +117,276 @@ std::vector<Record> Record::select(
         }
         filtered = std::move(result);
     }
-    else if (has_implicit_join) {
-        // 处理隐式连接
-        for (const auto& table : tables) {
-            if (!table_exists(table)) {
-                throw std::runtime_error("表 '" + table + "' 不存在。");
-            }
+    else if (tables.size() == 1) {
+        // 单表查询
+        if (!table_exists(tables[0])) {
+            throw std::runtime_error("表 '" + tables[0] + "' 不存在。");
         }
+        filtered = read_records(tables[0]);
+        combined_structure = read_table_structure_static(tables[0]);
+    }
+    else {
+        // 隐式连接处理
+        auto first_table_records = read_records(tables[0]);
+        combined_structure = read_table_structure_static(tables[0]);
+        filtered = std::move(first_table_records);
 
-        // 获取第一个表的记录并添加前缀
-        std::vector<std::pair<uint64_t, std::unordered_map<std::string, std::string>>> result = read_records(tables[0]);
-        auto table_structure = read_table_structure_static(tables[0]);
-
-        for (auto& [row_id, rec] : result) {
-            std::unordered_map<std::string, std::string> prefixed;
-            for (const auto& [k, v] : rec) {
-                std::string full_key = tables[0] + "." + k;
-                prefixed[full_key] = v;
-
-                auto structure_it = table_structure.find(k);
-                if (structure_it != table_structure.end()) {
-                    combined_structure[full_key] = structure_it->second;
-                }
-                else {
-                    combined_structure[full_key] = "TEXT";
-                }
-            }
-            rec = std::move(prefixed);
-        }
-
-        // 处理其他表（类似JOIN逻辑但没有JOIN条件）
         for (size_t i = 1; i < tables.size(); ++i) {
-            auto right_records = read_records(tables[i]);
-            auto table_structure = read_table_structure_static(tables[i]);
-
-            for (auto& [row_id, rec] : right_records) {
-                std::unordered_map<std::string, std::string> prefixed;
-                for (const auto& [k, v] : rec) {
-                    std::string full_key = tables[i] + "." + k;
-                    prefixed[full_key] = v;
-
-                    auto structure_it = table_structure.find(k);
-                    if (structure_it != table_structure.end()) {
-                        combined_structure[full_key] = structure_it->second;
-                    }
-                    else {
-                        combined_structure[full_key] = "TEXT";
-                    }
-                }
-                rec = std::move(prefixed);
+            if (!table_exists(tables[i])) {
+                throw std::runtime_error("表 '" + tables[i] + "' 不存在。");
             }
 
-            // 创建笛卡尔积（所有可能的组合）
+            auto right_structure = read_table_structure_static(tables[i]);
+            auto right_records = read_records(tables[i]);
+
+            for (const auto& [k, v] : right_structure) {
+                combined_structure[k] = v;
+            }
+
             std::vector<std::pair<uint64_t, std::unordered_map<std::string, std::string>>> new_result;
-            for (const auto& [row_r1, r1] : result) {
+            for (const auto& [row_r1, r1] : filtered) {
                 for (const auto& [row_r2, r2] : right_records) {
-                    // 对于隐式连接，先创建笛卡尔积，后面通过WHERE条件过滤
-                    std::unordered_map<std::string, std::string> combined = r1;
+                    auto combined = r1;
                     combined.insert(r2.begin(), r2.end());
                     new_result.emplace_back(0, std::move(combined));
                 }
             }
-            result = std::move(new_result);
+            filtered = std::move(new_result);
         }
-        filtered = std::move(result);
-    }
-    else {
-        // 单表查询
-        if (!table_exists(table_name)) {
-            throw std::runtime_error("表 '" + table_name + "' 不存在。");
-        }
-        filtered = read_records(table_name);
-        combined_structure = read_table_structure_static(table_name);
     }
 
-    // 处理 WHERE 条件
+    // ==================== 3️⃣  WHERE 过滤 ====================
     Record temp;
-    temp.set_table_name(has_implicit_join ? tables[0] : table_name);
+    temp.set_table_name(tables.size() == 1 ? tables[0] : "");
     temp.table_structure = combined_structure;
     if (!condition.empty()) temp.parse_condition(condition);
 
     std::vector<std::pair<uint64_t, std::unordered_map<std::string, std::string>>> condition_filtered;
-
-    // 处理条件
-    if (condition.empty()) {
-        condition_filtered = filtered;
+    for (const auto& [row_id, rec] : filtered) {
+        if (condition.empty() || temp.matches_condition(rec, join_info != nullptr || tables.size() > 1)) {
+            condition_filtered.emplace_back(row_id, rec);
+        }
     }
-    else {
-        // 对于隐式连接或含WHERE条件的查询，使用matches_condition进行过滤
-        for (const auto& [row_id, rec] : filtered) {
-            try {
-                if (temp.matches_condition(rec, true)) {
-                    condition_filtered.emplace_back(row_id, rec);
+
+    // ==================== 4️⃣  GROUP BY 和 聚合函数 ====================
+    if (!group_by.empty()) {
+        // 按组分类记录
+        std::map<std::string, std::vector<std::unordered_map<std::string, std::string>>> grouped;
+        for (const auto& [_, rec] : condition_filtered) {
+            auto it = rec.find(group_by);
+            if (it == rec.end()) {
+                throw std::runtime_error("GROUP BY 字段 '" + group_by + "' 不存在于某条记录中");
+            }
+            std::string key = it->second;
+            grouped[key].push_back(rec);
+        }
+
+        // 定义应用聚合函数的lambda表达式
+        auto apply_aggregates = [](const std::string& col, const std::vector<std::unordered_map<std::string, std::string>>& records) -> std::string {
+            // 如果不是聚合函数，直接返回空
+            if (col.find("(") == std::string::npos) return "";
+
+            std::string field = col.substr(col.find("(") + 1, col.length() - col.find("(") - 2);
+            if (records.empty() || records[0].find(field) == records[0].end()) {
+                return "NULL";
+            }
+
+            if (col.find("COUNT(") == 0) {
+                return std::to_string(records.size());
+            }
+            else if (col.find("SUM(") == 0) {
+                double sum = 0;
+                for (const auto& r : records) {
+                    auto it = r.find(field);
+                    if (it != r.end() && it->second != "NULL")
+                        sum += std::stod(it->second);
+                }
+                return std::to_string(sum);
+            }
+            else if (col.find("AVG(") == 0) {
+                double sum = 0;
+                int count = 0;
+                for (const auto& r : records) {
+                    auto it = r.find(field);
+                    if (it != r.end() && it->second != "NULL") {
+                        sum += std::stod(it->second);
+                        count++;
+                    }
+                }
+                return count > 0 ? std::to_string(sum / count) : "NULL";
+            }
+            else if (col.find("MAX(") == 0) {
+                bool first = true;
+                double max_val = 0;
+                for (const auto& r : records) {
+                    auto it = r.find(field);
+                    if (it != r.end() && it->second != "NULL") {
+                        double current = std::stod(it->second);
+                        if (first || current > max_val) {
+                            max_val = current;
+                            first = false;
+                        }
+                    }
+                }
+                return first ? "NULL" : std::to_string(max_val);
+            }
+            else if (col.find("MIN(") == 0) {
+                bool first = true;
+                double min_val = 0;
+                for (const auto& r : records) {
+                    auto it = r.find(field);
+                    if (it != r.end() && it->second != "NULL") {
+                        double current = std::stod(it->second);
+                        if (first || current < min_val) {
+                            min_val = current;
+                            first = false;
+                        }
+                    }
+                }
+                return first ? "NULL" : std::to_string(min_val);
+            }
+            return "NULL";
+            };
+
+        // 清空之前的记录并添加分组后的结果
+        condition_filtered.clear();
+        for (const auto& [group_key, group_records] : grouped) {
+            std::unordered_map<std::string, std::string> grouped_row;
+            grouped_row[group_by] = group_key;
+
+            // 检查选择的列
+            std::vector<std::string> agg_cols;
+            if (columns == "*") {
+                for (const auto& [col, _] : combined_structure) {
+                    agg_cols.push_back(col);
                 }
             }
-            catch (const std::exception& e) {
-                // 处理可能的异常，比如字段名未找到等
-                // 可以选择跳过这条记录或抛出异常
-                // std::cerr << "条件匹配失败: " << e.what() << std::endl;
-                continue;
+            else {
+                agg_cols = parse_column_list(columns);
             }
+
+            // 应用聚合函数到每一列
+            for (const auto& col : agg_cols) {
+                if (col == group_by) continue; // 分组字段直接使用
+                if (col.find("(") != std::string::npos) {
+                    grouped_row[col] = apply_aggregates(col, group_records);
+                }
+            }
+
+            condition_filtered.emplace_back(0, grouped_row);
         }
     }
 
-    // 处理 SELECT 字段
-    std::vector<std::string> selected_cols;
+    // ==================== 5️⃣  HAVING 过滤 ====================
+    if (!having.empty()) {
+        // 定义一个lambda函数用于评估HAVING条件
+        auto eval_having = [&](const std::unordered_map<std::string, std::string>& row) -> bool {
+            std::regex pattern(R"(\s*(\w+\(.*\)|\w+)\s*(=|!=|>|<|>=|<=)\s*(\S+))");
+            std::smatch match;
+            if (!std::regex_match(having, match, pattern)) return true;
+
+            std::string col = match[1];
+            std::string op = match[2];
+            std::string rhs = match[3];
+            if (rhs.front() == '\'' && rhs.back() == '\'') {
+                rhs = rhs.substr(1, rhs.length() - 2);
+            }
+
+            if (!row.count(col)) return false;
+            std::string lhs = row.at(col);
+
+            try {
+                double lnum = std::stod(lhs);
+                double rnum = std::stod(rhs);
+                if (op == "=") return lnum == rnum;
+                if (op == "!=") return lnum != rnum;
+                if (op == ">") return lnum > rnum;
+                if (op == "<") return lnum < rnum;
+                if (op == ">=") return lnum >= rnum;
+                if (op == "<=") return lnum <= rnum;
+            }
+            catch (...) {
+                if (op == "=") return lhs == rhs;
+                if (op == "!=") return lhs != rhs;
+                if (op == ">") return lhs > rhs;
+                if (op == "<") return lhs < rhs;
+                if (op == ">=") return lhs >= rhs;
+                if (op == "<=") return lhs <= rhs;
+            }
+
+            return true;
+            };
+
+        // 应用HAVING条件过滤记录
+        auto it = std::remove_if(condition_filtered.begin(), condition_filtered.end(),
+            [&](const auto& pair) { return !eval_having(pair.second); });
+        condition_filtered.erase(it, condition_filtered.end());
+    }
+
+    // ==================== 6️⃣  ORDER BY 排序 ====================
+    if (!order_by.empty()) {
+        std::string key = order_by;
+        bool desc = false;
+        if (key.find(" DESC") != std::string::npos) {
+            desc = true;
+            key = key.substr(0, key.find(" DESC"));
+        }
+
+        std::sort(condition_filtered.begin(), condition_filtered.end(),
+            [&](const auto& a, const auto& b) {
+                auto a_it = a.second.find(key);
+                auto b_it = b.second.find(key);
+
+                // 处理NULL值
+                if (a_it == a.second.end() || a_it->second == "NULL") {
+                    return false; // NULL值放在最后
+                }
+                if (b_it == b.second.end() || b_it->second == "NULL") {
+                    return true;  // NULL值放在最后
+                }
+
+                // 尝试数值比较
+                try {
+                    double a_val = std::stod(a_it->second);
+                    double b_val = std::stod(b_it->second);
+                    return desc ? a_val > b_val : a_val < b_val;
+                }
+                catch (...) {
+                    // 字符串比较
+                    return desc ? a_it->second > b_it->second : a_it->second < b_it->second;
+                }
+            });
+    }
+
+    // ==================== 7️⃣  构建结果集 ====================
+    std::vector<std::string> selected_cols; // 先声明向量
     if (columns == "*") {
+        // 如果有条件过滤后的记录，从第一条记录获取所有列名
         if (!condition_filtered.empty()) {
-            for (const auto& [k, _] : condition_filtered[0].second) {
-                selected_cols.push_back(k);
+            for (const auto& [col, _] : condition_filtered[0].second) {
+                selected_cols.push_back(col);
+            }
+            // 确保列名按顺序排列，提高输出一致性
+            std::sort(selected_cols.begin(), selected_cols.end());
+        }
+        // 如果没有记录，则从表结构中获取列名
+        else {
+            for (const auto& pair : combined_structure) {
+                selected_cols.push_back(pair.first);
             }
         }
     }
     else {
+        // 如果不是 SELECT *，则解析 columns 字符串
         selected_cols = parse_column_list(columns);
     }
 
-    for (const auto& [row_id, rec_map] : condition_filtered) {
+    for (const auto& [_, rec_map] : condition_filtered) {
         Record rec;
-        rec.set_table_name(has_implicit_join ? "multiple_tables" : table_name);
+        rec.set_table_name(tables.size() == 1 ? tables[0] : "");
         for (const auto& col : selected_cols) {
             auto it = rec_map.find(col);
             std::string val = (it != rec_map.end()) ? it->second : "NULL";
-
-            // 如果col没有表前缀，尝试查找完整的键
-            if (it == rec_map.end() && col.find('.') == std::string::npos) {
-                // 遍历所有键，查找匹配的后缀
-                for (const auto& [k, v] : rec_map) {
-                    size_t dot_pos = k.find('.');
-                    if (dot_pos != std::string::npos) {
-                        std::string suffix = k.substr(dot_pos + 1);
-                        if (suffix == col) {
-                            val = v;
-                            break;
-                        }
-                    }
-                }
-            }
-
-            auto type_it = combined_structure.find(col);
-            // 如果没有找到类型信息，尝试查找完整的键
-            if (type_it == combined_structure.end() && col.find('.') == std::string::npos) {
-                for (const auto& [k, t] : combined_structure) {
-                    size_t dot_pos = k.find('.');
-                    if (dot_pos != std::string::npos) {
-                        std::string suffix = k.substr(dot_pos + 1);
-                        if (suffix == col) {
-                            type_it = combined_structure.find(k);
-                            break;
-                        }
-                    }
-                }
-            }
-
-            // 安全处理BOOL类型转换
-            if (type_it != combined_structure.end() && type_it->second == "BOOL") {
-                if (val == "1") val = "TRUE";
-                else if (val == "0") val = "FALSE";
-            }
-
             rec.add_column(col);
             rec.add_value(val);
         }
