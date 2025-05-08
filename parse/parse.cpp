@@ -269,9 +269,10 @@ void Parse::registerPatterns() {
 
     // GRANT conn|resource TO xxx;
     patterns.push_back({
-        std::regex(R"(^GRANT\s+(conn|resource)\s+TO\s+(\w+);$)", std::regex::icase),
-        [this](const std::smatch& m) { handleGrantPermission(m); }
+    std::regex(R"(^GRANT\s+(conn|resource)\s+ON\s+(\w+(?:\.\w+)?)\s+TO\s+(\w+);$)", std::regex::icase),
+    [this](const std::smatch& m) { handleGrantPermission(m); }
         });
+
 
     // REVOKE conn|resource FROM xxx;
     patterns.push_back({

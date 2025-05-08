@@ -159,9 +159,6 @@
     <ClInclude Include="base\record\Record.h" />
     <ClInclude Include="base\user.h" />
   </ItemGroup>
-  <ItemGroup>
-    <None Include="users.dat" />
-  </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Condition="Exists('$(QtMsBuild)\qt.targets')">
     <Import Project="$(QtMsBuild)\qt.targets" />

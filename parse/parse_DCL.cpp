@@ -28,9 +28,23 @@ void Parse::handleCreateUser(const std::smatch& m) {
 
 void Parse::handleGrantPermission(const std::smatch& m) {
     std::string permission = m[1].str();
-    std::string username = m[2].str();
-    if (user::grantPermission(username, permission)) {
-        Output::printMessage(outputEdit, "已授予 '" + QString::fromStdString(permission) + "' 权限给用户 '" + QString::fromStdString(username) + "'。");
+    std::string object = m[2].str();
+    std::string username = m[3].str();
+
+    std::string dbName, tableName;
+    size_t dotPos = object.find('.');
+    if (dotPos != std::string::npos) {
+        dbName = object.substr(0, dotPos);
+        tableName = object.substr(dotPos + 1);
+    }
+    else {
+        dbName = object;
+    }
+
+    if (user::grantPermission(username, permission, dbName, tableName)) {
+        Output::printMessage(outputEdit, "已授予 '" + QString::fromStdString(permission) +
+            "' 权限给用户 '" + QString::fromStdString(username) +
+            "' 在 '" + QString::fromStdString(object) + "' 上。");
     }
     else {
         Output::printMessage(outputEdit, "授权失败，用户 '" + QString::fromStdString(username) + "' 不存在。");
