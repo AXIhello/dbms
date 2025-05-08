@@ -222,6 +222,12 @@ std::vector<std::string> dbManager::get_database_list_by_db()
     DatabaseBlock block{};
     //user u;
     while (file.read(reinterpret_cast<char*>(&block), sizeof(block))) {
+        // 如果是 sys 用户，显示所有数据库
+        if (strcmp(user::getCurrentUser().username, "sys") == 0) {
+            if (block.type == 1) {
+                databases.emplace_back(block.dbName);
+            }
+        }
         // 只加载当前用户创建的数据库
         if (block.type == 1 && strcmp(block.abledUsername, user::getCurrentUser().username) == 0) {  // 用户数据库
             databases.emplace_back(block.dbName);
