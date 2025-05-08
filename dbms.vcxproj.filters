@@ -72,9 +72,6 @@
     <QtUic Include="ui\MainWindow.ui">
       <Filter>ui</Filter>
     </QtUic>
-    <QtUic Include="ui\dbms.ui">
-      <Filter>ui</Filter>
-    </QtUic>
     <!-- root -->
     <ClCompile Include="main.cpp">
       <Filter>root</Filter>
@@ -149,8 +146,15 @@
       <Filter>manager\parse</Filter>
     </ClCompile>
     <ClCompile Include="base\record\record_restore.cpp" />
-    <ClCompile Include="AddDatabaseDialog.cpp" />
-    <ClCompile Include="AddTableDialog.cpp" />
+    <ClCompile Include="ui\AddDatabaseDialog.cpp">
+      <Filter>ui</Filter>
+    </ClCompile>
+    <ClCompile Include="ui\AddTableDialog.cpp">
+      <Filter>ui</Filter>
+    </ClCompile>
+    <ClCompile Include="ui\AddUserDialog.cpp">
+      <Filter>ui</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="debug.h">
@@ -189,11 +193,22 @@
     <QtUic Include="login.ui">
       <Filter>ui</Filter>
     </QtUic>
+    <QtUic Include="DialogButtonBottom.ui">
+      <Filter>ui</Filter>
+    </QtUic>
   </ItemGroup>
   <ItemGroup>
     <QtRcc Include="resource\Resource.qrc" />
   </ItemGroup>
   <ItemGroup>
-    <None Include="users.dat" />
+    <QtMoc Include="ui\AddDatabaseDialog.h">
+      <Filter>ui</Filter>
+    </QtMoc>
+    <QtMoc Include="ui\AddTableDialog.h">
+      <Filter>ui</Filter>
+    </QtMoc>
+    <QtMoc Include="ui\AddUserDialog.h">
+      <Filter>ui</Filter>
+    </QtMoc>
   </ItemGroup>
 </Project>
