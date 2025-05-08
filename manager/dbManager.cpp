@@ -10,23 +10,8 @@
 
 namespace fs = std::filesystem;
 std::string dbManager::basePath = std::filesystem::current_path().string() + "/DBMS_ROOT";
-std::string Utf8ToGbk1(const std::string& utf8)
-{
-    int len = MultiByteToWideChar(CP_UTF8, 0, utf8.c_str(), -1, NULL, 0);
-    if (len == 0) return "";
 
-    std::wstring wstr(len, 0);
-    MultiByteToWideChar(CP_UTF8, 0, utf8.c_str(), -1, &wstr[0], len);
 
-    len = WideCharToMultiByte(936, 0, wstr.c_str(), -1, NULL, 0, NULL, NULL);
-    if (len == 0) return "";
-
-    std::string gbk(len, 0);
-    WideCharToMultiByte(936, 0, wstr.c_str(), -1, &gbk[0], len, NULL, NULL);
-
-    if (!gbk.empty() && gbk.back() == '\0') gbk.pop_back();
-    return gbk;
-}
 // 构造函数
 dbManager::dbManager() {
 
@@ -131,11 +116,9 @@ void dbManager::remove_database_info(const std::string& db_name)
         outFile.close();
 }
 
-// 加载系统数据库信息(未完成。应该从.db文件中读取,但不知道有什么用……)
+
 void dbManager::load_system_db_info() {
     std::string sysDBPath = basePath + "/" + systemDBFile;
-   // std::cout << Utf8ToGbk1("读取系统数据库文件: ") << sysDBPath << std::endl;
-
     std::ifstream sysDBFile(sysDBPath, std::ios::binary);
     if (!sysDBFile) {
         throw std::runtime_error("无法读取系统数据库文件 ruanko.db");
@@ -146,20 +129,32 @@ void dbManager::load_system_db_info() {
     while (sysDBFile.read(reinterpret_cast<char*>(&dbInfo), sizeof(DatabaseBlock))) {
         std::string dbName(dbInfo.dbName, strnlen(dbInfo.dbName, sizeof(dbInfo.dbName)));
         std::string dbPath(dbInfo.filepath, strnlen(dbInfo.filepath, sizeof(dbInfo.filepath)));
-        std::string typeStr = dbInfo.type ? Utf8ToGbk1("用户数据库") : Utf8ToGbk1("系统数据库");
+        //std::string typeStr = dbInfo.type ? Utf8ToGbk1("用户数据库") : Utf8ToGbk1("系统数据库");
+        std::string typeStr = dbInfo.type ? ("用户数据库") : ("系统数据库");
+
+        // 确保 crtime 有效
         std::time_t t = dbInfo.crtime;
+        if (t < 0 || t > std::time_t(2147483647)) { // 假设最大时间戳是 2147483647（2011年 8月 13日）
+            std::cerr << "Invalid timestamp: " << t << ", skipping this record." << std::endl;
+            continue; // 跳过无效时间戳的记录
+        }
+
         char timebuf[64] = { 0 };
         std::tm tm_buf;
-        localtime_s(&tm_buf, &t);
-        std::strftime(timebuf, sizeof(timebuf), "%Y-%m-%d %H:%M:%S", &tm_buf);
+        if (localtime_s(&tm_buf, &t) != 0) {  // 如果 localtime_s 失败，跳过这条记录
+            std::cerr << "localtime_s failed for timestamp: " << t << std::endl;
+            continue;
+        }
 
-       
+        std::strftime(timebuf, sizeof(timebuf), "%Y-%m-%d %H:%M:%S", &tm_buf);
         ++count;
     }
+
     sysDBFile.close();
 
     if (count == 0) {
-        std::cout << Utf8ToGbk1("系统数据库文件中没有任何数据库记录。") << std::endl;
+        //std::cout << Utf8ToGbk1("系统数据库文件中没有任何数据库记录。") << std::endl;
+        std::cout << "系统数据库文件中没有任何数据库记录。" << std::endl;
     }
 }
 // 创建数据库
@@ -230,7 +225,7 @@ std::vector<std::string> dbManager::get_database_list_by_db()
         // 只加载当前用户创建的数据库
         if (block.type == 1 && strcmp(block.abledUsername, user::getCurrentUser().username) == 0) {  // 用户数据库
             databases.emplace_back(block.dbName);
-            qDebug() << "比对成功: " << block.abledUsername << " <-> " << user::getCurrentUser().username;
+            //qDebug() << "比对成功: " << block.abledUsername << " <-> " << user::getCurrentUser().username;
 
         }
     }
@@ -348,7 +343,6 @@ bool dbManager::database_exists_in_db(const std::string& db_name) {
     DatabaseBlock block;
     while (file.read(reinterpret_cast<char*>(&block), sizeof(DatabaseBlock))) {
         std::string name(block.dbName, strnlen(block.dbName, sizeof(block.dbName)));
-        std::cout << "比对: [" << name << "] <-> [" << db_name << "]" << std::endl;
         if (name == db_name) {
             file.close();
             return true;

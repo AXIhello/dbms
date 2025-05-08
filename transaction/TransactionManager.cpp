@@ -11,51 +11,111 @@ TransactionManager& TransactionManager::instance() {
 
 void TransactionManager::begin() {
     active = true;
+    lastAutoCommit = autoCommit;
+    autoCommit = false;
     undoStack.clear();  // 开始新事务时清空上次的UNDO栈
 }
 
 void TransactionManager::commit() {
+    
+    std::unordered_set<std::string> affectedTables;
+    for (const auto& op : undoStack) {
+        affectedTables.insert(op.tableName);
+    }
+
+    Record record;
+    for (const auto& table_name : affectedTables) {
+        record.delete_by_flag(table_name);  // 删除 delete_flag == 1 的记录
+    }
+	
+
     active = false;
-    undoStack.clear();  // 提交事务时清空UNDO栈;TODO:将标识为1的数据真正删除后再清空？
+    autoCommit = lastAutoCommit.value();
+    undoStack.clear();  // 提交事务时清空UNDO栈;将标识为1的数据真正删除
 }
 
-void TransactionManager::rollback() {
+int TransactionManager::rollback() {
     // 遍历undoStack逆序回滚
+    int rollback_count = 0;
     for (auto it = undoStack.rbegin(); it != undoStack.rend(); ++it) {
         const UndoOperation& op = *it;
+        Record record;
         switch (op.type) {
         case DmlType::INSERT:
-           
-        case DmlType::DELETE:
-            // 回滚DELETE：恢复行数据
-            // e.g. Table::insertRow(op.tableName, op.oldValues);
-            break;
-        case DmlType::UPDATE:
-            // 回滚UPDATE：恢复旧值
-            // e.g. Table::updateRow(op.tableName, op.rowId, op.oldValues);
+        {
+            //将事务中插入的数据标记为待删除（1）
+            int affectedRows = record.rollback_insert_by_rowid(op.tableName, op.rowId);
+            rollback_count += affectedRows;
             break;
         }
+        
+        case DmlType::DELETE:
+        {
+			//将事务中删除的数据标记为未删除（0）
+            int affectedRows = record.rollback_delete_by_rowid(op.tableName, op.rowId);
+            rollback_count += affectedRows;
+            break;
+        }
+        case DmlType::UPDATE:
+        {
+            int affectedRows= record.rollback_update_by_rowid(op.tableName, { { op.rowId, op.oldValues } });
+			rollback_count += affectedRows;
+            break;
+        }
+        }
     }
+
+    std::unordered_set<std::string> affectedTables;
+    for (const auto& op : undoStack) {
+        affectedTables.insert(op.tableName);
+    }
+
+    Record record;
+    for (const auto& table_name : affectedTables) {
+        record.delete_by_flag(table_name);  // 删除 delete_flag == 1 的记录
+    }
+
     undoStack.clear();  // 完成回滚，清空UNDO栈
     active = false;
+    autoCommit = lastAutoCommit.value();
+
+	return rollback_count;  // 返回回滚的记录数
 }
 
+void TransactionManager::beginImplicitTransaction() {
+    if (autoCommit && !active) {
+        begin(); //因为复用，所以会把autoCommit设为false;
+        autoCommit = true;//重新设为true
+    }
+    
+}
+
+void TransactionManager::commitImplicitTransaction() {
+    if (autoCommit && active) {
+        commit();
+    }
+
+}
 #include <unordered_map> // 添加此行以确保 std::unordered_map 被正确包含
 
 void TransactionManager::addUndo(DmlType type, const std::string& tableName, uint64_t rowId) {
+    beginImplicitTransaction();
+
     if (!active) return;
 
     UndoOperation op;
     op.type = type;
     op.tableName = tableName;
     op.rowId = rowId;
-    // INSERT 不需要 oldValues
 
     undoStack.push_back(op);
+
+    commitImplicitTransaction();
 }
 
 void TransactionManager::addUndo(DmlType type, const std::string& tableName, uint64_t rowId,
     const std::vector<std::pair<std::string, std::string>>& oldValues) {
+    beginImplicitTransaction();
     if (!active) return;
 
     UndoOperation op;
@@ -65,8 +125,17 @@ void TransactionManager::addUndo(DmlType type, const std::string& tableName, uin
     op.oldValues = oldValues;
 
     undoStack.push_back(op);
+
+    commitImplicitTransaction();
 }
 
 bool TransactionManager::isActive() const {
     return active;  // 返回事务是否正在进行
 }
+bool TransactionManager::isAutoCommit() const {
+	return autoCommit;  // 返回是否启用自动提交
+}// 判断是否启用自动提交
+
+void TransactionManager::setAutoCommit(bool flag) {
+	autoCommit = flag;
+}  // 设置自动提交标志

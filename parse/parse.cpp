@@ -13,116 +13,85 @@ Parse::Parse(QTextEdit* outputEdit, MainWindow* mainWindow) : outputEdit(outputE
 Parse::Parse(Database* database)
     : db(database) {  // 初始化 db 指针
 }
-std::string ToGbk(const std::string& utf8)
-{
-    int len = MultiByteToWideChar(CP_UTF8, 0, utf8.c_str(), -1, NULL, 0);
-    if (len == 0) return "";
 
-    std::wstring wstr(len, 0);
-    MultiByteToWideChar(CP_UTF8, 0, utf8.c_str(), -1, &wstr[0], len);
 
-    len = WideCharToMultiByte(936, 0, wstr.c_str(), -1, NULL, 0, NULL, NULL);
-    if (len == 0) return "";
 
-    std::string gbk(len, 0);
-    WideCharToMultiByte(936, 0, wstr.c_str(), -1, &gbk[0], len, NULL, NULL);
-
-    if (!gbk.empty() && gbk.back() == '\0') gbk.pop_back();
-    return gbk;
-}
 std::string Parse::executeSQL(const std::string& sql)
 {
     std::ostringstream output;
     try {
         std::string cleanedSQL = trim(sql);
-        if (cleanedSQL.empty())
-            return "";
-        std::smatch m;
-        //创建
-        if (std::regex_match(cleanedSQL, m, std::regex(R"(CREATE\s+DATABASE\s+(\w+);?)", std::regex::icase)))
-        {
-            try {
-                dbManager::getInstance().create_user_db(m[1]);
-                output << "数据库 '" << m[1] << "' 创建成功！";
+        std::string upperSQL = toUpperPreserveQuoted(cleanedSQL);
+
+        // 特判事务控制语句
+        if (std::regex_search(upperSQL, std::regex("^START TRANSACTION;$"))) {
+            TransactionManager::instance().begin();
+            if (Output::mode == 0) {
+                Output::printInfo_Cli("事务开始");
             }
-            catch (const std::exception& e) {
-                output << "数据库创建失败: " << e.what();
+            else {
+                Output::printInfo(nullptr, QString::fromStdString("事务开始"));
             }
-            return output.str();
+            return "事务开始";
         }
-        //删除
-        if (std::regex_match(cleanedSQL, m, std::regex(R"(DROP\s+DATABASE\s+(\w+);?)", std::regex::icase))) 
-        {
-            try {
-                dbManager::getInstance().delete_user_db(m[1]);
-                output << "数据库 '" << m[1] << "' 删除成功！";
+
+        if (std::regex_search(upperSQL, std::regex("^COMMIT;$"))) {
+            TransactionManager::instance().commit();
+            if (Output::mode == 0) {
+                Output::printInfo_Cli("事务已提交");
             }
-            catch (const std::exception& e) {
-                output << "数据库删除失败: " << e.what();
+            else {
+                Output::printInfo(nullptr, QString::fromStdString("事务已提交"));
             }
-            return output.str();
+            return "事务已提交";
         }
-        //使用
-        if (std::regex_match(cleanedSQL, m, std::regex(R"(USE\s+(\w+);?)", std::regex::icase))) {
-            try {
-                dbManager::getInstance().useDatabase(m[1]);
-                output << "已成功切换到数据库 '" << m[1] << "'.";
+
+        if (std::regex_search(upperSQL, std::regex("^ROLLBACK;$"))) {
+            TransactionManager::instance().rollback();
+            if (Output::mode == 0) {
+                Output::printInfo_Cli("事务已回滚");
             }
-            catch (const std::exception& e) {
-                output << "切换数据库失败: " << e.what();
+            else {
+                Output::printInfo(nullptr, QString::fromStdString("事务已回滚"));
             }
-            return output.str();
+            return "事务已回滚";
         }
-        //show
-        if (std::regex_match(cleanedSQL, m, std::regex(R"(SHOW\s+DATABASES;?)", std::regex::icase))) {
-            try {
-                auto dbs = dbManager::getInstance().get_database_list_by_db();
-                output << "数据库列表：\n";
-                for (const auto& db : dbs) output << "  " << db << "\n";
-            }
-            catch (const std::exception& e) {
-                output << "获取数据库列表失败: " << e.what();
-            }
-            return output.str();
+
+        // GUI模式下设置输出流到ostringstream
+        if (Output::mode == 1) {  // GUI模式
+            Output::setOstream(&output);
         }
-        if (std::regex_match(cleanedSQL, m, std::regex(R"(SELECT\s+\*\s+FROM\s+(\w+);?)", std::regex::icase))) {
-            try {
-                std::string tableName = m[1];
-                Database* db = dbManager::getInstance().get_current_database();
-                if (!db) {
-                    output << "未选择数据库，请先使用 USE 语句切换数据库。";
-                    return output.str();
-                }
-                Table* table = db->getTable(tableName);
-                if (!table) {
-                    output << ToGbk( "表 '") << tableName << ToGbk( "' 不存在！");
-                    return output.str();
-                }
-                // 输出表头
-                auto fields = table->getFieldNames();
-                for (const auto& f : fields) output << ToGbk(f) << "\t";
-                output << "\n";
-                // 输出所有记录
-                auto records = table->selectAll(); // 假设返回 vector<vector<string>>
-                for (const auto& rec : records) {
-                    for (const auto& val : rec) output << ToGbk(val) << "\t";
-                    output << "\n";
-                }
+
+        // 执行SQL匹配和处理
+        for (const auto& p : patterns) {
+            std::smatch match;
+            if (std::regex_match(upperSQL, match, p.pattern)) {
+                p.action(match);
+                return output.str();  // 返回GUI模式下的输出内容
             }
-            catch (const std::exception& e) {
-                output << "SELECT 执行失败: " << e.what();
-            }
-            return output.str();
         }
-      
-        output << "不支持的SQL语句: " << cleanedSQL;
+
+        // SQL语法不支持的提示信息
+        if (Output::mode == 0) {
+            Output::printError_Cli("SQL 语法不支持: " + cleanedSQL);
+        }
+        else {
+            Output::printError(nullptr, QString::fromStdString("SQL 语法不支持: " + cleanedSQL));
+        }
         return output.str();
     }
-    catch (const std::exception& e) 
-    {
-        return std::string("SQL执行异常: ") + e.what();
+    catch (const std::exception& e) {
+        std::string errorMsg = std::string("SQL 执行异常: ") + e.what();
+        if (Output::mode == 0) {
+            Output::printError_Cli(errorMsg);
+        }
+        else {
+            Output::printError(nullptr, QString::fromStdString(errorMsg));
+        }
+        return output.str();
     }
 }
+
 void Parse::registerPatterns() {
   
     /*   DDL   */
@@ -300,15 +269,51 @@ void Parse::execute(const QString& sql_qt) {
 
     // 直接判断事务；TODO：判断之后仍会进入正则匹配，此时尚未注册
     if (std::regex_search(upperSQL, std::regex("^START TRANSACTION;$"))) {
+        if (TransactionManager::instance().isActive())
+        {
+            Output::printError(outputEdit, QString("已有事务正在进行中。"));
+            return;
+        }
         TransactionManager::instance().begin();
+		Output::printMessage(outputEdit, "事务开始");
         return;
     }
     if (std::regex_search(upperSQL, std::regex("^COMMIT;$"))) {
+        if (!TransactionManager::instance().isActive())
+        {
+            Output::printError(outputEdit, QString("当前没有活动的事务，无法提交"));
+            return;
+        }
         TransactionManager::instance().commit();
+		Output::printMessage(outputEdit, "事务结束。成功提交。");
         return;
     }
     if (std::regex_search(upperSQL, std::regex("^ROLLBACK;$"))) {
-        TransactionManager::instance().rollback();
+        if (!TransactionManager::instance().isActive())
+        {
+            Output::printError(outputEdit, QString("当前没有活动的事务，无法回滚。"));
+            return;
+        }
+        int rollback_count = TransactionManager::instance().rollback();
+        // 使用 Output 类输出成功回滚的记录数
+        Output::printMessage(outputEdit, QString("事务结束。成功回滚了 %1 条记录。").arg(rollback_count));
+        return;
+    }
+    // 关闭自动提交
+    if (std::regex_search(upperSQL, std::regex(R"(^SET\s+AUTOCOMMIT\s*=\s*0\s*;$)", std::regex::icase))) {
+        TransactionManager::instance().setAutoCommit(false);
+        Output::printMessage(outputEdit, "自动提交已关闭");
+        return;
+    }
+    // 开启自动提交
+    if (std::regex_search(upperSQL, std::regex(R"(^SET\s+AUTOCOMMIT\s*=\s*1\s*;$)", std::regex::icase))) {
+        if (TransactionManager::instance().isActive())
+        {
+            Output::printError(outputEdit, "正处在事务中，自动提交默认关闭");
+            return;
+        }
+        TransactionManager::instance().setAutoCommit(true);  // 注意这里也应该是 true
+        Output::printMessage(outputEdit, "自动提交已开启");
         return;
     }
 
