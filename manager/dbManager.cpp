@@ -225,7 +225,7 @@ std::vector<std::string> dbManager::get_database_list_by_db()
         // 只加载当前用户创建的数据库
         if (block.type == 1 && strcmp(block.abledUsername, user::getCurrentUser().username) == 0) {  // 用户数据库
             databases.emplace_back(block.dbName);
-            qDebug() << "比对成功: " << block.abledUsername << " <-> " << user::getCurrentUser().username;
+            //qDebug() << "比对成功: " << block.abledUsername << " <-> " << user::getCurrentUser().username;
 
         }
     }
