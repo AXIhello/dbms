@@ -20,8 +20,8 @@ AddTableDialog::AddTableDialog(QWidget* parent, const QString& dbName)
     topLayout->addWidget(nameLabel);
     topLayout->addWidget(tableNameEdit);
 
-    fieldTable = new QTableWidget(0, 4, this);
-    fieldTable->setHorizontalHeaderLabels({ "字段名", "类型", "长度", "完整性" });
+    fieldTable = new QTableWidget(0, 5, this);
+    fieldTable->setHorizontalHeaderLabels({ "字段名", "类型", "长度", "完整性", "参数" });
     fieldTable->horizontalHeader()->setSectionResizeMode(QHeaderView::Stretch);
 
     addFieldButton = new QPushButton("添加字段");
@@ -68,16 +68,51 @@ void AddTableDialog::addFieldRow() {
 
     QSpinBox* lengthSpin = new QSpinBox;
     lengthSpin->setRange(0, 255);
+    lengthSpin->setEnabled(false);  // 默认禁用
     fieldTable->setCellWidget(row, 2, lengthSpin);  // 长度参数
 
     QComboBox* integrityCombo = new QComboBox;
     integrityCombo->addItem("无", 0);
-    integrityCombo->addItem("Not Null", 1);
-    integrityCombo->addItem("Default", 2);
+    integrityCombo->addItem("主键", 1);
+    integrityCombo->addItem("外键", 2);
+    integrityCombo->addItem("CHECK", 3);
+    integrityCombo->addItem("UNIQUE", 4);
+    integrityCombo->addItem("Not Null", 5);
+    integrityCombo->addItem("Default", 6);
+    integrityCombo->addItem("自增", 7);
     fieldTable->setCellWidget(row, 3, integrityCombo);  // 完整性
 
-    //QLabel* timeLabel = new QLabel(QDateTime::currentDateTime().toString("yyyy-MM-dd HH:mm:ss"));
-    //fieldTable->setCellWidget(row, 4, timeLabel);  // 修改时间
+    QLineEdit* paramEdit = new QLineEdit;
+    paramEdit->setPlaceholderText("额外参数");
+    paramEdit->setEnabled(false);  // 默认禁用
+    fieldTable->setCellWidget(row, 4, paramEdit);  // 参数
+
+    //字段类型选择varchar时可以修改长度 别的默认禁用
+    connect(typeCombo, QOverload<int>::of(&QComboBox::currentIndexChanged),
+        [typeCombo, lengthSpin](int index) {
+            QString type = typeCombo->itemText(index);
+            if (type == "VARCHAR") {
+                lengthSpin->setEnabled(true);
+            }
+            else {
+                lengthSpin->setValue(0);
+                lengthSpin->setEnabled(false);
+            }
+        });
+
+    //完整性约束选择外键、check、default时可以继续添加额外参数 别的默认禁用
+    connect(integrityCombo, QOverload<int>::of(&QComboBox::currentIndexChanged),
+        [paramEdit, integrityCombo](int index) {
+            QString text = integrityCombo->itemText(index);
+            if (text == "外键" || text == "CHECK" || text == "Default") {
+                paramEdit->setEnabled(true);
+            }
+            else {
+                paramEdit->clear();
+                paramEdit->setEnabled(false);
+            }
+        });
+
 }
 
 void AddTableDialog::removeSelectedRow() {
@@ -98,6 +133,7 @@ QStringList AddTableDialog::getColumnDefinitions() const {
         auto typeBox = qobject_cast<QComboBox*>(fieldTable->cellWidget(i, 1));
         auto lengthSpin = qobject_cast<QSpinBox*>(fieldTable->cellWidget(i, 2));
         auto integrityBox = qobject_cast<QComboBox*>(fieldTable->cellWidget(i, 3));
+        auto paramEdit = qobject_cast<QLineEdit*>(fieldTable->cellWidget(i, 4));
 
         if (!nameEdit || !typeBox || !integrityBox) continue;
 
@@ -105,6 +141,7 @@ QStringList AddTableDialog::getColumnDefinitions() const {
         QString type = typeBox->currentText();
         int length = lengthSpin->value();
         QString integrity = integrityBox->currentText();
+        QString param = paramEdit ? paramEdit->text().trimmed() : "";
 
         if (name.isEmpty()) continue;
 
@@ -113,22 +150,26 @@ QStringList AddTableDialog::getColumnDefinitions() const {
             def += "(" + QString::number(length) + ")";
         }
 
-        if (integrity == "Not Null") {
+        if (integrity == "主键") {
+            def += " PRIMARY KEY";
+        }
+        else if (integrity == "外键" && !param.isEmpty()) {
+            def += " REFERENCES " + param;
+        }
+        else if (integrity == "CHECK" && !param.isEmpty()) {
+            def += " CHECK (" + param + ")";
+        }
+        else if (integrity == "UNIQUE") {
+            def += " UNIQUE";
+        }
+        else if (integrity == "Not Null") {
             def += " NOT NULL";
         }
-        else if (integrity == "Default") {
-            if (type == "INT" || type == "DOUBLE") {
-                def += " DEFAULT 0";
-            }
-            else if (type == "VARCHAR") {
-                def += " DEFAULT ''";
-            }
-            else if (type == "BOOL") {
-                def += " DEFAULT FALSE";
-            }
-            else if (type == "DATETIME") {
-                def += " DEFAULT CURRENT_TIMESTAMP";
-            }
+        else if (integrity == "Default" && !param.isEmpty()) {
+            def += " DEFAULT " + param;
+        }
+        else if (integrity == "自增") {
+            def += " AUTOINCREMENT";
         }
 
         defs << def;
