@@ -44,6 +44,8 @@ public:
 
     void setAutoCommit(bool flag);
 
+    uint64_t getCurrentTransactionId() const;
+
    
 private:
     TransactionManager();  // 构造函数私有化
@@ -51,6 +53,8 @@ private:
     bool autoCommit;  // 是否启用自动提交
     std::optional<bool> lastAutoCommit;
     std::vector<UndoOperation> undoStack;  // 存储UNDO操作
-
     
+    uint64_t txnId;  //  当前事务ID
+    uint64_t txnIdCounter;  // 全局递增计数器
+
 };
