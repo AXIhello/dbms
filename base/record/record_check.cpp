@@ -159,97 +159,46 @@ bool Record::check_not_null_constraint(const ConstraintBlock& constraint, const 
 
 bool Record::check_check_constraint(const ConstraintBlock& constraint, const std::string& value) {
     if (is_null(value)) return true;
+
     std::string check_expr = constraint.param;
     std::string clean_value = value;
 
-    // 1. BETWEEN x AND y
-    std::regex between_regex_num(R"(BETWEEN\s+(-?\d+\.?\d*)\s+AND\s+(-?\d+\.?\d*))", std::regex_constants::icase);
-    std::regex between_regex_str(R"(BETWEEN\s+'([^']+)'\s+AND\s+'([^']+)')", std::regex_constants::icase);
-    std::smatch matches;
+    try {
+        double numeric_value = std::stod(clean_value);
 
-    // 处理数值型BETWEEN
-    if (std::regex_search(check_expr, matches, between_regex_num)) {
-        try {
-            double numeric_value = std::stod(clean_value);
+        // 1. BETWEEN x AND y
+        std::regex between_regex(R"(BETWEEN\s+(\d+)\s+AND\s+(\d+))", std::regex_constants::icase);
+        std::smatch matches;
+        if (std::regex_search(check_expr, matches, between_regex)) {
             double lower = std::stod(matches[1]);
             double upper = std::stod(matches[2]);
             return numeric_value >= lower && numeric_value <= upper;
         }
-        catch (...) {
-            return false; // 转换失败则不满足约束
-        }
-    }
 
-    // 处理字符串型BETWEEN
-    if (std::regex_search(check_expr, matches, between_regex_str)) {
-        std::string lower = matches[1];
-        std::string upper = matches[2];
-        return clean_value >= lower && clean_value <= upper;
-    }
-
-    // 2. IN (x, y, z, ...)
-    std::regex in_regex_num(R"(IN\s*\(\s*([^)]+)\s*\))", std::regex_constants::icase);
-    std::regex in_regex_str(R"(IN\s*\(\s*('[^']*'(?:\s*,\s*'[^']*')*)\s*\))", std::regex_constants::icase);
-
-    // 处理数值型IN
-    if (std::regex_search(check_expr, matches, in_regex_num)) {
-        std::string in_list = matches[1];
-        // 检查是否为字符串值列表
-        std::regex quoted_values("'[^']+'");
-        bool has_quoted = std::regex_search(in_list, quoted_values);
-
-        if (!has_quoted) {
-            try {
-                double numeric_value = std::stod(clean_value);
-                std::unordered_set<double> in_values;
-                std::regex num_pattern(R"(-?\d+\.?\d*)");
-                std::sregex_iterator iter(in_list.begin(), in_list.end(), num_pattern);
-                std::sregex_iterator end;
-
-                while (iter != end) {
-                    in_values.insert(std::stod((*iter)[0]));
-                    ++iter;
+        // 2. IN (x, y, z, ...)
+        std::regex in_regex(R"(IN\s*\(([^)]+)\))", std::regex_constants::icase);
+        if (std::regex_search(check_expr, matches, in_regex)) {
+            std::unordered_set<std::string> in_values;
+            std::stringstream ss(matches[1]);
+            std::string item;
+            while (std::getline(ss, item, ',')) {
+                item.erase(std::remove_if(item.begin(), item.end(), ::isspace), item.end());
+                if (!item.empty()) {
+                       in_values.insert(item);
                 }
-
-                return in_values.find(numeric_value) != in_values.end();
             }
-            catch (...) {
-                return false; // 转换失败则不满足约束
-            }
-        }
-    }
-
-    // 处理字符串型IN
-    if (std::regex_search(check_expr, matches, in_regex_str)) {
-        std::string in_list = matches[1];
-        std::unordered_set<std::string> str_values;
-
-        std::regex str_pattern(R"('([^']*)')");
-        std::sregex_iterator iter(in_list.begin(), in_list.end(), str_pattern);
-        std::sregex_iterator end;
-
-        while (iter != end) {
-            str_values.insert((*iter)[1]); // 获取引号内的内容
-            ++iter;
+            return in_values.find(clean_value) != in_values.end();
         }
 
-        return str_values.find(clean_value) != str_values.end();
-    }
+        // 3. Comparison operators
+        static const std::vector<std::pair<std::regex, std::function<bool(double, double)>>> operators = {
+            {std::regex(R"(>=\s*(\d+))"), [](double a, double b) { return a >= b; }},
+            {std::regex(R"(<=\s*(\d+))"), [](double a, double b) { return a <= b; }},
+            {std::regex(R"(>\s*(\d+))"), [](double a, double b) { return a > b; }},
+            {std::regex(R"(<\s*(\d+))"), [](double a, double b) { return a < b; }}
+        };
 
-    // 3. 比较运算符
-    // 处理数值比较
-    static const std::vector<std::pair<std::regex, std::function<bool(double, double)>>> num_operators = {
-        {std::regex(R"(>=\s*(-?\d+\.?\d*))", std::regex_constants::icase), [](double a, double b) { return a >= b; }},
-        {std::regex(R"(<=\s*(-?\d+\.?\d*))", std::regex_constants::icase), [](double a, double b) { return a <= b; }},
-        {std::regex(R"(>\s*(-?\d+\.?\d*))", std::regex_constants::icase), [](double a, double b) { return a > b; }},
-        {std::regex(R"(<\s*(-?\d+\.?\d*))", std::regex_constants::icase), [](double a, double b) { return a < b; }},
-        {std::regex(R"(=\s*(-?\d+\.?\d*))", std::regex_constants::icase), [](double a, double b) { return a == b; }},
-        {std::regex(R"(!=\s*(-?\d+\.?\d*))", std::regex_constants::icase), [](double a, double b) { return a != b; }}
-    };
-
-    try {
-        double numeric_value = std::stod(clean_value);
-        for (const auto& [regex, op] : num_operators) {
+        for (const auto& [regex, op] : operators) {
             if (std::regex_search(check_expr, matches, regex)) {
                 double check_val = std::stod(matches[1]);
                 return op(numeric_value, check_val);
@@ -257,29 +206,13 @@ bool Record::check_check_constraint(const ConstraintBlock& constraint, const std
         }
     }
     catch (...) {
-        // 数值转换失败，可能是字符串，继续检查字符串比较
-    }
-
-    // 处理字符串比较
-    static const std::vector<std::pair<std::regex, std::function<bool(const std::string&, const std::string&)>>> str_operators = {
-        {std::regex(R"(>=\s*'([^']*)')", std::regex_constants::icase), [](const std::string& a, const std::string& b) { return a >= b; }},
-        {std::regex(R"(<=\s*'([^']*)')", std::regex_constants::icase), [](const std::string& a, const std::string& b) { return a <= b; }},
-        {std::regex(R"(>\s*'([^']*)')", std::regex_constants::icase), [](const std::string& a, const std::string& b) { return a > b; }},
-        {std::regex(R"(<\s*'([^']*)')", std::regex_constants::icase), [](const std::string& a, const std::string& b) { return a < b; }},
-        {std::regex(R"(=\s*'([^']*)')", std::regex_constants::icase), [](const std::string& a, const std::string& b) { return a == b; }},
-        {std::regex(R"(!=\s*'([^']*)')", std::regex_constants::icase), [](const std::string& a, const std::string& b) { return a != b; }}
-    };
-
-    for (const auto& [regex, op] : str_operators) {
-        if (std::regex_search(check_expr, matches, regex)) {
-            std::string check_val = matches[1];
-            return op(clean_value, check_val);
-        }
+        return false;
     }
 
     // 如果没有匹配任何约束条件，则默认返回 true
     return true;
 }
+
 
 bool Record::check_default_constraint(const ConstraintBlock& constraint, std::string& value) {
     if (is_null(value)) {
