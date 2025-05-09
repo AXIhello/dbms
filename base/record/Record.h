@@ -9,6 +9,7 @@
 #include"transaction/TransactionManager.h"
 
 #include "base/block/tableBlock.h"
+#include"base/table/table.h"
 #include <filesystem> 
 #include <fstream>
 #include <sstream>
@@ -115,101 +116,13 @@ public:
 
 	//索引相关函数
 
-    // 运算符类型枚举
-    enum class OperatorType {
-        EQUALS,           // =
-        NOT_EQUALS,       // !=
-        GREATER_THAN,     // >
-        LESS_THAN,        // <
-        GREATER_EQUAL,    // >=
-        LESS_EQUAL,       // <=
-        LIKE,             // LIKE
-        NOT_LIKE,         // NOT LIKE
-        IN,               // IN
-        NOT_IN,           // NOT IN
-        BETWEEN,          // BETWEEN
-        IS_NULL,          // IS NULL
-        IS_NOT_NULL,      // IS NOT NULL
-        UNKNOWN           // 其他
-    };
-
-    // 索引条件结构
-    struct IndexCondition {
-        std::string field_name;      // 字段名
-        OperatorType op_type;        // 操作符类型
-        std::string value;           // 操作值(用于=, >, <, >=, <=, LIKE等)
-        std::string low_value;       // 范围下限(用于BETWEEN)
-        std::string high_value;      // 范围上限(用于BETWEEN)
-        std::vector<std::string> in_values; // IN列表值
-    };
-
-private:
-    // 索引相关辅助方法
-    static void parse_conditions_by_table(
-        const std::string& condition,
-        const std::vector<std::string>& tables,
-        std::unordered_map<std::string, std::string>& table_conditions,
-        std::string& join_condition);
-
-    static void extract_index_conditions(
-        const std::string& table_name,
-        const std::string& condition,
-        std::vector<IndexCondition>& index_conditions);
-
-    static std::pair<uint64_t, std::unordered_map<std::string, std::string>>
-        fetch_record_by_pointer(const std::string& table_name, uint64_t row_id);
-
-    BTree* get_index_for_field(const std::string& table_name, const std::string& field_name);
-
-    bool get_btree_for_field(const std::string& table_name, const std::string& field_name,
-        BTree*& btree, const IndexBlock*& index_block);
-
-    // 条件解析辅助方法
-    static void split_condition_by_and(const std::string& condition, std::vector<std::string>& parts);
-
-    static std::string extract_field_name_from_condition(const std::string& condition);
-
-    static bool table_has_field(const std::string& table_name, const std::string& field_name);
-
-    static void remove_table_prefix(std::string& field_name);
-
-    static std::string trim(const std::string& str);
-
-    // 条件匹配方法
-    static bool match_equals_condition(const std::string& condition, std::string& field_name, std::string& value);
-
-    static bool match_greater_than_condition(const std::string& condition, std::string& field_name, std::string& value);
-
-    static bool match_greater_equal_condition(const std::string& condition, std::string& field_name, std::string& value);
-
-    static bool match_less_than_condition(const std::string& condition, std::string& field_name, std::string& value);
-
-    static bool match_less_equal_condition(const std::string& condition, std::string& field_name, std::string& value);
-
-    static bool match_between_condition(const std::string& condition, std::string& field_name,
-        std::string& low_value, std::string& high_value);
-
-    static bool match_like_condition(const std::string& condition, std::string& field_name, std::string& pattern);
-
-    bool is_numeric(const std::string& str);
-
-    int compare_values(const std::string& value1, const std::string& value2, const std::string& type);
-
-    std::vector<std::string> get_primary_key_fields(const std::string& table_name);
-
-    std::string capitalize(const std::string& str);
-
-    bool matches_like_pattern(const std::string& str, const std::string& pattern);
-
-public:
-    /*
-     * 判断条件是否可以使用索引优化
-     * @param condition WHERE条件
-     * @param table_name 表名
-     * @return 如果条件中包含可索引字段并且该字段有索引，返回true
-     */
-    static bool can_use_index(const std::string& condition, const std::string& table_name);
-
+    std::vector<std::pair<uint64_t, std::unordered_map<std::string, std::string>>>
+        selectByIndex(
+            const std::unordered_map<uint64_t, std::unordered_map<std::string, std::string>>& filtered,
+            const std::vector<std::shared_ptr<Table>>& tables,
+            const std::unordered_map<std::string, std::string>& combined_structure,
+            bool has_join
+        );
     //更新索引操作
     void updateIndexesAfterInsert(const std::string& table_name);
     void updateIndexesAfterDelete(const std::string& table_name, const std::vector<std::string>& deletedValues, const RecordPointer& recordPtr);
@@ -223,5 +136,7 @@ public:
 };
 
 std::tm custom_strptime(const std::string& datetime_str, const std::string& format);
+std::unordered_map<uint64_t, std::unordered_map<std::string, std::string>>
+vectorToMap(const std::vector<std::pair<uint64_t, std::unordered_map<std::string, std::string>>>& vec);
 
 #endif // RECORD_H
