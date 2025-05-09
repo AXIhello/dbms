@@ -82,23 +82,53 @@ std::vector<Record> Record::select(
                 for (const auto& [row_r2, r2] : right_prefixed) {
                     bool match = true;
 
-                    // 查找并应用相关的JOIN条件
+                    // 检查所有可能的JOIN条件
                     for (const auto& join : join_info->joins) {
-                        bool relevant =
-                            (join.left_table == join_info->tables[i - 1] && join.right_table == join_info->tables[i]) ||
-                            (join.left_table == join_info->tables[i] && join.right_table == join_info->tables[i - 1]);
+                        // 检查此JOIN条件是否涉及当前正在处理的表
+                        bool involves_current_table =
+                            join.left_table == join_info->tables[i] ||
+                            join.right_table == join_info->tables[i];
 
-                        if (!relevant) continue;
+                        // 如果此JOIN条件不涉及当前表，则跳过
+                        if (!involves_current_table) continue;
 
+                        // 获取JOIN条件中的两个表名
+                        std::string other_table = (join.left_table == join_info->tables[i])
+                            ? join.right_table
+                            : join.left_table;
+
+                        // 检查另一个表是否是已经处理过的表（即在result中）
+                        bool involves_processed_table = false;
+                        for (size_t j = 0; j < i; ++j) {
+                            if (other_table == join_info->tables[j]) {
+                                involves_processed_table = true;
+                                break;
+                            }
+                        }
+
+                        // 如果JOIN条件不涉及已处理的表，则跳过
+                        if (!involves_processed_table) continue;
+
+                        // 应用JOIN条件
                         for (const auto& [left_col, right_col] : join.conditions) {
                             std::string left_field = join.left_table + "." + left_col;
                             std::string right_field = join.right_table + "." + right_col;
 
-                            auto left_it = r1.find(left_field);
-                            auto right_it = r2.find(right_field);
+                            std::string field1, field2;
+                            if (join.left_table == join_info->tables[i]) {
+                                field1 = left_field;  // 当前表中的字段
+                                field2 = right_field; // 之前表中的字段
+                            }
+                            else {
+                                field1 = right_field; // 当前表中的字段
+                                field2 = left_field;  // 之前表中的字段
+                            }
 
-                            if (left_it == r1.end() || right_it == r2.end() ||
-                                left_it->second != right_it->second) {
+                            auto current_field_it = r2.find(field1);
+                            auto previous_field_it = r1.find(field2);
+
+                            if (current_field_it == r2.end() || previous_field_it == r1.end() ||
+                                current_field_it->second != previous_field_it->second) {
                                 match = false;
                                 break;
                             }
@@ -139,19 +169,29 @@ std::vector<Record> Record::select(
             auto right_structure = read_table_structure_static(tables[i]);
             auto right_records = read_records(tables[i]);
 
-            for (const auto& [k, v] : right_structure) {
-                combined_structure[k] = v;
+            // 添加前缀
+            std::vector<std::pair<uint64_t, std::unordered_map<std::string, std::string>>> right_prefixed;
+            for (const auto& [row_id, rec] : right_records) {
+                std::unordered_map<std::string, std::string> prefixed;
+                for (const auto& [k, v] : rec) {
+                    std::string full_key = tables[i] + "." + k;
+                    prefixed[full_key] = v;
+                    combined_structure[full_key] = right_structure.at(k);
+                }
+                right_prefixed.emplace_back(row_id, std::move(prefixed));
             }
 
+            // 执行连接
             std::vector<std::pair<uint64_t, std::unordered_map<std::string, std::string>>> new_result;
             for (const auto& [row_r1, r1] : filtered) {
-                for (const auto& [row_r2, r2] : right_records) {
+                for (const auto& [row_r2, r2] : right_prefixed) {
                     auto combined = r1;
                     combined.insert(r2.begin(), r2.end());
                     new_result.emplace_back(0, std::move(combined));
                 }
             }
             filtered = std::move(new_result);
+
         }
     }
 
