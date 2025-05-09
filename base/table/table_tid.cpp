@@ -25,20 +25,36 @@ void Table::saveIndex() {
 }
 
 void Table::loadIndex() {
+    std::ifstream in(m_tid, std::ios::binary);
+    if (!in.is_open()) {
+        throw std::runtime_error("无法打开索引文件: " + m_tid);
+    }
 
-	std::ifstream in(m_tid, std::ios::binary);
-	if (!in.is_open()) {
-		throw std::runtime_error("无法打开索引文件: " + m_tid);
-	}
-	indexes.clear();
-	while (in.peek() != EOF) {
-		IndexBlock index;
-		in.read(reinterpret_cast<char*>(&index), sizeof(IndexBlock));
-		if (in.gcount() < sizeof(IndexBlock)) break;
-		indexes.push_back(index);
-	}
-	in.close();
+    indexes.clear();
+    m_btrees.clear(); // ⚠️ 清空已有的 B 树指针，防止重复加载
+
+    while (in.peek() != EOF) {
+        IndexBlock index;
+        in.read(reinterpret_cast<char*>(&index), sizeof(IndexBlock));
+        if (in.gcount() < sizeof(IndexBlock)) break;
+        indexes.push_back(index);
+
+        // 为每个索引创建 B 树对象并加载索引数据
+        IndexBlock* indexCopy = new IndexBlock(index);  // 注意生命周期管理
+        std::unique_ptr<BTree> btree = std::make_unique<BTree>(indexCopy);
+
+        try {
+            btree->loadBTreeIndex();  // 加载磁盘中已保存的 B 树结构
+            m_btrees.push_back(std::move(btree));  // 加入索引列表
+        }
+        catch (const std::exception& e) {
+            std::cerr << "索引 " << index.name << " 加载失败：" << e.what() << std::endl;
+        }
+    }
+
+    in.close();
 }
+
 
 void Table::createIndex(const IndexBlock& index) {
     // 1. 查找字段

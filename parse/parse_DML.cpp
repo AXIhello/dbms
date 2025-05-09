@@ -2,7 +2,7 @@
 
 void Parse::handleInsertInto(const std::smatch& m) {
     std::string table_name = m[1];
-    std::string cols = m[2];  // 可能为空
+    std::string cols = m[2];  // 可为空
     std::string vals = m[3];  // 可能是多个 (....), (....)
 
     // 去掉列名部分的括号（如果有）
@@ -14,25 +14,37 @@ void Parse::handleInsertInto(const std::smatch& m) {
     trimParens(cols);
 
     try {
-        // 流式正则：一条条匹配
-        std::regex val_regex(R"(\(([^)]*)\))");
-        auto vals_begin = std::sregex_iterator(vals.begin(), vals.end(), val_regex);
-        auto vals_end = std::sregex_iterator();
+        std::vector<std::string> valueBlocks;
+        std::string current;
+        int depth = 0;
+        for (size_t i = 0; i < vals.size(); ++i) {
+            char c = vals[i];
+            if (c == '(') {
+                if (depth == 0) current.clear();
+                depth++;
+            }
 
-        if (vals_begin == vals_end) {
-            throw std::runtime_error("未检测到有效的VALUES数据");
+            if (depth > 0) current += c;
+
+            if (c == ')') {
+                depth--;
+                if (depth == 0) {
+                    valueBlocks.push_back(current);
+                }
+            }
+        }
+
+        if (valueBlocks.empty()) {
+            throw std::runtime_error("未检测到有效的 VALUES 数据");
         }
 
         int count = 0;
-        
-
-        for (auto it = vals_begin; it != vals_end; ++it) {
-            std::string val_block = (*it)[1].str();  // 取出括号内的内容
+        for (const std::string& val_block : valueBlocks) {
+            std::string inner = val_block.substr(1, val_block.size() - 2); // 去掉 ()
             Record r;
-            r.insert_record(table_name, cols, val_block);
+            r.insert_record(table_name, cols, inner);
             ++count;
 
-            // 可选：每插入1000条，提示一下
             if (count % 1000 == 0) {
                 qDebug() << "已插入" << count << "条...";
             }
@@ -46,8 +58,6 @@ void Parse::handleInsertInto(const std::smatch& m) {
         Output::printError(outputEdit, QString::fromStdString(e.what()));
     }
 }
-
-
 
 
 

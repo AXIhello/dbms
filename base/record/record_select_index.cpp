@@ -16,7 +16,6 @@
 #include <string>
 #include <stdexcept>
 #include <cstring>
-#include "record_utils.cpp"
 
 std::unordered_map<uint64_t, std::unordered_map<std::string, std::string>>
 vectorToMap(const std::vector<std::pair<uint64_t, std::unordered_map<std::string, std::string>>>& vec) {
@@ -59,7 +58,7 @@ Record::selectByIndex(
 
         for (const auto& table : tables) {
             for (const auto& idx : table->getIndexes()) {
-                if (strcasecmp(idx.field.c_str(), field.c_str()) == 0) {
+                if (_stricmp(idx.field[0], field.c_str()) == 0){
                     BTree* btree = table->getBTreeByIndexName(idx.name);
                     if (!btree) continue;
 
@@ -67,7 +66,7 @@ Record::selectByIndex(
 
                     if (op == "=") {
                         FieldPointer* ptr = btree->find(val);
-                        if (ptr) candidate_ids.insert(ptr->recordPtr->row_id);
+                        if (ptr) candidate_ids.insert(ptr->recordPtr.row_id);
                     }
                     else if (op == ">" || op == ">=" || op == "<" || op == "<=") {
                         std::string low = (op == ">" || op == ">=") ? val : "";
@@ -80,7 +79,7 @@ Record::selectByIndex(
                                 (op == ">=" && fp.fieldValue >= val) ||
                                 (op == "<" && fp.fieldValue < val) ||
                                 (op == "<=" && fp.fieldValue <= val)) {
-                                candidate_ids.insert(fp.rowId);
+                                candidate_ids.insert(fp.recordPtr.row_id);
                             }
                         }
                     }
