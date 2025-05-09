@@ -275,7 +275,8 @@ if (def.find("UNIQUE") == 0) {
             constraints.push_back(cb);
         }
 
-        std::regex checkRegex(R"(CHECK\s*\(([^)]+)\))", std::regex::icase);
+        std::regex checkRegex(R"(CHECK\s*\((.*)\))", std::regex::icase);
+
         std::smatch checkMatch;
         if (std::regex_search(rest, checkMatch, checkRegex)) {
 			field.integrities = 1;

@@ -72,7 +72,7 @@ void showLogin() {
 }
 int main(int argc, char *argv[])
 {   
-    
+    debug::printTIC("D:\\dbms\\DBMS_ROOT\\data\\6\\TEST8.tic");
     // 检查启动参数，判断是否为CLI模式
     if (argc > 1 && strcmp(argv[1], "--cli") == 0) {
         Output::mode = 0;  // 设置为CLI模式
