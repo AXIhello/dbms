@@ -73,7 +73,6 @@ int Record::update(const std::string& tableName, const std::string& setClause, c
                         }
                     }
 
-
                     // 记录旧值
                     std::vector<std::string> oldValues, newValues;
                     for (const auto& [col, _] : updates) {
@@ -103,11 +102,8 @@ int Record::update(const std::string& tableName, const std::string& setClause, c
 
                     // 更新索引（注意此时 row_id 是已读出的）
                     updateIndexesAfterUpdate(table_name, oldValues, newValues, RecordPointer{ row_id });
-
                     updated++;
                 }
-
-
                 // 保留原 row_id
                 all_records.emplace_back(row_id, record_data);
             }

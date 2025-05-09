@@ -17,6 +17,109 @@
 inline bool is_null(const std::string& value) {
     return value == "NULL";
 }
+struct ExpressionNode {
+    std::string value;
+    ExpressionNode* left = nullptr;
+    ExpressionNode* right = nullptr;
+    ExpressionNode(const std::string& val) : value(val) {}
+};
+
+// 工具函数：检查字符串是否为运算符
+bool is_operator(const std::string& token) {
+    return token == "AND" || token == "OR";
+}
+
+// 工具函数：根据表达式节点和记录数据进行计算
+bool evaluate_node(ExpressionNode* node, const std::unordered_map<std::string, std::string>& record) {
+    if (!node) return false;
+    if (!is_operator(node->value)) {
+        // 解析条件表达式，例如 SSEX='M'
+        std::regex condition_regex(R"((\w+)\s*(=|!=|<|>|<=|>=)\s*'?(\w+)'?)");
+        std::smatch match;
+        if (std::regex_match(node->value, match, condition_regex)) {
+            std::string field = match[1];
+            std::string op = match[2];
+            std::string value = match[3];
+
+            if (record.find(field) == record.end()) return false;
+            std::string actual_value = record.at(field);
+
+            if (op == "=") return actual_value == value;
+            if (op == "!=") return actual_value != value;
+            if (op == "<") return std::stod(actual_value) < std::stod(value);
+            if (op == ">") return std::stod(actual_value) > std::stod(value);
+            if (op == "<=") return std::stod(actual_value) <= std::stod(value);
+            if (op == ">=") return std::stod(actual_value) >= std::stod(value);
+        }
+        return false;
+    }
+
+    // 递归计算
+    bool left_result = evaluate_node(node->left, record);
+    bool right_result = evaluate_node(node->right, record);
+
+    if (node->value == "AND") return left_result && right_result;
+    if (node->value == "OR") return left_result || right_result;
+
+    return false;
+}
+
+// 中缀表达式转为二叉树
+ExpressionNode* build_expression_tree(const std::vector<std::string>& tokens) {
+    std::stack<ExpressionNode*> nodes;
+    std::stack<std::string> ops;
+
+    for (const std::string& token : tokens) {
+        if (is_operator(token)) {
+            while (!ops.empty()) {
+                ExpressionNode* right = nodes.top(); nodes.pop();
+                ExpressionNode* left = nodes.top(); nodes.pop();
+                ExpressionNode* op_node = new ExpressionNode(ops.top());
+                ops.pop();
+                op_node->left = left;
+                op_node->right = right;
+                nodes.push(op_node);
+            }
+            ops.push(token);
+        }
+        else {
+            nodes.push(new ExpressionNode(token));
+        }
+    }
+
+    while (!ops.empty()) {
+        ExpressionNode* right = nodes.top(); nodes.pop();
+        ExpressionNode* left = nodes.top(); nodes.pop();
+        ExpressionNode* op_node = new ExpressionNode(ops.top());
+        ops.pop();
+        op_node->left = left;
+        op_node->right = right;
+        nodes.push(op_node);
+    }
+
+    return nodes.top();
+}
+
+// 解析表达式字符串为 tokens
+std::vector<std::string> tokenize(const std::string& expr) {
+    std::regex token_regex(R"((BETWEEN\s+\w+\s+AND\s+\w+|IN\s*\([^)]+\)|AND|OR|[\w\.]+\s*(=|!=|<|>|<=|>=)\s*'?.+?'?))", std::regex_constants::icase);
+    std::sregex_iterator iter(expr.begin(), expr.end(), token_regex);
+    std::sregex_iterator end;
+    std::vector<std::string> tokens;
+
+    while (iter != end) {
+        tokens.push_back(iter->str());
+        ++iter;
+    }
+    return tokens;
+}
+
+// 表级约束校验
+bool Record::check_table_level_constraint(const ConstraintBlock& constraint, const std::unordered_map<std::string, std::string>& column_values) {
+    std::vector<std::string> tokens = tokenize(constraint.param);
+    ExpressionNode* root = build_expression_tree(tokens);
+    return evaluate_node(root, column_values);
+}
 
 std::vector<ConstraintBlock> Record::read_constraints(const std::string& table_name) {
     std::vector<ConstraintBlock> constraints;
@@ -60,8 +163,16 @@ bool Record::check_constraints(const std::vector<std::string>& columns,
             satisfied = check_foreign_key_constraint(constraint, field_value);
             break;
         case 3:
-            satisfied = check_check_constraint(constraint, field_value);
+            if (std::strlen(constraint.field) == 0) {
+                // 如果字段为空，表示是表级约束
+                satisfied = check_table_level_constraint(constraint, column_values);
+            }
+            else {
+                // 否则是列级约束
+                satisfied = check_check_constraint(constraint, field_value);
+            }
             break;
+
         case 4:
             satisfied = check_unique_constraint(constraint, field_value);
             break;

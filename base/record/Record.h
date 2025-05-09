@@ -74,7 +74,8 @@ private:
         const std::unordered_map<std::string, std::string>& record_data);
     // 计算数据本体的大小（不含null标志）
     static size_t get_field_data_size(int type, int param);
-
+    static bool check_table_level_constraint(const ConstraintBlock& constraint, 
+        const std::unordered_map<std::string, std::string>& column_values);
 public:
     // 构造函数
     Record();
