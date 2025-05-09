@@ -29,27 +29,142 @@ bool is_operator(const std::string& token) {
     return token == "AND" || token == "OR";
 }
 
-// 工具函数：根据表达式节点和记录数据进行计算
+// 修改 tokenize 函数以更好地处理复杂表达式
+std::vector<std::string> tokenize(const std::string& expr) {
+    std::vector<std::string> tokens;
+    std::string current_token;
+
+    // 先将字符串按照 AND 和 OR 分割
+    std::string temp = expr;
+    size_t pos = 0;
+
+    // 处理 AND 操作符
+    while ((pos = temp.find(" AND ", pos)) != std::string::npos) {
+        if (pos > 0) {
+            tokens.push_back(temp.substr(0, pos));
+            tokens.push_back("AND");
+            temp = temp.substr(pos + 5); // 5 是 " AND " 的长度
+            pos = 0;
+        }
+    }
+
+    // 处理 OR 操作符
+    pos = 0;
+    std::vector<std::string> or_parts;
+    while ((pos = temp.find(" OR ", pos)) != std::string::npos) {
+        if (pos > 0) {
+            or_parts.push_back(temp.substr(0, pos));
+            or_parts.push_back("OR");
+            temp = temp.substr(pos + 4); // 4 是 " OR " 的长度
+            pos = 0;
+        }
+    }
+
+    // 添加最后一个部分
+    if (!temp.empty()) {
+        or_parts.push_back(temp);
+    }
+
+    // 将 OR 部分合并到主 tokens 中
+    tokens.insert(tokens.end(), or_parts.begin(), or_parts.end());
+
+    return tokens;
+}
+
+// 修改 build_expression_tree 函数来处理操作符优先级
+ExpressionNode* build_expression_tree(const std::vector<std::string>& tokens) {
+    if (tokens.empty()) return nullptr;
+
+    // 实现 Shunting Yard 算法来处理操作符优先级
+    std::stack<std::string> ops;
+    std::stack<ExpressionNode*> nodes;
+
+    // 定义操作符优先级 (AND 优先级高于 OR)
+    std::unordered_map<std::string, int> precedence = {
+        {"AND", 2},
+        {"OR", 1}
+    };
+
+    for (const auto& token : tokens) {
+        if (is_operator(token)) {
+            // 处理操作符
+            while (!ops.empty() && precedence[ops.top()] >= precedence[token]) {
+                std::string op = ops.top();
+                ops.pop();
+
+                ExpressionNode* right = nodes.top(); nodes.pop();
+                ExpressionNode* left = nodes.top(); nodes.pop();
+
+                ExpressionNode* op_node = new ExpressionNode(op);
+                op_node->left = left;
+                op_node->right = right;
+                nodes.push(op_node);
+            }
+            ops.push(token);
+        }
+        else {
+            // 处理操作数
+            nodes.push(new ExpressionNode(token));
+        }
+    }
+
+    // 处理剩余的操作符
+    while (!ops.empty()) {
+        std::string op = ops.top();
+        ops.pop();
+
+        ExpressionNode* right = nodes.top(); nodes.pop();
+        ExpressionNode* left = nodes.top(); nodes.pop();
+
+        ExpressionNode* op_node = new ExpressionNode(op);
+        op_node->left = left;
+        op_node->right = right;
+        nodes.push(op_node);
+    }
+
+    return nodes.empty() ? nullptr : nodes.top();
+}
+
+// 修改 evaluate_node 函数以正确处理条件表达式
 bool evaluate_node(ExpressionNode* node, const std::unordered_map<std::string, std::string>& record) {
     if (!node) return false;
+
     if (!is_operator(node->value)) {
-        // 解析条件表达式，例如 SSEX='M'
-        std::regex condition_regex(R"((\w+)\s*(=|!=|<|>|<=|>=)\s*'?(\w+)'?)");
+        std::regex condition_regex(R"((\w+)\s*(=|!=|<|>|<=|>=)\s*'?([^']*)'?)");
         std::smatch match;
+
         if (std::regex_match(node->value, match, condition_regex)) {
             std::string field = match[1];
             std::string op = match[2];
             std::string value = match[3];
 
+            // 检查字段是否存在于记录中
             if (record.find(field) == record.end()) return false;
             std::string actual_value = record.at(field);
 
-            if (op == "=") return actual_value == value;
+            // 保留引号进行比较
+            if (op == "=") {
+                    return actual_value == value;
+            }
             if (op == "!=") return actual_value != value;
-            if (op == "<") return std::stod(actual_value) < std::stod(value);
-            if (op == ">") return std::stod(actual_value) > std::stod(value);
-            if (op == "<=") return std::stod(actual_value) <= std::stod(value);
-            if (op == ">=") return std::stod(actual_value) >= std::stod(value);
+
+            // 对于数值比较，尝试转换为数字
+            try {
+                double actual_num = std::stod(actual_value);
+                double value_num = std::stod(value);
+
+                if (op == "<") return actual_num < value_num;
+                if (op == ">") return actual_num > value_num;
+                if (op == "<=") return actual_num <= value_num;
+                if (op == ">=") return actual_num >= value_num;
+            }
+            catch (const std::exception&) {
+                // 如果转换失败，使用字符串比较
+                if (op == "<") return actual_value < value;
+                if (op == ">") return actual_value > value;
+                if (op == "<=") return actual_value <= value;
+                if (op == ">=") return actual_value >= value;
+            }
         }
         return false;
     }
@@ -62,56 +177,6 @@ bool evaluate_node(ExpressionNode* node, const std::unordered_map<std::string, s
     if (node->value == "OR") return left_result || right_result;
 
     return false;
-}
-
-// 中缀表达式转为二叉树
-ExpressionNode* build_expression_tree(const std::vector<std::string>& tokens) {
-    std::stack<ExpressionNode*> nodes;
-    std::stack<std::string> ops;
-
-    for (const std::string& token : tokens) {
-        if (is_operator(token)) {
-            while (!ops.empty()) {
-                ExpressionNode* right = nodes.top(); nodes.pop();
-                ExpressionNode* left = nodes.top(); nodes.pop();
-                ExpressionNode* op_node = new ExpressionNode(ops.top());
-                ops.pop();
-                op_node->left = left;
-                op_node->right = right;
-                nodes.push(op_node);
-            }
-            ops.push(token);
-        }
-        else {
-            nodes.push(new ExpressionNode(token));
-        }
-    }
-
-    while (!ops.empty()) {
-        ExpressionNode* right = nodes.top(); nodes.pop();
-        ExpressionNode* left = nodes.top(); nodes.pop();
-        ExpressionNode* op_node = new ExpressionNode(ops.top());
-        ops.pop();
-        op_node->left = left;
-        op_node->right = right;
-        nodes.push(op_node);
-    }
-
-    return nodes.top();
-}
-
-// 解析表达式字符串为 tokens
-std::vector<std::string> tokenize(const std::string& expr) {
-    std::regex token_regex(R"((BETWEEN\s+\w+\s+AND\s+\w+|IN\s*\([^)]+\)|AND|OR|[\w\.]+\s*(=|!=|<|>|<=|>=)\s*'?.+?'?))", std::regex_constants::icase);
-    std::sregex_iterator iter(expr.begin(), expr.end(), token_regex);
-    std::sregex_iterator end;
-    std::vector<std::string> tokens;
-
-    while (iter != end) {
-        tokens.push_back(iter->str());
-        ++iter;
-    }
-    return tokens;
 }
 
 // 表级约束校验
