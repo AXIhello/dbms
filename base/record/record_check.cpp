@@ -159,46 +159,54 @@ bool Record::check_not_null_constraint(const ConstraintBlock& constraint, const 
 
 bool Record::check_check_constraint(const ConstraintBlock& constraint, const std::string& value) {
     if (is_null(value)) return true;
+
     std::string check_expr = constraint.param;
     std::string clean_value = value;
-    std::smatch matches;
 
-    std::regex lt_regex("(<)\\s*(\\d+)");  // 匹配 < 及其后面的数字
-    if (std::regex_search(check_expr, matches, lt_regex)) {
-        int check_val = std::stoi(matches[2]);  // 数字在第二个捕获组
-        try {
-            return std::stod(clean_value) < check_val;
+    try {
+        double numeric_value = std::stod(clean_value);
+
+        // 1. BETWEEN x AND y
+        std::regex between_regex(R"(BETWEEN\s+(\d+)\s+AND\s+(\d+))", std::regex_constants::icase);
+        std::smatch matches;
+        if (std::regex_search(check_expr, matches, between_regex)) {
+            double lower = std::stod(matches[1]);
+            double upper = std::stod(matches[2]);
+            return numeric_value >= lower && numeric_value <= upper;
         }
-        catch (...) { return false; }
+
+        // 2. IN (x, y, z, ...)
+        std::regex in_regex(R"(IN\s*\(([^)]+)\))", std::regex_constants::icase);
+        if (std::regex_search(check_expr, matches, in_regex)) {
+            std::unordered_set<double> in_values;
+            std::stringstream ss(matches[1]);
+            std::string item;
+            while (std::getline(ss, item, ',')) {
+                in_values.insert(std::stod(item));
+            }
+            return in_values.find(numeric_value) != in_values.end();
+        }
+
+        // 3. Comparison operators
+        static const std::vector<std::pair<std::regex, std::function<bool(double, double)>>> operators = {
+            {std::regex(R"(>=\s*(\d+))"), [](double a, double b) { return a >= b; }},
+            {std::regex(R"(<=\s*(\d+))"), [](double a, double b) { return a <= b; }},
+            {std::regex(R"(>\s*(\d+))"), [](double a, double b) { return a > b; }},
+            {std::regex(R"(<\s*(\d+))"), [](double a, double b) { return a < b; }}
+        };
+
+        for (const auto& [regex, op] : operators) {
+            if (std::regex_search(check_expr, matches, regex)) {
+                double check_val = std::stod(matches[1]);
+                return op(numeric_value, check_val);
+            }
+        }
+    }
+    catch (...) {
+        return false;
     }
 
-    std::regex gt_regex("(>)\\s*(\\d+)");  // 匹配 > 及其后面的数字
-    if (std::regex_search(check_expr, matches, gt_regex)) {
-        int check_val = std::stoi(matches[2]);  // 数字在第二个捕获组
-        try {
-            return std::stod(clean_value) > check_val;
-        }
-        catch (...) { return false; }
-    }
-
-    std::regex gte_regex("(>=)\\s*(\\d+)");  // 匹配 >= 及其后面的数字
-    if (std::regex_search(check_expr, matches, gte_regex)) {
-        int check_val = std::stoi(matches[2]);  // 数字在第二个捕获组
-        try {
-            return std::stod(clean_value) >= check_val;
-        }
-        catch (...) { return false; }
-    }
-
-    std::regex lte_regex("(<=)\\s*(\\d+)");  // 匹配 <= 及其后面的数字
-    if (std::regex_search(check_expr, matches, lte_regex)) {
-        int check_val = std::stoi(matches[2]);  // 数字在第二个捕获组
-        try {
-            return std::stod(clean_value) <= check_val;
-        }
-        catch (...) { return false; }
-    }
-
+    // 如果没有匹配任何约束条件，则默认返回 true
     return true;
 }
 
