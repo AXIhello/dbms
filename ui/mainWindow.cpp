@@ -386,15 +386,12 @@ void MainWindow::onTreeWidgetContextMenu(const QPoint& pos) {
         if (!parent) {
             // 数据库节点
             dbName = item->text(0);
-           // menu.addAction("新建表", [=]() {
-               // QMessageBox::information(this, "新建数据表", "这里将来会弹出新建表窗口（属于数据库：" + dbName + "）");
-                //});
 
             menu.addAction("新建表", [=]() {
                 AddTableDialog dlg(this, dbName);  // 传入当前数据库名
                 if (dlg.exec() == QDialog::Accepted) {
                     QString tableName = dlg.getTableName();  // 用户填写的表名
-                    QStringList columns = dlg.getColumnDefinitions(); // 每项格式如 "id INT", "name VARCHAR(50)" 等
+                    QStringList columns = dlg.getColumnDefinitions(); 
 
                     if (!tableName.isEmpty() && !columns.isEmpty()) {
                         QString sql = "USE DATABASE " + dbName + ";   ";
