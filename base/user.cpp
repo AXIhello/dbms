@@ -176,18 +176,6 @@ bool user::grantPermission(const std::string& username,const std::string& permis
     const std::string& dbName,const std::string& tableName) 
 {
     std::vector<User> users = loadUsers();
-    /*for (auto& u : users) {
-        if (username == u.username) {
-            std::string perms(u.permissions);
-            if (perms.find(permission) == std::string::npos) {
-                if (!perms.empty()) perms += "|";
-                perms += permission;
-                strcpy_s(u.permissions, sizeof(u.permissions), perms.c_str());
-                updated = true;
-            }
-            break;
-        }
-    }*/
     bool userExists = false;
     // Step 1: 更新用户结构体中的权限字段
     for (auto& u : users) {
@@ -253,38 +241,6 @@ bool user::grantPermission(const std::string& username,const std::string& permis
             // TODO: 表级权限将由表结构控制（如果你有表结构文件，可以继续处理）
         }
     }
-
-    //Output::printMessage(outputEdit, "已授权 " + QString::fromStdString(permission) + " 给用户 " + QString::fromStdString(username));
-
-    //    // 将授权用户添加到对应的数据库
-    //    std::string sysDBPath = dbManager::basePath + "/" + "ruanko.db";
-    //    std::ifstream dbFile(sysDBPath, std::ios::binary);
-    //    std::vector<DatabaseBlock> dbs;
-
-    //    // 加载现有数据库
-    //    DatabaseBlock block;
-    //    while (dbFile.read(reinterpret_cast<char*>(&block), sizeof(block))) {
-    //        dbs.push_back(block);
-    //    }
-    //    dbFile.close();
-
-    //    // 更新权限
-    //    for (auto& db : dbs) {
-    //        if ((permission == "conn" || permission == "resource") && strcmp(db.dbName, permission.c_str()) == 0) {
-    //            // 将授权的用户名添加到 abledUsername 字段
-    //            std::string abledUsers(db.abledUsername);
-    //            // 检查用户名是否已经存在于 abledUsers 字符串中
-    //            if (abledUsers.find(username) == std::string::npos) {
-    //                // 如果 abledUsers 字符串不为空，添加分隔符 "|"
-    //                if (!abledUsers.empty()) abledUsers += "|";
-    //                // 添加新的用户名到 abledUsers 字符串中
-    //                abledUsers += username;
-    //                // 将更新后的 abledUsers 字符串拷贝回数据库对象的 abledUsername 字段
-    //                strcpy_s(db.abledUsername, sizeof(db.abledUsername), abledUsers.c_str());
-    //            }
-    //        }
-    //    }
-
         // Step 4: 写回数据库信息
         std::ofstream dbFileOut(sysDBPath, std::ios::binary | std::ios::trunc);
         for (const auto& db : dbs) {
