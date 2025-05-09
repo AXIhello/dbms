@@ -22,15 +22,18 @@ public:
     static void setOstream(std::ostream* outStream);
 
     // CLI 输出函数
-    static void printMessage(const std::string& message);
-    static void printError(const std::string& error);
-    static void printInfo(const std::string& message);
-    static void printDatabaseList(const std::vector<std::string>& dbs);
-    static void printTableList(const std::vector<std::string>& tables);
-    static void printSelectResultEmpty(const std::vector<std::string>& cols);
-
-private:
-    static std::ostream* outputStream;  // CLI输出流指针（默认为nullptr）
+    static void printMessage_Cli(const std::string& message);
+    static void printError_Cli(const std::string& error);
+    static void printInfo_Cli(const std::string& message);
+    static void printDatabaseList_Cli(const std::vector<std::string>& dbs);
+    static void printTableList_Cli(const std::vector<std::string>& tables);
+    static void printSelectResultEmpty_Cli(const std::vector<std::string>& cols);
+    static void printSelectResult_Cli(const std::vector<Record>& results, double duration_ms);
+    
+    //当前模式
+    static  int mode; 
+    static std::ostream* outputStream;
+ 
 };
    
 

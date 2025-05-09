@@ -39,12 +39,12 @@
     <QtModules>core;gui;widgets</QtModules>
     <QtBuildConfig>debug</QtBuildConfig>
     <QtInstall>6.2.13_msvc2019_64</QtInstall>
-    <QtInstall>6.2.13_msvc2019_64</QtInstall>
+    <QtInstall>6.7.0_msvc2019_64</QtInstall>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)' == 'Release|x64'" Label="QtSettings">
     <QtModules>core;gui;widgets</QtModules>
     <QtBuildConfig>release</QtBuildConfig>
-    <QtInstall>6.5.3_msvc2019_64</QtInstall>
+    <QtInstall>6.7.0_msvc2019_64</QtInstall>
   </PropertyGroup>
   <Target Name="QtMsBuildNotFound" BeforeTargets="CustomBuild;ClCompile" Condition="!Exists('$(QtMsBuild)\qt.targets') or !Exists('$(QtMsBuild)\qt.props')">
     <Message Importance="High" Text="QtMsBuild: could not locate qt.targets, qt.props; project may not build correctly." />
@@ -82,7 +82,7 @@
       <ConformanceMode>true</ConformanceMode>
     </ClCompile>
     <Link>
-      <SubSystem>Windows</SubSystem>
+      <SubSystem>Console</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
     </Link>
   </ItemDefinitionGroup>
@@ -96,7 +96,7 @@
       <IntrinsicFunctions>true</IntrinsicFunctions>
     </ClCompile>
     <Link>
-      <SubSystem>Windows</SubSystem>
+      <SubSystem>Console</SubSystem>
       <GenerateDebugInformation>false</GenerateDebugInformation>
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
@@ -128,6 +128,9 @@
     <ClCompile Include="base\table\table_tid.cpp" />
     <ClCompile Include="base\table\table_trd.cpp" />
     <ClCompile Include="transaction\TransactionManager.cpp" />
+    <ClCompile Include="ui\AddDatabaseDialog.cpp" />
+    <ClCompile Include="ui\AddTableDialog.cpp" />
+    <ClCompile Include="ui\AddUserDialog.cpp" />
     <ClCompile Include="ui\login.cpp" />
     <ClCompile Include="base\database.cpp" />
     <ClCompile Include="ui\mainWindow.cpp" />
@@ -136,8 +139,8 @@
     <ClCompile Include="base\user.cpp" />
     <QtRcc Include="dbms.qrc" />
     <QtRcc Include="resource\Resource.qrc" />
+    <QtUic Include="DialogButtonBottom.ui" />
     <QtUic Include="login.ui" />
-    <QtUic Include="ui\dbms.ui" />
     <ClCompile Include="main.cpp" />
     <QtUic Include="ui\MainWindow.ui" />
   </ItemGroup>
@@ -156,12 +159,12 @@
     <ClInclude Include="manager\dbManager.h" />
     <ClInclude Include="parse\parse.h" />
     <ClInclude Include="transaction\TransactionManager.h" />
+    <QtMoc Include="ui\AddDatabaseDialog.h" />
+    <QtMoc Include="ui\AddTableDialog.h" />
+    <QtMoc Include="ui\AddUserDialog.h" />
     <ClInclude Include="ui\output.h" />
     <ClInclude Include="base\record\Record.h" />
     <ClInclude Include="base\user.h" />
-  </ItemGroup>
-  <ItemGroup>
-    <None Include="users.dat" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Condition="Exists('$(QtMsBuild)\qt.targets')">

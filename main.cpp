@@ -13,51 +13,35 @@
 #include <iostream>
 using namespace std;
 
-
-static std::string Utf8ToGbk(const std::string& utf8)
-{
-    int len = MultiByteToWideChar(CP_UTF8, 0, utf8.c_str(), -1, NULL, 0);
-    if (len == 0) return "";
-
-    std::wstring wstr(len, 0);
-    MultiByteToWideChar(CP_UTF8, 0, utf8.c_str(), -1, &wstr[0], len);
-
-    len = WideCharToMultiByte(936, 0, wstr.c_str(), -1, NULL, 0, NULL, NULL);
-    if (len == 0) return "";
-
-    std::string gbk(len, 0);
-    WideCharToMultiByte(936, 0, wstr.c_str(), -1, &gbk[0], len, NULL, NULL);
-
-    if (!gbk.empty() && gbk.back() == '\0') gbk.pop_back();
-    return gbk;
-}
-
 static void RunCliMode()
 {
-   // SetConsoleOutputCP(936);
-   // SetConsoleCP(936);
+    // 设置控制台编码为UTF-8，确保中文显示正常
     SetConsoleOutputCP(CP_UTF8);
     SetConsoleCP(CP_UTF8);
 
+    // 明确设置CLI模式
+    Output::mode = 0;  // 设置为CLI模式
+    Output::setOstream(&std::cout);  // 设置输出流为标准输出
 
-    Output::setOstream(&std::cout);  
-
-    std::cout << Utf8ToGbk("当前数据库根目录(basePath): ") << dbManager::basePath << std::endl;
+    std::cout << "当前数据库根目录(basePath): " << dbManager::basePath << std::endl;
     Parse parser;
     std::string sql;
-    std::cout << Utf8ToGbk("欢迎使用 DBMS 命令行模式。输入 exit 或 quit 退出。\n");
+    std::cout << "欢迎使用 DBMS 命令行模式。输入 exit 或 quit 退出。\n" << std::endl;
+
     while (true) {
         std::cout << "dbms> ";
         if (!std::getline(std::cin, sql)) break;
 
+        // 去除前后空白
         sql.erase(0, sql.find_first_not_of(" \t\r\n"));
+        if (sql.empty()) continue;
         sql.erase(sql.find_last_not_of(" \t\r\n") + 1);
 
-        if (sql.empty()) continue;
+        // 检查退出命令
         if (sql == "exit" || sql == "quit") break;
 
-        std::string result = parser.executeSQL(sql); // 假设返回UTF-8
-        std::cout << Utf8ToGbk(result) << std::endl;
+        // 执行SQL
+        parser.executeSQL(sql);
     }
 }
 
@@ -88,10 +72,16 @@ void showLogin() {
 }
 int main(int argc, char *argv[])
 {   
-    if (argc > 1 && std::string(argv[1]) == "--cli") {
+    
+    // 检查启动参数，判断是否为CLI模式
+    if (argc > 1 && strcmp(argv[1], "--cli") == 0) {
+        Output::mode = 0;  // 设置为CLI模式
         RunCliMode();
-        return 0;
+        return 0;  // 退出
     }
+    // GUI模式
+    Output::mode = 1;  // 设置为GUI模式
+
     QApplication a(argc, argv);
     user::createSysDBA();
     showLogin();
