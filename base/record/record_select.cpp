@@ -139,19 +139,29 @@ std::vector<Record> Record::select(
             auto right_structure = read_table_structure_static(tables[i]);
             auto right_records = read_records(tables[i]);
 
-            for (const auto& [k, v] : right_structure) {
-                combined_structure[k] = v;
+            // 添加前缀
+            std::vector<std::pair<uint64_t, std::unordered_map<std::string, std::string>>> right_prefixed;
+            for (const auto& [row_id, rec] : right_records) {
+                std::unordered_map<std::string, std::string> prefixed;
+                for (const auto& [k, v] : rec) {
+                    std::string full_key = tables[i] + "." + k;
+                    prefixed[full_key] = v;
+                    combined_structure[full_key] = right_structure.at(k);
+                }
+                right_prefixed.emplace_back(row_id, std::move(prefixed));
             }
 
+            // 执行连接
             std::vector<std::pair<uint64_t, std::unordered_map<std::string, std::string>>> new_result;
             for (const auto& [row_r1, r1] : filtered) {
-                for (const auto& [row_r2, r2] : right_records) {
+                for (const auto& [row_r2, r2] : right_prefixed) {
                     auto combined = r1;
                     combined.insert(r2.begin(), r2.end());
                     new_result.emplace_back(0, std::move(combined));
                 }
             }
             filtered = std::move(new_result);
+
         }
     }
 
