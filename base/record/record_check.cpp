@@ -29,49 +29,23 @@ bool is_operator(const std::string& token) {
     return token == "AND" || token == "OR";
 }
 
-// 修改 tokenize 函数以更好地处理复杂表达式
 std::vector<std::string> tokenize(const std::string& expr) {
     std::vector<std::string> tokens;
-    std::string current_token;
 
-    // 先将字符串按照 AND 和 OR 分割
-    std::string temp = expr;
-    size_t pos = 0;
+    // 定义正则表达式来匹配条件和操作符
+    std::regex re(R"((\w+\s*(=|!=|<|>|<=|>=)\s*'[^']*'|\w+\s*(=|!=|<|>|<=|>=)\s*\w+|\bAND\b|\bOR\b))");
+    std::sregex_iterator iter(expr.begin(), expr.end(), re);
+    std::sregex_iterator end;
 
-    // 处理 AND 操作符
-    while ((pos = temp.find(" AND ", pos)) != std::string::npos) {
-        if (pos > 0) {
-            tokens.push_back(temp.substr(0, pos));
-            tokens.push_back("AND");
-            temp = temp.substr(pos + 5); // 5 是 " AND " 的长度
-            pos = 0;
-        }
+    // 遍历所有匹配的条件
+    while (iter != end) {
+        tokens.push_back(iter->str());
+        ++iter;
     }
-
-    // 处理 OR 操作符
-    pos = 0;
-    std::vector<std::string> or_parts;
-    while ((pos = temp.find(" OR ", pos)) != std::string::npos) {
-        if (pos > 0) {
-            or_parts.push_back(temp.substr(0, pos));
-            or_parts.push_back("OR");
-            temp = temp.substr(pos + 4); // 4 是 " OR " 的长度
-            pos = 0;
-        }
-    }
-
-    // 添加最后一个部分
-    if (!temp.empty()) {
-        or_parts.push_back(temp);
-    }
-
-    // 将 OR 部分合并到主 tokens 中
-    tokens.insert(tokens.end(), or_parts.begin(), or_parts.end());
 
     return tokens;
 }
 
-// 修改 build_expression_tree 函数来处理操作符优先级
 ExpressionNode* build_expression_tree(const std::vector<std::string>& tokens) {
     if (tokens.empty()) return nullptr;
 
@@ -130,7 +104,7 @@ bool evaluate_node(ExpressionNode* node, const std::unordered_map<std::string, s
     if (!node) return false;
 
     if (!is_operator(node->value)) {
-        std::regex condition_regex(R"((\w+)\s*(=|!=|<|>|<=|>=)\s*'?([^']*)'?)");
+        std::regex condition_regex(R"((\w+)\s*(=|!=|<|>|<=|>=)\s*('.*?'|\w+))");
         std::smatch match;
 
         if (std::regex_match(node->value, match, condition_regex)) {
@@ -213,7 +187,7 @@ bool Record::check_constraints(const std::vector<std::string>& columns,
     for (const auto& constraint : constraints) {
         std::string field_name = constraint.field;
 
-        if (column_values.find(field_name) == column_values.end() && constraint.type != 5) {
+        if (column_values.find(field_name) == column_values.end() && constraint.type != 5&&constraint.type!=3) {
             continue;
         }
 
