@@ -178,13 +178,16 @@ bool Record::check_check_constraint(const ConstraintBlock& constraint, const std
         // 2. IN (x, y, z, ...)
         std::regex in_regex(R"(IN\s*\(([^)]+)\))", std::regex_constants::icase);
         if (std::regex_search(check_expr, matches, in_regex)) {
-            std::unordered_set<double> in_values;
+            std::unordered_set<std::string> in_values;
             std::stringstream ss(matches[1]);
             std::string item;
             while (std::getline(ss, item, ',')) {
-                in_values.insert(std::stod(item));
+                item.erase(std::remove_if(item.begin(), item.end(), ::isspace), item.end());
+                if (!item.empty()) {
+                       in_values.insert(item);
+                }
             }
-            return in_values.find(numeric_value) != in_values.end();
+            return in_values.find(clean_value) != in_values.end();
         }
 
         // 3. Comparison operators
@@ -209,6 +212,7 @@ bool Record::check_check_constraint(const ConstraintBlock& constraint, const std
     // 如果没有匹配任何约束条件，则默认返回 true
     return true;
 }
+
 
 bool Record::check_default_constraint(const ConstraintBlock& constraint, std::string& value) {
     if (is_null(value)) {
