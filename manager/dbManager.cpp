@@ -63,20 +63,7 @@ void dbManager::create_system_db() {
     if (!sysDBFile) {
         throw std::runtime_error("无法创建系统数据库文件 ruanko.db");
     }
-    // 写入初始数据
-	DatabaseBlock systemDB;
-    memset(systemDB.dbName, 0, sizeof(systemDB.dbName));
-    strcpy_s(systemDB.dbName, "ruanko");  // 赋值数据库名称
-
-    systemDB.type = false;  // false 代表系统数据库
-
-    memset(systemDB.filepath, 0, sizeof(systemDB.filepath));
-    strcpy_s(systemDB.filepath, sysDBPath.c_str());  // 赋值文件路径
-
-    systemDB.crtime = std::chrono::system_clock::to_time_t(std::chrono::system_clock::now());  // 获取当前时间
-
-    // 写入 `ruanko.db` 文件
-    sysDBFile.write(reinterpret_cast<char*>(&systemDB), sizeof(DatabaseBlock));
+ //   1
     sysDBFile.close();
 }
 

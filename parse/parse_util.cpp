@@ -9,8 +9,8 @@ QString Parse::cleanSQL(const QString& sql) {
     // 多个空格或 Tab 变单空格
     cleaned.replace(QRegularExpression("[ \\t]+"), " ");
 
-    //处理逗号
-    cleaned.replace(QRegularExpression("\\s*,\\s*"), ", ");
+    ////处理逗号
+    //cleaned.replace(QRegularExpression("\\s*,\\s*"), ", ");
 
     return cleaned.trimmed();
 }
