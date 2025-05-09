@@ -314,30 +314,16 @@ void Record::parse_condition(const std::string& condition) {
     full_condition = condition;
 }
 
-// 实现条件匹配判断方法
 bool Record::matches_condition(const std::unordered_map<std::string, std::string>& record_data, bool use_prefix) const {
     if (full_condition.empty()) return true;
 
-    std::regex logic_split(R"(\s+(AND|OR)\s+)", std::regex::icase);
-    std::sregex_token_iterator token_iter(full_condition.begin(), full_condition.end(), logic_split, { -1, 1 });
-    std::sregex_token_iterator end;
+    // 1️⃣ 拆分表达式
+    std::vector<std::string> tokens = tokenize(full_condition);
 
-    std::vector<std::string> expressions;
-    std::vector<std::string> logic_ops;
+    // 2️⃣ 构建表达式树
+    ExpressionNode* root = build_expression_tree(tokens);
 
-    bool is_logic = false;
-    for (; token_iter != end; ++token_iter) {
-        std::string token = token_iter->str();
-        if (is_logic) {
-            std::transform(token.begin(), token.end(), token.begin(), ::toupper);
-            logic_ops.push_back(token);
-        }
-        else {
-            expressions.push_back(token);
-        }
-        is_logic = !is_logic;
-    }
-
+    // 3️⃣ 定义工具函数：获取字段类型
     auto resolve_field_type = [&](const std::string& key) -> std::string {
         for (const auto& [k, type] : table_structure) {
             if (strcasecmp(k.c_str(), key.c_str()) == 0) return type;
@@ -350,6 +336,7 @@ bool Record::matches_condition(const std::unordered_map<std::string, std::string
         throw std::runtime_error("字段 '" + key + "' 无法匹配到表结构中");
         };
 
+    // 4️⃣ 获取字段值
     auto get_field_value = [&](const std::string& key) -> std::string {
         for (const auto& [k, v] : record_data) {
             if (strcasecmp(k.c_str(), key.c_str()) == 0) return v;
@@ -362,17 +349,16 @@ bool Record::matches_condition(const std::unordered_map<std::string, std::string
         throw std::runtime_error("字段 '" + key + "' 无法匹配到记录中");
         };
 
+    // 5️⃣ 去除不可打印字符
     auto normalize_string = [](const std::string& str) -> std::string {
         std::string res = str;
-        // 去除尾部的 '\0' 或其他不可打印字符
         while (!res.empty() && (res.back() == '\0' || !isprint(res.back()))) {
             res.pop_back();
         }
-
         return res;
         };
 
-
+    // 6️⃣ 解析单个条件
     auto evaluate_single = [&](const std::string& cond) -> bool {
         std::regex expr_regex(R"(^\s*(\w+(?:\.\w+)?)\s*(=|!=|>=|<=|>|<)\s*(.+?)\s*$)");
         std::smatch m;
@@ -387,25 +373,16 @@ bool Record::matches_condition(const std::unordered_map<std::string, std::string
 
         // 判断右边是字段还是常量
         bool right_is_field = false;
-        for (const auto& [k, _] : record_data) {  
-            if (strcasecmp(k.c_str(), right.c_str()) == 0) { right_is_field = true; break; }
-            if (!use_prefix) {
-                size_t dot_pos = k.find('.');
-                std::string suffix = (dot_pos != std::string::npos) ? k.substr(dot_pos + 1) : k;
-                if (strcasecmp(suffix.c_str(), right.c_str()) == 0) { right_is_field = true; break; }
+        for (const auto& [k, _] : record_data) {
+            if (strcasecmp(k.c_str(), right.c_str()) == 0) {
+                right_is_field = true;
+                break;
             }
         }
 
+        std::string right_val = right_is_field ? get_field_value(right) : right;
 
-        std::string right_val;
-        if (right_is_field) {
-            right_val = get_field_value(right);
-        }
-        else {
-            right_val = right;
-        }
-
-        // 处理数值类型比较
+        // 数值类型处理
         if (left_type == "INTEGER" || left_type == "FLOAT" || left_type == "DOUBLE") {
             try {
                 double a = std::stod(left_val);
@@ -419,12 +396,12 @@ bool Record::matches_condition(const std::unordered_map<std::string, std::string
             }
             catch (...) { return false; }
         }
-        // 布尔
+        // 布尔类型处理
         else if (left_type == "BOOL") {
             if (op == "=") return left_val == right_val;
             if (op == "!=") return left_val != right_val;
         }
-        // 字符串
+        // 字符串类型处理
         else if (left_type == "CHAR" || left_type == "VARCHAR" || left_type == "TEXT") {
             std::string clean_left = normalize_string(left_val);
             std::string clean_right = normalize_string(right_val);
@@ -436,10 +413,11 @@ bool Record::matches_condition(const std::unordered_map<std::string, std::string
             if (op == ">=") return clean_left >= clean_right;
             if (op == "<=") return clean_left <= clean_right;
         }
-
+        // 日期时间处理
         else if (left_type == "DATETIME") {
             std::string clean_left = normalize_string(left_val);
             std::string clean_right = normalize_string(right_val);
+
             if (op == "=") return clean_left == clean_right;
             if (op == "!=") return clean_left != clean_right;
             if (op == ">") return clean_left > clean_right;
@@ -451,17 +429,28 @@ bool Record::matches_condition(const std::unordered_map<std::string, std::string
         return false;
         };
 
-    if (expressions.empty()) return true;
+    // 7️⃣ 递归遍历二叉树并求值
+    std::function<bool(ExpressionNode*)> evaluate_tree = [&](ExpressionNode* node) -> bool {
+        if (!node) return false;
 
-    bool result = evaluate_single(expressions[0]);
-    for (size_t i = 0; i < logic_ops.size(); ++i) {
-        bool next_result = evaluate_single(expressions[i + 1]);
-        if (logic_ops[i] == "AND") result = result && next_result;
-        else if (logic_ops[i] == "OR") result = result || next_result;
-    }
+        if (!is_operator(node->value)) {
+            // 叶子节点是单个表达式，直接判断
+            return evaluate_single(node->value);
+        }
 
-    return result;
+        bool left_result = evaluate_tree(node->left);
+        bool right_result = evaluate_tree(node->right);
+
+        if (node->value == "AND") return left_result && right_result;
+        if (node->value == "OR") return left_result || right_result;
+
+        return false;
+        };
+
+    // 8️⃣ 最终计算结果
+    return evaluate_tree(root);
 }
+
 
 // 从.trd文件读取记录
 std::vector<std::pair<uint64_t, std::unordered_map<std::string, std::string>>>

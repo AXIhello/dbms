@@ -25,11 +25,18 @@ struct JoinInfo {
     std::vector<JoinPair> joins;       // 变成多组条件
 };
 
+struct ExpressionNode {
+    std::string value;
+    ExpressionNode* left = nullptr;
+    ExpressionNode* right = nullptr;
+    ExpressionNode(const std::string& val) : value(val) {}
+};
 
 class Record {
 private:
     static bool read_record_from_file(std::ifstream& file, const std::vector<FieldBlock>& fields,
         std::unordered_map<std::string, std::string>& record_data, uint64_t& row_id, bool skip_deleted);
+    static ExpressionNode* build_expression_tree(const std::vector<std::string>& tokens);
     std::string table_name;
     std::vector<std::string> columns;
     std::vector<std::string> values;
@@ -79,6 +86,10 @@ private:
 public:
     // 构造函数
     Record();
+    // 工具函数：检查字符串是否为运算符
+    static bool is_operator(const std::string& token) {
+        return token == "AND" || token == "OR";
+    }
     void write_to_tdf_format(const std::string& table_name, const std::vector<std::string>& columns,
         const std::vector<std::string>& types, const std::vector<int>& params);
     bool validate_field_block(const std::string& value, const FieldBlock& field);
@@ -107,6 +118,7 @@ public:
     int rollback_delete_by_rowid(const std::string& tableName, uint64_t rowId);
     int rollback_insert_by_rowid(const std::string& tableName, uint64_t rowId);
     // 辅助函数
+    static std::vector<std::string> tokenize(const std::string& expr);
     static bool table_exists(const std::string& table_name);
     static std::unordered_map<std::string, std::string> read_table_structure_static(const std::string& table_name);
     static std::vector<std::string> parse_column_list(const std::string& columns);
