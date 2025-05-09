@@ -10,7 +10,7 @@ QString Parse::cleanSQL(const QString& sql) {
     cleaned.replace(QRegularExpression("[ \\t]+"), " ");
 
     //处理逗号
-    cleaned.replace(QRegularExpression("\\s*,\\s*"), ", ");
+    cleaned.replace(QRegularExpression("\\s*,\\s*"), ",");
 
     return cleaned.trimmed();
 }

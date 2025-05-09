@@ -39,12 +39,12 @@
     <QtModules>core;gui;widgets</QtModules>
     <QtBuildConfig>debug</QtBuildConfig>
     <QtInstall>6.2.13_msvc2019_64</QtInstall>
-    <QtInstall>6.5.3_msvc2019_64</QtInstall>
+    <QtInstall>Qt 6.2.12 MSVC</QtInstall>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)' == 'Release|x64'" Label="QtSettings">
     <QtModules>core;gui;widgets</QtModules>
     <QtBuildConfig>release</QtBuildConfig>
-    <QtInstall>Qt 6.2.12 MSVC</QtInstall>
+    <QtInstall>6.7.0_msvc2019_64</QtInstall>
   </PropertyGroup>
   <Target Name="QtMsBuildNotFound" BeforeTargets="CustomBuild;ClCompile" Condition="!Exists('$(QtMsBuild)\qt.targets') or !Exists('$(QtMsBuild)\qt.props')">
     <Message Importance="High" Text="QtMsBuild: could not locate qt.targets, qt.props; project may not build correctly." />
@@ -107,6 +107,7 @@
     <ClCompile Include="base\BTree_find.cpp" />
     <ClCompile Include="base\record\record_delete.cpp" />
     <ClCompile Include="base\record\record_insert.cpp" />
+    <ClCompile Include="base\record\record_restore.cpp" />
     <ClCompile Include="base\record\record_select.cpp" />
     <ClCompile Include="base\record\record_select_index.cpp" />
     <ClCompile Include="base\record\record_update.cpp" />
@@ -127,6 +128,9 @@
     <ClCompile Include="base\table\table_tid.cpp" />
     <ClCompile Include="base\table\table_trd.cpp" />
     <ClCompile Include="transaction\TransactionManager.cpp" />
+    <ClCompile Include="ui\AddDatabaseDialog.cpp" />
+    <ClCompile Include="ui\AddTableDialog.cpp" />
+    <ClCompile Include="ui\AddUserDialog.cpp" />
     <ClCompile Include="ui\login.cpp" />
     <ClCompile Include="base\database.cpp" />
     <ClCompile Include="ui\mainWindow.cpp" />
@@ -135,8 +139,8 @@
     <ClCompile Include="base\user.cpp" />
     <QtRcc Include="dbms.qrc" />
     <QtRcc Include="resource\Resource.qrc" />
+    <QtUic Include="DialogButtonBottom.ui" />
     <QtUic Include="login.ui" />
-    <QtUic Include="ui\dbms.ui" />
     <ClCompile Include="main.cpp" />
     <QtUic Include="ui\MainWindow.ui" />
   </ItemGroup>
@@ -155,6 +159,9 @@
     <ClInclude Include="manager\dbManager.h" />
     <ClInclude Include="parse\parse.h" />
     <ClInclude Include="transaction\TransactionManager.h" />
+    <QtMoc Include="ui\AddDatabaseDialog.h" />
+    <QtMoc Include="ui\AddTableDialog.h" />
+    <QtMoc Include="ui\AddUserDialog.h" />
     <ClInclude Include="ui\output.h" />
     <ClInclude Include="base\record\Record.h" />
     <ClInclude Include="base\user.h" />

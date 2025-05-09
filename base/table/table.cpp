@@ -183,23 +183,27 @@ void Table::loadMetadataBinary()
                 trdFile.close();
             }
             else {
-                std::cerr << Gbk("无法打开数据文件: ") << m_trd << std::endl;
+                // 使用Output类处理错误信息
+                if (Output::mode == 0) {
+                    Output::printError_Cli("无法打开数据文件: " + m_trd);
+                }
+                else {
+                    Output::printError(nullptr, QString::fromStdString("无法打开数据文件: " + m_trd));
+                }
             }
 
-            // 输出表格内容
-            std::cout << Gbk("表格内容:") << std::endl;
-            for (const auto& record : m_records) {
-                for (const auto& value : record) {
-                    std::cout << Gbk(value) << "\t";
-                }
-                std::cout << std::endl;
-            }
+          
             return;  // 找到后退出方法
         }
     }
 
     // 如果没有找到指定的表格
-	cerr << Gbk("未找到表格: ")<< m_tableName << endl;
+    if (Output::mode == 0) {
+        Output::printError_Cli("未找到表格: " + m_tableName);
+    }
+    else {
+        Output::printError(nullptr, QString::fromStdString("未找到表格: " + m_tableName));
+    }
     tbFile.close();
 }
 

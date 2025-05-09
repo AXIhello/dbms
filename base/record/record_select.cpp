@@ -82,23 +82,53 @@ std::vector<Record> Record::select(
                 for (const auto& [row_r2, r2] : right_prefixed) {
                     bool match = true;
 
-                    // 查找并应用相关的JOIN条件
+                    // 检查所有可能的JOIN条件
                     for (const auto& join : join_info->joins) {
-                        bool relevant =
-                            (join.left_table == join_info->tables[i - 1] && join.right_table == join_info->tables[i]) ||
-                            (join.left_table == join_info->tables[i] && join.right_table == join_info->tables[i - 1]);
+                        // 检查此JOIN条件是否涉及当前正在处理的表
+                        bool involves_current_table =
+                            join.left_table == join_info->tables[i] ||
+                            join.right_table == join_info->tables[i];
 
-                        if (!relevant) continue;
+                        // 如果此JOIN条件不涉及当前表，则跳过
+                        if (!involves_current_table) continue;
 
+                        // 获取JOIN条件中的两个表名
+                        std::string other_table = (join.left_table == join_info->tables[i])
+                            ? join.right_table
+                            : join.left_table;
+
+                        // 检查另一个表是否是已经处理过的表（即在result中）
+                        bool involves_processed_table = false;
+                        for (size_t j = 0; j < i; ++j) {
+                            if (other_table == join_info->tables[j]) {
+                                involves_processed_table = true;
+                                break;
+                            }
+                        }
+
+                        // 如果JOIN条件不涉及已处理的表，则跳过
+                        if (!involves_processed_table) continue;
+
+                        // 应用JOIN条件
                         for (const auto& [left_col, right_col] : join.conditions) {
                             std::string left_field = join.left_table + "." + left_col;
                             std::string right_field = join.right_table + "." + right_col;
 
-                            auto left_it = r1.find(left_field);
-                            auto right_it = r2.find(right_field);
+                            std::string field1, field2;
+                            if (join.left_table == join_info->tables[i]) {
+                                field1 = left_field;  // 当前表中的字段
+                                field2 = right_field; // 之前表中的字段
+                            }
+                            else {
+                                field1 = right_field; // 当前表中的字段
+                                field2 = left_field;  // 之前表中的字段
+                            }
 
-                            if (left_it == r1.end() || right_it == r2.end() ||
-                                left_it->second != right_it->second) {
+                            auto current_field_it = r2.find(field1);
+                            auto previous_field_it = r1.find(field2);
+
+                            if (current_field_it == r2.end() || previous_field_it == r1.end() ||
+                                current_field_it->second != previous_field_it->second) {
                                 match = false;
                                 break;
                             }
@@ -170,7 +200,6 @@ std::vector<Record> Record::select(
     temp.set_table_name(tables.size() == 1 ? tables[0] : "");
     temp.table_structure = combined_structure;
     if (!condition.empty()) temp.parse_condition(condition);
-
     auto map_filtered = vectorToMap(filtered);
     std::vector<std::shared_ptr<Table>> table_ptrs;
     for (const auto& name : tables) {
@@ -179,6 +208,7 @@ std::vector<Record> Record::select(
             /* 空 deleter，避免重复析构 */
             }));
     }
+    std::vector<std::pair<uint64_t, std::unordered_map<std::string, std::string>>> condition_filtered;
 
     auto condition_filtered = temp.selectByIndex(map_filtered, table_ptrs, combined_structure, join_info != nullptr || tables.size() > 1);
 

@@ -1,4 +1,6 @@
+#include <filesystem>  // 如果你使用了 std::filesystem
 #include "user.h"
+#include "manager/dbManager.h"
 #include <ui/output.h>
 
 user::User user::currentUser = {};  // 初始化
@@ -9,8 +11,7 @@ std::vector<user::User> user::loadUsers() {
     std::ifstream file("users.dat", std::ios::binary);
     if (!file) {
         // 文件不存在，创建空文件
-        std::ofstream newFile("Dusers.dat",
-            std::ios::binary | std::ios::trunc);
+        std::ofstream newFile("users.dat",std::ios::binary | std::ios::trunc);
         newFile.close();
         return users;
     }
@@ -38,8 +39,7 @@ std::vector<user::User> user::loadUsers() {
         u.username[sizeof(u.username) - 1] = '\0';
         u.password[sizeof(u.password) - 1] = '\0';
         u.permissions[sizeof(u.permissions) - 1] = '\0';
-
-        
+       
         users.push_back(u);
     }
     // 检查是否因错误而提前结束读取
@@ -74,14 +74,15 @@ bool user::userExists(const std::string& username) {
 
 // 创建 sysdba 用户
 void user::createSysDBA() {  // 添加 user:: 作用域
-    if (userExists("sysdba")) {
-        Output::printMessage(outputEdit, "sysdba 用户已存在");
+    if (userExists("sys")) {
+        Output::printMessage(outputEdit, "sys 用户已存在");
+        qDebug() << "sys 用户已存在";
         return;
     }
 
     User sysdba;
-    strcpy_s(sysdba.username, sizeof(sysdba.username), "sysdba");
-    strcpy_s(sysdba.password, sizeof(sysdba.password), "admin123");
+    strcpy_s(sysdba.username, sizeof(sysdba.username), "sys");
+    strcpy_s(sysdba.password, sizeof(sysdba.password), "1");
     strcpy_s(sysdba.permissions, sizeof(sysdba.permissions), "conn|resource");
 
     std::ofstream file("users.dat", std::ios::binary | std::ios::app);
@@ -93,7 +94,8 @@ void user::createSysDBA() {  // 添加 user:: 作用域
     file.write(reinterpret_cast<char*>(&sysdba), sizeof(User));
     file.close();
 
-    Output::printMessage(outputEdit, "sysdba 用户创建成功，并赋予 conn 和 resource 权限");
+    qDebug() << "sysdba 用户创建成功，并赋予 conn 和 resource 权限";
+    Output::printMessage(outputEdit, "sysdba 用户创建成功，并赋予 resource 权限");
 
     // 读取并输出文件内容，确认是否写入成功
     std::ifstream readFile("users.dat", std::ios::binary);
@@ -150,8 +152,8 @@ bool user::createUser(const std::string& username, const std::string& password) 
     strncpy_s(newUser.permissions, "", sizeof(newUser.permissions) - 1);  // 默认无权限
     newUser.permissions[sizeof(newUser.permissions) - 1] = '\0';  // 确保以 '\0' 结尾
     
-
-    std::ofstream file("D:/Files/Study/Assignment/DB_PracticalTraining/group/3/users.dat", std::ios::binary | std::ios::app);
+    
+    std::ofstream file("users.dat", std::ios::binary | std::ios::app);
     if (!file) {
         Output::printMessage(outputEdit, QString::fromStdString("创建用户时无法打开文件"));
         return false;
@@ -170,41 +172,86 @@ bool user::createUser(const std::string& username, const std::string& password) 
 }
 
 // 授权
-bool user::grantPermission(const std::string& username, const std::string& permission) {
+bool user::grantPermission(const std::string& username,const std::string& permission,
+    const std::string& dbName,const std::string& tableName) 
+{
     std::vector<User> users = loadUsers();
-    bool updated = false;
-
+    bool userExists = false;
+    // Step 1: 更新用户结构体中的权限字段
     for (auto& u : users) {
-        if (username == u.username) {
+        if (u.username == username) {
             std::string perms(u.permissions);
-            if (perms.find(permission) == std::string::npos) {
-                if (!perms.empty()) perms += "|";
-                perms += permission;
-                strcpy_s(u.permissions, sizeof(u.permissions), perms.c_str());
-                updated = true;
+            std::string fullPerm = permission + ":" + dbName;
+            if (!tableName.empty()) {
+                fullPerm += "." + tableName;
             }
+
+            // 如果权限不存在则添加
+            if (perms.find(fullPerm) == std::string::npos) {
+                if (!perms.empty()) perms += "|";
+                perms += fullPerm;
+                strcpy_s(u.permissions, sizeof(u.permissions), perms.c_str());
+            }
+
+            userExists = true;
             break;
         }
     }
 
-    if (updated) {
-        std::ofstream file("users.dat", std::ios::binary | std::ios::trunc);
-        if (!file) {
-            Output::printMessage(outputEdit, "授权时无法打开文件");
-            return false;
-        }
+    if (!userExists) return false;
+    // Step 2: 写回用户数据
+    std::ofstream file("users.dat", std::ios::binary | std::ios::trunc);
+    if (!file) {
+        Output::printMessage(outputEdit, "授权时无法打开文件");
+        return false;
+    }
+    for (const auto& u : users) {
+         file.write(reinterpret_cast<const char*>(&u), sizeof(User));
+    }
+    file.close();
+    
+    // Step 3: 更新数据库文件
+    std::string sysDBPath = dbManager::basePath + "/ruanko.db";
+    std::ifstream dbFileIn(sysDBPath, std::ios::binary);
+    if (!dbFileIn) {
+        Output::printMessage(outputEdit, "授权时无法打开数据库文件");
+        return false;
+    }
+    
+    std::vector<DatabaseBlock> dbs;
+    DatabaseBlock block;
+    while (dbFileIn.read(reinterpret_cast<char*>(&block), sizeof(block))) {
+        dbs.push_back(block);
+    }
+    dbFileIn.close();
 
-        for (const auto& u : users) {
-            file.write(reinterpret_cast<const char*>(&u), sizeof(User));
+    for (auto& db : dbs) {
+        // 比对数据库名
+        if (db.dbName == dbName) {
+            // 只处理数据库级别的权限
+            if (permission == "conn" || (permission == "resource" && tableName.empty())) {
+                std::string abledUsers(db.abledUsername);
+                if (abledUsers.find(username) == std::string::npos) {
+                    if (!abledUsers.empty()) abledUsers += "|";
+                    abledUsers += username;
+                    strcpy_s(db.abledUsername, sizeof(db.abledUsername), abledUsers.c_str());
+                }
+            }
+
+            // TODO: 表级权限将由表结构控制（如果你有表结构文件，可以继续处理）
         }
-        file.close();
-        Output::printMessage(outputEdit, "已授权 " + QString::fromStdString(permission) + " 给用户 " + QString::fromStdString(username));
+    }
+        // Step 4: 写回数据库信息
+        std::ofstream dbFileOut(sysDBPath, std::ios::binary | std::ios::trunc);
+        for (const auto& db : dbs) {
+            dbFileOut.write(reinterpret_cast<const char*>(&db), sizeof(db));
+        }
+        dbFileOut.close();
+
         return true;
     }
 
-    Output::printMessage(outputEdit, "授权失败，用户不存在或已有该权限");
-    return false;
-}
+    
 
 // 收回权限
 bool user::revokePermission(const std::string& username, const std::string& permission) {
