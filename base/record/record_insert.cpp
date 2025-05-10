@@ -159,6 +159,7 @@ void Record::insert_into() {
         std::cout << "记录插入表 " << this->table_name << " 成功，row_id = " << row_id << "。" << std::endl;
         transactionManager.addUndo(DmlType::INSERT, this->table_name, row_id);
 
+
     }
     catch (const std::exception& e) {
         transactionManager.rollback();

@@ -7,6 +7,9 @@
 #include "base/block/fieldBlock.h"
 #include "base/block/constraintBlock.h"
 #include"transaction/TransactionManager.h"
+
+#include "base/block/tableBlock.h"
+#include"base/table/table.h"
 #include <filesystem> 
 #include <fstream>
 #include <sstream>
@@ -133,82 +136,27 @@ public:
 
 	//索引相关函数
 
-    // 判断是否是可使用索引的条件
-    static bool can_use_index(const std::string& condition, std::string& field_out, std::string& value_out, std::string& op_out);
-
-    // 尝试通过索引查找记录
-    static std::vector<std::unordered_map<std::string, std::string>> try_index_select(
-        const std::string& table_name,
-        const std::string& condition
-    );
-
-    // 从索引中读取记录
-    static std::vector<std::pair<uint64_t, std::unordered_map<std::string, std::string>>>  read_by_index(
-        const std::string& table_name,
-        const std::string& column,
-        const std::string& op,
-        const std::string& value
-    );
-
-    // 评估回退条件（无法用索引的表达式）
-    static bool evaluate_fallback_conditions(
-        const std::unordered_map<std::string, std::string>& rec,
-        bool use_prefix,
-        const std::vector<size_t>& fallback_indices,
-        const std::vector<std::string>& expressions,
-        const std::vector<std::string>& logic_ops
-    );
-
+    std::vector<std::pair<uint64_t, std::unordered_map<std::string, std::string>>>
+        selectByIndex(
+            const std::unordered_map<uint64_t, std::unordered_map<std::string, std::string>>& filtered,
+            const std::vector<std::shared_ptr<Table>>& tables,
+            const std::unordered_map<std::string, std::string>& combined_structure,
+            bool has_join
+        );
     //更新索引操作
     void updateIndexesAfterInsert(const std::string& table_name);
     void updateIndexesAfterDelete(const std::string& table_name, const std::vector<std::string>& deletedValues, const RecordPointer& recordPtr);
     void updateIndexesAfterUpdate(const std::string& table_name, const std::vector<std::string>& oldValues, const std::vector<std::string>& newValues, const RecordPointer& recordPtr);
     RecordPointer get_last_inserted_record_pointer(const std::string& table_name);
 
+    static std::string read_field(std::ifstream& file, const FieldBlock& field);
 
-    // 获取最后插入记录的磁盘指针（实现中维护最后插入位置）
-    RecordPointer get_last_inserted_record_pointer();
 
 
 };
 
-// 工具函数
-std::map<std::string, int> read_index_map(const std::string& filename);
-bool file_exists(const std::string& filename);
-std::unordered_map<std::string, std::string> read_record_by_index(const std::string& table_name, int offset);
-std::vector<std::string> get_fields_from_line(const std::string& line);
-bool has_index(const std::string& table, const std::string& column);
-void parse_condition_expressions(const std::string& cond, std::vector<std::string>& expressions, std::vector<std::string>& logic_ops);
-std::tuple<std::string, std::string, std::string> parse_single_condition(const std::string& expr);
-std::vector<std::pair<uint64_t, std::unordered_map<std::string, std::string>>> merge_index_results(
-    const std::vector<std::vector<std::pair<uint64_t, std::unordered_map<std::string, std::string>>>>& results,
-    const std::vector<std::string>& logic_ops
-);
-bool check_remaining_conditions(
-    const std::unordered_map<std::string, std::string>& rec,
-    const std::vector<std::string>& expressions,
-    const std::vector<size_t>& fallback_indices,
-    const std::vector<std::string>& logic_ops,
-    const Record& checker,
-    bool use_prefix
-);
-bool evaluate_single_expression(
-    const std::unordered_map<std::string, std::string>& rec,
-    const std::string& expression,
-    bool use_prefix
-);
-// 条件表达式判断工具
-bool evaluate_single_expression(
-    const std::unordered_map<std::string, std::string>& rec,
-    const std::string& expression,
-    bool use_prefix);
-
-
-std::map<std::string, int> read_index_map(const std::string& filename);
-bool file_exists(const std::string& filename);
-std::unordered_map<std::string, std::string> read_record_by_index(const std::string& table_name, int offset);
-std::vector<std::string> get_fields_from_line(const std::string& line);
-
 std::tm custom_strptime(const std::string& datetime_str, const std::string& format);
+std::unordered_map<uint64_t, std::unordered_map<std::string, std::string>>
+vectorToMap(const std::vector<std::pair<uint64_t, std::unordered_map<std::string, std::string>>>& vec);
 
 #endif // RECORD_H

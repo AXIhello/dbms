@@ -170,7 +170,8 @@ void Record::write_to_tdf_format(const std::string& table_name,
         field.order = static_cast<int>(i + 1);  // 字段顺序从1开始
 
         // 复制字段名，确保不超过128个字符
-        std::strncpy(field.name, columns[i].c_str(), 127);
+        strncpy_s(field.name, sizeof(field.name), columns[i].c_str(), _TRUNCATE);
+
         field.name[127] = '\0';  // 确保字符串结束
 
         // 设置字段类型
@@ -554,7 +555,9 @@ bool Record::read_record_from_file(std::ifstream& file, const std::vector<FieldB
                 std::time_t t;
                 file.read(reinterpret_cast<char*>(&t), sizeof(std::time_t));
                 char buf[30];
-                std::strftime(buf, sizeof(buf), "%Y-%m-%d %H:%M:%S", std::localtime(&t));
+                std::tm timeinfo;
+                localtime_s(&timeinfo, &t);  // 将 time_t 转为 struct tm（安全）
+                std::strftime(buf, sizeof(buf), "%Y-%m-%d %H:%M:%S", &timeinfo);  // 格式化
                 record_data[field.name] = "'" + std::string(buf) + "'";
                 bytes_read += sizeof(std::time_t);
                 break;

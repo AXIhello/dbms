@@ -173,7 +173,8 @@ void Parse::registerPatterns() {
     /*  DML  */
     //√
     patterns.push_back({
-     std::regex(R"(^INSERT\s+INTO\s+(\w+)\s*(?:\(([^)]+)\))?\s*VALUES\s*((?:\([^)]*\)\s*,\s*)*\([^)]*\))\s*;$)", std::regex::icase),
+     std::regex(R"(^INSERT\s+INTO\s+(\w+)\s*(?:\(([^)]+)\))?\s*VALUES\s*(.+);$)", std::regex::icase),
+
      [this](const std::smatch& m) {
          handleInsertInto(m);
      }
