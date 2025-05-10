@@ -36,7 +36,6 @@ void TransactionManager::commit() {
     active = false;
     autoCommit = lastAutoCommit.value();
     undoStack.clear();  // 提交事务时清空UNDO栈;将标识为1的数据真正删除
-    //transactionId = 0;
     LogManager::instance().logCommit();  // 记录事务开始日志
 }
 

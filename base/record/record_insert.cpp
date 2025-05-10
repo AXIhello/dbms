@@ -171,11 +171,9 @@ void Record::insert_into() {
             LogManager::instance().logInsert(this->table_name, row_id, insert_values);
         }
         transactionManager.commitImplicitTransaction();
-
-
     }
     catch (const std::exception& e) {
-        transactionManager.rollback();
+        //transactionManager.rollback();
         std::cerr << "插入记录失败: " << e.what() << std::endl;
         throw; // 重新抛出异常以便外部捕获
     }
