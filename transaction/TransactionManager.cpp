@@ -1,8 +1,8 @@
 // TransactionManager.cpp
 #include"TransactionManager.h"
 
-
-TransactionManager::TransactionManager() : active(false),autoCommit(true) {}
+//uint64_t TransactionManager::nextTransactionId = 1;  // 初始化为 1 
+TransactionManager::TransactionManager() : active(false),autoCommit(true){}
 
 TransactionManager& TransactionManager::instance() {
     static TransactionManager instance;
@@ -14,6 +14,10 @@ void TransactionManager::begin() {
     lastAutoCommit = autoCommit;
     autoCommit = false;
     undoStack.clear();  // 开始新事务时清空上次的UNDO栈
+
+	LogManager::instance().logBegin();  // 记录事务开始日志
+
+   // transactionId = nextTransactionId++; //
 }
 
 void TransactionManager::commit() {
@@ -32,6 +36,8 @@ void TransactionManager::commit() {
     active = false;
     autoCommit = lastAutoCommit.value();
     undoStack.clear();  // 提交事务时清空UNDO栈;将标识为1的数据真正删除
+    //transactionId = 0;
+    LogManager::instance().logCommit();  // 记录事务开始日志
 }
 
 int TransactionManager::rollback() {
@@ -78,7 +84,8 @@ int TransactionManager::rollback() {
     undoStack.clear();  // 完成回滚，清空UNDO栈
     active = false;
     autoCommit = lastAutoCommit.value();
-
+   // transactionId = 0;
+    LogManager::instance().logRollback();  // 记录事务开始日志
 	return rollback_count;  // 返回回滚的记录数
 }
 
@@ -110,7 +117,7 @@ void TransactionManager::addUndo(DmlType type, const std::string& tableName, uin
 
     undoStack.push_back(op);
 
-    commitImplicitTransaction();
+    //commitImplicitTransaction();
 }
 
 void TransactionManager::addUndo(DmlType type, const std::string& tableName, uint64_t rowId,
@@ -125,9 +132,9 @@ void TransactionManager::addUndo(DmlType type, const std::string& tableName, uin
     op.oldValues = oldValues;
 
     undoStack.push_back(op);
-
-    commitImplicitTransaction();
+   // commitImplicitTransaction();
 }
+
 
 bool TransactionManager::isActive() const {
     return active;  // 返回事务是否正在进行
@@ -139,3 +146,7 @@ bool TransactionManager::isAutoCommit() const {
 void TransactionManager::setAutoCommit(bool flag) {
 	autoCommit = flag;
 }  // 设置自动提交标志
+
+//uint64_t TransactionManager::getTransactionId() const { 
+//    return transactionId;
+//}

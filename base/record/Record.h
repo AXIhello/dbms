@@ -7,6 +7,7 @@
 #include "base/block/fieldBlock.h"
 #include "base/block/constraintBlock.h"
 #include"transaction/TransactionManager.h"
+#include"log/logManager.h"
 #include <filesystem> 
 #include <fstream>
 #include <sstream>

@@ -65,8 +65,20 @@ int Record::delete_(const std::string& tableName, const std::string& condition) 
 
                 // 添加到 undo 区，记录删除操作
                 transaction.addUndo(DmlType::DELETE, table_name, row_id);
+                // === 新增：记录日志 ===
+                {
+                    std::vector<std::pair<std::string, std::string>> old_values_for_log;
+                    for (const auto& field : fields) {
+                        old_values_for_log.emplace_back(field.name, record_data[field.name]);
+                    }
 
-               
+                    LogManager::instance().logDelete(
+                        table_name,
+                        row_id,
+                        old_values_for_log
+                    );
+                }
+                transaction.commitImplicitTransaction(); //只有在自动提交模式下才会提交
                 // 更新索引
                 try{
                     std::vector<std::string> deletedValues;

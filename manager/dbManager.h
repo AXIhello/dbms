@@ -13,7 +13,7 @@
 #include <unordered_set>
 #include <shared_mutex>
 #include <mutex>
-
+#include"log/logManager.h"
 
 namespace fs = std::filesystem;
 

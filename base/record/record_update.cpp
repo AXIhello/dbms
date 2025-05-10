@@ -60,11 +60,25 @@ int Record::update(const std::string& tableName, const std::string& setClause, c
                 //事务处理
                     if (transaction.isActive()) {
                         try {
-                            std::vector<std::pair<std::string, std::string>> oldValuesForUndo;
+                            std::vector<std::pair<std::string, std::string>> oldValues;
+                            std::vector<std::pair<std::string, std::string>> newValues;
                             for (const auto& [col, _] : updates) {
-                                oldValuesForUndo.emplace_back(col, record_data[col]);
+                                oldValues.emplace_back(col, record_data[col]);
                             }
-                            transaction.addUndo(DmlType::UPDATE, table_name, row_id, oldValuesForUndo);
+                            transaction.addUndo(DmlType::UPDATE, table_name, row_id, oldValues);
+
+                            for (const auto& [col, val] : updates) {
+                                newValues.emplace_back(col, val);
+                            }
+
+                            // 记录到日志系统
+                            LogManager::instance().logUpdate(
+                                table_name,
+                                row_id,
+                                oldValues,
+                                newValues
+                            );
+                            transaction.commitImplicitTransaction();
                         }
                         catch (const std::exception& e) {
                             transaction.rollback();

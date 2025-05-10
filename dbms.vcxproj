@@ -39,7 +39,7 @@
     <QtModules>core;gui;widgets</QtModules>
     <QtBuildConfig>debug</QtBuildConfig>
     <QtInstall>6.2.13_msvc2019_64</QtInstall>
-    <QtInstall>6.7.0_msvc2019_64</QtInstall>
+    <QtInstall>6.2.13_msvc2019_64</QtInstall>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)' == 'Release|x64'" Label="QtSettings">
     <QtModules>core;gui;widgets</QtModules>
@@ -115,6 +115,7 @@
     <ClCompile Include="base\record\record_update_index.cpp" />
     <ClCompile Include="base\table\table.cpp" />
     <ClCompile Include="debug.cpp" />
+    <ClCompile Include="log\logManager.cpp" />
     <ClCompile Include="manager\dbManager.cpp" />
     <ClCompile Include="base\record\record_check.cpp" />
     <ClCompile Include="parse\parse.cpp" />
