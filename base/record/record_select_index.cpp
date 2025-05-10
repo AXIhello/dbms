@@ -26,9 +26,6 @@ vectorToMap(const std::vector<std::pair<uint64_t, std::unordered_map<std::string
     return result;
 }
 
-
-
-
 std::vector<std::pair<uint64_t, std::unordered_map<std::string, std::string>>>
 Record::selectByIndex(
     const std::unordered_map<uint64_t, std::unordered_map<std::string, std::string>>& filtered,
