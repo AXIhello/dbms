@@ -172,6 +172,7 @@ void Record::insert_into() {
         }
         transactionManager.commitImplicitTransaction();
 
+
     }
     catch (const std::exception& e) {
         transactionManager.rollback();

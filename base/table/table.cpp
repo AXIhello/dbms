@@ -85,15 +85,15 @@ void Table::load()
     loadDefineBinary();
     //loadRecordBinary();
     loadIntegrityBinary(); // 未实现
-    // loadIndex();       // 未实现
+    loadIndex();       // 未实现
 }
 
 void Table::save() {
-	//saveMetadataBinary();
-	//saveDefineBinary();
-	//saveRecordBinary();
+	saveMetadataBinary();
+	saveDefineBinary();
+	//saveRecordBinary();// 未实现
 	// saveIntegrality(); // 未实现
-	// saveIndex();       // 未实现
+	 saveIndex();       
 }
 
 void Table::initializeNew() {

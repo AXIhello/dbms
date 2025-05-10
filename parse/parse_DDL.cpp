@@ -434,12 +434,13 @@ void Parse::handleAddColumn(const std::smatch& m) {
     try {
         Table* table = dbManager::getInstance().get_current_database()->getTable(tableName);
         
-		std::vector<FieldBlock> fieldsCopy = table->getFields();
-        table->addField(field);
-
         for (const auto& constraint : constraints) {
             table->addConstraint(constraint);
         }
+
+		std::vector<FieldBlock> fieldsCopy = table->getFields();
+        table->addField(field);
+
 
         //table->updateRecord(fieldsCopy);
         table;
