@@ -15,7 +15,7 @@
 
 int Record::delete_(const std::string& tableName, const std::string& condition) {
     auto& transaction = TransactionManager::instance();
-    transaction.beginImplicitTransaction(); // 如果事务未激活且autoCommit=true，则自动开启(即设置active=true)
+    transaction.beginImplicitTransaction();  // 自动开启事务
 
     this->table_name = tableName;
     if (!table_exists(this->table_name)) {
@@ -37,50 +37,40 @@ int Record::delete_(const std::string& tableName, const std::string& condition) 
         std::ifstream infile(trd_path, std::ios::binary);
         if (!infile) throw std::runtime_error("无法打开数据文件进行读取操作。");
 
-        while (true) {
-            std::streampos pos_before = infile.tellg();  // 用 infile 的位置
-            if (pos_before == -1) break;  // 已到 EOF
+        try {
+            while (true) {
+                std::streampos pos_before = infile.tellg();
+                if (pos_before == -1) break;
 
-            uint64_t row_id = 0;
-            std::unordered_map<std::string, std::string> record_data;
+                uint64_t row_id = 1;
+                std::unordered_map<std::string, std::string> record_data;
 
-            // 通过 infile 读取数据
-            if (!read_record_from_file(infile, fields, record_data, row_id, /*skip_deleted=*/false)) {
-                break;
-            }
-
-            // 已逻辑删除的跳过
-            if (record_data["_deleted_flag"] == "1") continue;
-
-            // 如果符合删除条件
-            if (condition.empty() || matches_condition(record_data, false)) {
-                if (!check_references_before_delete(table_name, record_data)) {
-                    throw std::runtime_error("删除操作违反引用完整性约束");
+                if (!read_record_from_file(infile, fields, record_data, row_id, /*skip_deleted=*/false)) {
+                    break;
                 }
 
-                // 使用 infile.tellg() 的位置来定位
-                file.seekp(static_cast<std::streamoff>(pos_before) + sizeof(uint64_t));  // 跳过 row_id
-                char flag = 1;  // 设置删除标记为 1
-                file.write(&flag, sizeof(char));  // 写入删除标记
+                if (condition.empty() || matches_condition(record_data, false)) {
+                    if (!check_references_before_delete(table_name, record_data)) {
+                        throw std::runtime_error("删除操作违反引用完整性约束");
+                    }
 
-                // 添加到 undo 区，记录删除操作
-                transaction.addUndo(DmlType::DELETE, table_name, row_id);
-                // === 新增：记录日志 ===
-                {
+                    // 标记删除
+                    file.seekp(static_cast<std::streamoff>(pos_before) + sizeof(uint64_t));
+                    char flag = 1;
+                    file.write(&flag, sizeof(char));
+                    file.flush();
+
+                    // 添加 undo
+                    transaction.addUndo(DmlType::DELETE, table_name, row_id);
+
+                    // 记录日志
                     std::vector<std::pair<std::string, std::string>> old_values_for_log;
                     for (const auto& field : fields) {
                         old_values_for_log.emplace_back(field.name, record_data[field.name]);
                     }
+                    LogManager::instance().logDelete(table_name, row_id, old_values_for_log);
 
-                    LogManager::instance().logDelete(
-                        table_name,
-                        row_id,
-                        old_values_for_log
-                    );
-                }
-                transaction.commitImplicitTransaction(); //只有在自动提交模式下才会提交
-                // 更新索引
-                try{
+                    // 更新索引
                     std::vector<std::string> deletedValues;
                     for (const auto& field : fields) {
                         deletedValues.push_back(record_data[field.name]);
@@ -88,77 +78,79 @@ int Record::delete_(const std::string& tableName, const std::string& condition) 
                     updateIndexesAfterDelete(table_name, deletedValues, RecordPointer{ row_id });
 
                     deleted_count++;
-				}
-				catch (const std::exception& e) {
-                    transaction.rollback();
-					throw std::runtime_error("更新索引失败，已回滚删除操作: " + std::string(e.what()));
-				}
-                
+                }
             }
+
+            // 循环外统一 commit（自动提交事务）
+            transaction.commitImplicitTransaction();
+        }
+        catch (const std::exception& e) {
+            transaction.rollback();  // 事务失败时回滚
+            file.close();
+            infile.close();
+            throw std::runtime_error("删除操作失败，已回滚: " + std::string(e.what()));
         }
 
         file.close();
         infile.close();
-
     }
-        else {
-            // 非事务：物理删除（原逻辑）
-            std::ifstream infile(trd_path, std::ios::binary);
-            if (!infile) throw std::runtime_error("无法打开数据文件进行删除操作。");
+    else {
+        // 非事务分支 (直接物理删除)
+        std::ifstream infile(trd_path, std::ios::binary);
+        if (!infile) throw std::runtime_error("无法打开数据文件进行删除操作。");
 
-            std::vector<std::pair<uint64_t, std::unordered_map<std::string, std::string>>> records_to_keep;
+        std::vector<std::pair<uint64_t, std::unordered_map<std::string, std::string>>> records_to_keep;
 
-            while (infile.peek() != EOF) {
-                std::unordered_map<std::string, std::string> record_data;
-                uint64_t row_id = 0;
+        while (infile.peek() != EOF) {
+            std::unordered_map<std::string, std::string> record_data;
+            uint64_t row_id = 0;
 
-                if (read_record_from_file(infile, fields, record_data, row_id, /*skip_deleted=*/true)) {
-                    if (condition.empty() || matches_condition(record_data, false)) {
-                        if (!check_references_before_delete(table_name, record_data)) {
-                            throw std::runtime_error("删除操作违反引用完整性约束");
-                        }
-
-                        // 删除记录索引
-                        std::vector<std::string> deletedValues;
-                        for (const auto& field : fields) {
-                            deletedValues.push_back(record_data[field.name]);
-                        }
-                        updateIndexesAfterDelete(table_name, deletedValues, RecordPointer{ row_id });
-
-                        deleted_count++;
-                        continue;
+            if (read_record_from_file(infile, fields, record_data, row_id, /*skip_deleted=*/true)) {
+                if (condition.empty() || matches_condition(record_data, false)) {
+                    if (!check_references_before_delete(table_name, record_data)) {
+                        throw std::runtime_error("删除操作违反引用完整性约束");
                     }
 
-                    records_to_keep.emplace_back(row_id, record_data);
+                    std::vector<std::string> deletedValues;
+                    for (const auto& field : fields) {
+                        deletedValues.push_back(record_data[field.name]);
+                    }
+                    updateIndexesAfterDelete(table_name, deletedValues, RecordPointer{ row_id });
+
+                    deleted_count++;
+                    continue;
                 }
+
+                records_to_keep.emplace_back(row_id, record_data);
             }
-            infile.close();
-
-            // 按 row_id 顺序写回
-            std::stable_sort(records_to_keep.begin(), records_to_keep.end(),
-                [](const auto& a, const auto& b) { return a.first < b.first; });
-
-            std::ofstream outfile(trd_path, std::ios::binary | std::ios::trunc);
-            if (!outfile) throw std::runtime_error("无法打开数据文件进行写入操作。");
-
-            uint64_t new_row_id = 1;
-            for (const auto& [old_row_id, record] : records_to_keep) {
-                outfile.write(reinterpret_cast<const char*>(&new_row_id), sizeof(uint64_t));
-                char delete_flag = 0;
-                outfile.write(&delete_flag, sizeof(char));
-                for (const auto& field : fields) {
-                    std::string field_name(field.name);
-                    write_field(outfile, field, record.at(field_name));
-                }
-                new_row_id++;
-            }
-            outfile.close();
-            dbManager::getInstance().get_current_database()->getTable(tableName)->incrementRecordCount(-deleted_count);
-            dbManager::getInstance().get_current_database()->getTable(tableName)->setLastModifyTime(std::time(nullptr));
         }
+        infile.close();
 
-        return deleted_count;
+        std::stable_sort(records_to_keep.begin(), records_to_keep.end(),
+            [](const auto& a, const auto& b) { return a.first < b.first; });
+
+        std::ofstream outfile(trd_path, std::ios::binary | std::ios::trunc);
+        if (!outfile) throw std::runtime_error("无法打开数据文件进行写入操作。");
+
+        uint64_t new_row_id = 1;
+        for (const auto& [old_row_id, record] : records_to_keep) {
+            outfile.write(reinterpret_cast<const char*>(&new_row_id), sizeof(uint64_t));
+            char delete_flag = 0;
+            outfile.write(&delete_flag, sizeof(char));
+            for (const auto& field : fields) {
+                std::string field_name(field.name);
+                write_field(outfile, field, record.at(field_name));
+            }
+            new_row_id++;
+        }
+        outfile.close();
+        dbManager::getInstance().get_current_database()->getTable(tableName)->incrementRecordCount(-deleted_count);
+        dbManager::getInstance().get_current_database()->getTable(tableName)->setLastModifyTime(std::time(nullptr));
     }
+
+    return deleted_count;
+}
+
 
 int Record::delete_by_flag(const std::string& tableName) {
     this->table_name = tableName;
@@ -179,7 +171,7 @@ int Record::delete_by_flag(const std::string& tableName) {
 
     while (infile.peek() != EOF) {
         std::unordered_map<std::string, std::string> record_data;
-        uint64_t row_id = 0;
+        uint64_t row_id = 1;
 
         // 保存当前位置以便可以读取delete_flag
         std::streampos pos = infile.tellg();
