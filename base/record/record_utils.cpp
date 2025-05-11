@@ -557,7 +557,8 @@ bool Record::read_record_from_file(std::ifstream& file, const std::vector<FieldB
                 char buf[30];
                 std::tm timeinfo;
                 localtime_s(&timeinfo, &t);  // 将 time_t 转为 struct tm（安全）
-                std::strftime(buf, sizeof(buf), "%Y-%m-%d %H:%M:%S", &timeinfo);  // 格式化
+                // %H:%M:%S
+                std::strftime(buf, sizeof(buf), "%Y-%m-%d", &timeinfo);  // 格式化
                 record_data[field.name] = "'" + std::string(buf) + "'";
                 bytes_read += sizeof(std::time_t);
                 break;
@@ -622,7 +623,8 @@ void Record::write_field(std::ofstream& out, const FieldBlock& field, const std:
             break;
         }
         case 5: {
-            std::tm tm = custom_strptime(value, "%Y-%m-%d %H:%M:%S");
+            // %H:%M:%S
+            std::tm tm = custom_strptime(value, "%Y-%m-%d");
             std::time_t t = std::mktime(&tm);
             out.write(reinterpret_cast<const char*>(&t), sizeof(std::time_t));
             break;
