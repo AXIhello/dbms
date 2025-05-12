@@ -42,7 +42,7 @@ void Record::insert_record(const std::string& table_name, const std::string& col
     }
     insert_into();
     // 新增：插入后更新所有相关索引
-    //updateIndexesAfterInsert();
+    updateIndexesAfterInsert(table_name);
 }
 
 void Record::parse_columns(const std::string& cols) {
