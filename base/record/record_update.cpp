@@ -15,12 +15,20 @@
 
 int Record::update(const std::string& tableName, const std::string& setClause, const std::string& condition) {
     auto& transaction = TransactionManager::instance();
-    transaction.beginImplicitTransaction(); // 如果事务未激活且autoCommit=true，则自动开启
-    
+    transaction.beginImplicitTransaction();
+
     this->table_name = tableName;
     if (!table_exists(tableName)) throw std::runtime_error("表 '" + table_name + "' 不存在。");
+
     std::vector<FieldBlock> fields = read_field_blocks(table_name);
     this->table_structure = read_table_structure_static(table_name);
+
+    // 设置 columns，供索引更新用
+    columns.clear();
+    for (const auto& field : fields) {
+        columns.push_back(field.name);
+    }
+
     if (!condition.empty()) parse_condition(condition);
 
     std::unordered_map<std::string, std::string> updates;
@@ -48,8 +56,7 @@ int Record::update(const std::string& tableName, const std::string& setClause, c
 
     int updated = 0;
     std::vector<std::pair<uint64_t, std::unordered_map<std::string, std::string>>> all_records;
-
-    std::vector<std::pair<uint64_t, std::unordered_map<std::string, std::string>>> undo_records;  // 记录原始数据用于回滚
+    std::vector<std::pair<uint64_t, std::unordered_map<std::string, std::string>>> undo_records;
 
     while (infile.peek() != EOF) {
         std::unordered_map<std::string, std::string> record_data;
@@ -57,100 +64,84 @@ int Record::update(const std::string& tableName, const std::string& setClause, c
 
         if (read_record_from_file(infile, fields, record_data, row_id, /*skip_deleted=*/true)) {
             if (condition.empty() || matches_condition(record_data, false)) {
-                //事务处理
-                    if (transaction.isActive()) {
-                        try {
-                            std::vector<std::pair<std::string, std::string>> oldValues;
-                            std::vector<std::pair<std::string, std::string>> newValues;
-                            for (const auto& [col, _] : updates) {
-                                oldValues.emplace_back(col, record_data[col]);
-                            }
-                            transaction.addUndo(DmlType::UPDATE, table_name, row_id, oldValues);
-
-                            for (const auto& [col, val] : updates) {
-                                newValues.emplace_back(col, val);
-                            }
-
-                            // 记录到日志系统
-                            LogManager::instance().logUpdate(
-                                table_name,
-                                row_id,
-                                oldValues,
-                                newValues
-                            );
-                            transaction.commitImplicitTransaction();
+                // 事务处理
+                if (transaction.isActive()) {
+                    try {
+                        std::vector<std::pair<std::string, std::string>> oldValues, newPairs;
+                        for (const auto& [col, _] : updates) {
+                            oldValues.emplace_back(col, record_data[col]);
                         }
-                        catch (const std::exception& e) {
-                            transaction.rollback();
-                            std::cerr << "更新操作失败: " << e.what() << std::endl;
-                            throw;
+                        transaction.addUndo(DmlType::UPDATE, table_name, row_id, oldValues);
+
+                        for (const auto& [col, val] : updates) {
+                            newPairs.emplace_back(col, val);
                         }
-                    }
 
-                    // 记录旧值
-                    std::vector<std::string> oldValues, newValues;
-                    for (const auto& [col, _] : updates) {
-                        oldValues.push_back(record_data[col]);
+                        LogManager::instance().logUpdate(table_name, row_id, oldValues, newPairs);
+                        transaction.commitImplicitTransaction();
                     }
-
-                    // 更新记录
-                    // 记录原始数据用于回滚
-                    undo_records.emplace_back(row_id, record_data);
-
-                    for (const auto& [col, val] : updates) {
-                        record_data[col] = val;
-                        newValues.push_back(val);
+                    catch (const std::exception& e) {
+                        transaction.rollback();
+                        std::cerr << "更新操作失败: " << e.what() << std::endl;
+                        throw;
                     }
-
-                    // 检查约束
-                    std::vector<std::string> cols, vals;
-                    for (const auto& field : fields) {
-                        std::string field_name(field.name);
-                        cols.push_back(field_name);
-                        vals.push_back(record_data[field_name]);
-                    }
-                    std::vector<ConstraintBlock> constraints = read_constraints(table_name);
-                    if (!check_constraints(cols, vals, constraints)) {
-                        throw std::runtime_error("更新数据违反表约束");
-                    }
-
-                    // 更新索引（注意此时 row_id 是已读出的）
-                    updateIndexesAfterUpdate(table_name, oldValues, newValues, RecordPointer{ row_id });
-                    updated++;
                 }
-                // 保留原 row_id
-                all_records.emplace_back(row_id, record_data);
+
+                // 构造 oldValues/newValues 用于更新索引
+                std::vector<std::string> oldValues, newValues;
+                for (const auto& [col, _] : updates) {
+                    oldValues.push_back(record_data[col]);
+                }
+
+                undo_records.emplace_back(row_id, record_data); // 记录旧数据
+
+                for (const auto& [col, val] : updates) {
+                    record_data[col] = val;
+                    newValues.push_back(val);
+                }
+
+                // 约束检查
+                std::vector<std::string> cols, vals;
+                for (const auto& field : fields) {
+                    std::string field_name(field.name);
+                    cols.push_back(field_name);
+                    vals.push_back(record_data[field_name]);
+                }
+                std::vector<ConstraintBlock> constraints = read_constraints(table_name);
+                if (!check_constraints(cols, vals, constraints)) {
+                    throw std::runtime_error("更新数据违反表约束");
+                }
+
+                // 更新索引
+                updateIndexesAfterUpdate(table_name, oldValues, newValues, RecordPointer{ row_id });
+                updated++;
             }
+
+            all_records.emplace_back(row_id, record_data); // 无论是否更新都保留
         }
-        infile.close();
-
-        // 使用稳定排序，保持相同 row_id 的记录按原始顺序排列
-        std::stable_sort(all_records.begin(), all_records.end(), [](const auto& a, const auto& b) {
-            return a.first < b.first;
-            });
-
-        std::ofstream outfile(trd_path, std::ios::binary | std::ios::trunc);
-        if (!outfile) throw std::runtime_error("无法打开数据文件进行写入。");
-
-        for (const auto& [row_id, record] : all_records) {
-            // 先写入 row_id
-            outfile.write(reinterpret_cast<const char*>(&row_id), sizeof(uint64_t));
-
-            // 再写入 delete_flag
-            char delete_flag = 0;
-            outfile.write(&delete_flag, sizeof(char));
-
-            // 最后写入字段值
-            for (const auto& field : fields) {
-                std::string field_name(field.name);
-                write_field(outfile, field, record.at(field_name));
-            }
-        }
-        outfile.close();
-
-        // 更新最后修改时间（注意：update 不改记录数）
-        dbManager::getInstance().get_current_database()->getTable(table_name)->setLastModifyTime(std::time(nullptr));
-        return updated;
     }
+    infile.close();
+
+    // 写回文件
+    std::stable_sort(all_records.begin(), all_records.end(), [](const auto& a, const auto& b) {
+        return a.first < b.first;
+        });
+
+    std::ofstream outfile(trd_path, std::ios::binary | std::ios::trunc);
+    if (!outfile) throw std::runtime_error("无法打开数据文件进行写入。");
+
+    for (const auto& [row_id, record] : all_records) {
+        outfile.write(reinterpret_cast<const char*>(&row_id), sizeof(uint64_t));
+        char delete_flag = 0;
+        outfile.write(&delete_flag, sizeof(char));
+        for (const auto& field : fields) {
+            write_field(outfile, field, record.at(field.name));
+        }
+    }
+    outfile.close();
+
+    dbManager::getInstance().get_current_database()->getTable(table_name)->setLastModifyTime(std::time(nullptr));
+    return updated;
+}
 
 
