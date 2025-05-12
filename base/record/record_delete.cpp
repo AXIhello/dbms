@@ -160,12 +160,17 @@ int Record::delete_by_flag(const std::string& tableName) {
 
     std::vector<FieldBlock> fields = read_field_blocks(table_name);
     this->table_structure = read_table_structure_static(table_name);
-    std::string trd_filename = dbManager::getInstance().get_current_database()->getDBPath() + "/" + table_name + ".trd";
 
+    // 初始化 columns 用于索引字段定位
+    columns.clear();
+    for (const auto& field : fields) {
+        columns.push_back(field.name);
+    }
+
+    std::string trd_filename = dbManager::getInstance().get_current_database()->getDBPath() + "/" + table_name + ".trd";
     std::ifstream infile(trd_filename, std::ios::binary);
     if (!infile) throw std::runtime_error("无法打开数据文件进行物理删除操作。");
 
-    // 读取所有未被标记删除的记录
     std::vector<std::pair<uint64_t, std::unordered_map<std::string, std::string>>> valid_records;
     int deleted_count = 0;
 
@@ -173,21 +178,31 @@ int Record::delete_by_flag(const std::string& tableName) {
         std::unordered_map<std::string, std::string> record_data;
         uint64_t row_id = 1;
 
-        // 保存当前位置以便可以读取delete_flag
         std::streampos pos = infile.tellg();
 
-        // 先读取row_id
         infile.read(reinterpret_cast<char*>(&row_id), sizeof(uint64_t));
         if (!infile) break;
 
-        // 读取delete_flag
         char delete_flag;
         infile.read(&delete_flag, sizeof(char));
         if (!infile) break;
 
-        // 如果记录已被标记为删除，跳过并计数
         if (delete_flag == 1) {
             deleted_count++;
+
+            // 回到 pos 再读取整条记录用于索引更新
+            infile.seekg(pos);
+            std::unordered_map<std::string, std::string> deleted_record;
+            infile.read(reinterpret_cast<char*>(&row_id), sizeof(uint64_t));
+            infile.ignore(sizeof(char)); // skip delete flag
+            if (read_record_from_file(infile, fields, deleted_record, row_id, false)) {
+                std::vector<std::string> deletedValues;
+                for (const auto& field : fields) {
+                    deletedValues.push_back(deleted_record[field.name]);
+                }
+                updateIndexesAfterDelete(table_name, deletedValues, RecordPointer{ row_id });
+            }
+
             // 跳过字段数据
             for (const auto& field : fields) {
                 char null_flag;
@@ -201,11 +216,8 @@ int Record::delete_by_flag(const std::string& tableName) {
             }
         }
         else {
-            // 回到记录开始位置
             infile.seekg(pos);
-
-            // 读取未删除的记录
-            if (read_record_from_file(infile, fields, record_data, row_id, /*skip_deleted=*/false)) {
+            if (read_record_from_file(infile, fields, record_data, row_id, false)) {
                 valid_records.emplace_back(row_id, record_data);
             }
         }
@@ -213,16 +225,11 @@ int Record::delete_by_flag(const std::string& tableName) {
 
     infile.close();
 
-    // 如果没有记录被删除，就不需要重写文件
-    if (deleted_count == 0) {
-        return 0;
-    }
+    if (deleted_count == 0) return 0;
 
-    // 按 row_id 顺序排序
     std::stable_sort(valid_records.begin(), valid_records.end(),
         [](const auto& a, const auto& b) { return a.first < b.first; });
 
-    // 重写文件，为每条记录分配新的row_id
     std::ofstream outfile(trd_filename, std::ios::binary | std::ios::trunc);
     if (!outfile) throw std::runtime_error("无法打开数据文件进行写入操作。");
 
@@ -231,21 +238,17 @@ int Record::delete_by_flag(const std::string& tableName) {
         outfile.write(reinterpret_cast<const char*>(&new_row_id), sizeof(uint64_t));
         char delete_flag = 0;
         outfile.write(&delete_flag, sizeof(char));
-
         for (const auto& field : fields) {
-            std::string field_name(field.name);
-            write_field(outfile, field, record.at(field_name));
+            write_field(outfile, field, record.at(field.name));
         }
-
         new_row_id++;
     }
 
     outfile.close();
 
-
-    dbManager::getInstance().get_current_database()->getTable(table_name)->incrementRecordCount(-deleted_count);
-    // 更新表的最后修改时间
-    dbManager::getInstance().get_current_database()->getTable(tableName)->setLastModifyTime(std::time(nullptr));
+    auto* tbl = dbManager::getInstance().get_current_database()->getTable(table_name);
+    tbl->incrementRecordCount(-deleted_count);
+    tbl->setLastModifyTime(std::time(nullptr));
 
     return deleted_count;
 }
