@@ -18,6 +18,142 @@ inline bool is_null(const std::string& value) {
     return value == "NULL";
 }
 
+std::vector<std::string> Record::tokenize(const std::string& expr) {
+    std::vector<std::string> tokens;
+
+    // 更新正则表达式：
+    // 1️⃣ 匹配类似于 "table1.field = table2.field"
+    // 2️⃣ 匹配 "field = 'value'" 或 "field = value"
+    // 3️⃣ 匹配 "AND" 或 "OR"
+    std::regex re(R"((\w+\.\w+\s*(=|!=|<|>|<=|>=)\s*\w+\.\w+|\w+\.\w+\s*(=|!=|<|>|<=|>=)\s*'[^']*'|\w+\s*(=|!=|<|>|<=|>=)\s*'[^']*'|\w+\s*(=|!=|<|>|<=|>=)\s*\w+|\bAND\b|\bOR\b))");
+
+    std::sregex_iterator iter(expr.begin(), expr.end(), re);
+    std::sregex_iterator end;
+
+    // 遍历所有匹配的条件
+    while (iter != end) {
+        tokens.push_back(iter->str());
+        ++iter;
+    }
+
+    return tokens;
+}
+
+
+ExpressionNode* Record::build_expression_tree(const std::vector<std::string>& tokens) {
+    if (tokens.empty()) return nullptr;
+
+    // 实现 Shunting Yard 算法来处理操作符优先级
+    std::stack<std::string> ops;
+    std::stack<ExpressionNode*> nodes;
+
+    // 定义操作符优先级 (AND 优先级高于 OR)
+    std::unordered_map<std::string, int> precedence = {
+        {"AND", 2},
+        {"OR", 1}
+    };
+
+    for (const auto& token : tokens) {
+        if (is_operator(token)) {
+            // 处理操作符
+            while (!ops.empty() && precedence[ops.top()] >= precedence[token]) {
+                std::string op = ops.top();
+                ops.pop();
+
+                ExpressionNode* right = nodes.top(); nodes.pop();
+                ExpressionNode* left = nodes.top(); nodes.pop();
+
+                ExpressionNode* op_node = new ExpressionNode(op);
+                op_node->left = left;
+                op_node->right = right;
+                nodes.push(op_node);
+            }
+            ops.push(token);
+        }
+        else {
+            // 处理操作数
+            nodes.push(new ExpressionNode(token));
+        }
+    }
+
+    // 处理剩余的操作符
+    while (!ops.empty()) {
+        std::string op = ops.top();
+        ops.pop();
+
+        ExpressionNode* right = nodes.top(); nodes.pop();
+        ExpressionNode* left = nodes.top(); nodes.pop();
+
+        ExpressionNode* op_node = new ExpressionNode(op);
+        op_node->left = left;
+        op_node->right = right;
+        nodes.push(op_node);
+    }
+
+    return nodes.empty() ? nullptr : nodes.top();
+}
+
+// 修改 evaluate_node 函数以正确处理条件表达式
+bool evaluate_node(ExpressionNode* node, const std::unordered_map<std::string, std::string>& record) {
+    if (!node) return false;
+
+    if (!Record::is_operator(node->value)) {
+        std::regex condition_regex(R"((\w+)\s*(=|!=|<|>|<=|>=)\s*('.*?'|\w+))");
+        std::smatch match;
+
+        if (std::regex_match(node->value, match, condition_regex)) {
+            std::string field = match[1];
+            std::string op = match[2];
+            std::string value = match[3];
+
+            // 检查字段是否存在于记录中
+            if (record.find(field) == record.end()) return false;
+            std::string actual_value = record.at(field);
+
+            // 保留引号进行比较
+            if (op == "=") {
+                    return actual_value == value;
+            }
+            if (op == "!=") return actual_value != value;
+
+            // 对于数值比较，尝试转换为数字
+            try {
+                double actual_num = std::stod(actual_value);
+                double value_num = std::stod(value);
+
+                if (op == "<") return actual_num < value_num;
+                if (op == ">") return actual_num > value_num;
+                if (op == "<=") return actual_num <= value_num;
+                if (op == ">=") return actual_num >= value_num;
+            }
+            catch (const std::exception&) {
+                // 如果转换失败，使用字符串比较
+                if (op == "<") return actual_value < value;
+                if (op == ">") return actual_value > value;
+                if (op == "<=") return actual_value <= value;
+                if (op == ">=") return actual_value >= value;
+            }
+        }
+        return false;
+    }
+
+    // 递归计算
+    bool left_result = evaluate_node(node->left, record);
+    bool right_result = evaluate_node(node->right, record);
+
+    if (node->value == "AND") return left_result && right_result;
+    if (node->value == "OR") return left_result || right_result;
+
+    return false;
+}
+
+// 表级约束校验
+bool Record::check_table_level_constraint(const ConstraintBlock& constraint, const std::unordered_map<std::string, std::string>& column_values) {
+    std::vector<std::string> tokens = tokenize(constraint.param);
+    ExpressionNode* root = build_expression_tree(tokens);
+    return evaluate_node(root, column_values);
+}
+
 std::vector<ConstraintBlock> Record::read_constraints(const std::string& table_name) {
     std::vector<ConstraintBlock> constraints;
     std::string tic_filename = dbManager::getInstance().get_current_database()->getDBPath() + "/" + table_name + ".tic";
@@ -45,7 +181,7 @@ bool Record::check_constraints(const std::vector<std::string>& columns,
     for (const auto& constraint : constraints) {
         std::string field_name = constraint.field;
 
-        if (column_values.find(field_name) == column_values.end() && constraint.type != 5) {
+        if (column_values.find(field_name) == column_values.end() && constraint.type != 5&&constraint.type!=3) {
             continue;
         }
 
@@ -60,8 +196,16 @@ bool Record::check_constraints(const std::vector<std::string>& columns,
             satisfied = check_foreign_key_constraint(constraint, field_value);
             break;
         case 3:
-            satisfied = check_check_constraint(constraint, field_value);
+            if (std::strlen(constraint.field) == 0) {
+                // 如果字段为空，表示是表级约束
+                satisfied = check_table_level_constraint(constraint, column_values);
+            }
+            else {
+                // 否则是列级约束
+                satisfied = check_check_constraint(constraint, field_value);
+            }
             break;
+
         case 4:
             satisfied = check_unique_constraint(constraint, field_value);
             break;
@@ -178,13 +322,16 @@ bool Record::check_check_constraint(const ConstraintBlock& constraint, const std
         // 2. IN (x, y, z, ...)
         std::regex in_regex(R"(IN\s*\(([^)]+)\))", std::regex_constants::icase);
         if (std::regex_search(check_expr, matches, in_regex)) {
-            std::unordered_set<double> in_values;
+            std::unordered_set<std::string> in_values;
             std::stringstream ss(matches[1]);
             std::string item;
             while (std::getline(ss, item, ',')) {
-                in_values.insert(std::stod(item));
+                item.erase(std::remove_if(item.begin(), item.end(), ::isspace), item.end());
+                if (!item.empty()) {
+                       in_values.insert(item);
+                }
             }
-            return in_values.find(numeric_value) != in_values.end();
+            return in_values.find(clean_value) != in_values.end();
         }
 
         // 3. Comparison operators
@@ -209,6 +356,7 @@ bool Record::check_check_constraint(const ConstraintBlock& constraint, const std
     // 如果没有匹配任何约束条件，则默认返回 true
     return true;
 }
+
 
 bool Record::check_default_constraint(const ConstraintBlock& constraint, std::string& value) {
     if (is_null(value)) {

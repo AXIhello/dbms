@@ -200,13 +200,17 @@ std::vector<Record> Record::select(
     temp.set_table_name(tables.size() == 1 ? tables[0] : "");
     temp.table_structure = combined_structure;
     if (!condition.empty()) temp.parse_condition(condition);
-
-    std::vector<std::pair<uint64_t, std::unordered_map<std::string, std::string>>> condition_filtered;
-    for (const auto& [row_id, rec] : filtered) {
-        if (condition.empty() || temp.matches_condition(rec, join_info != nullptr || tables.size() > 1)) {
-            condition_filtered.emplace_back(row_id, rec);
-        }
+    auto map_filtered = vectorToMap(filtered);
+    std::vector<std::shared_ptr<Table>> table_ptrs;
+    for (const auto& name : tables) {
+        Table* raw_table = dbManager::getInstance().get_current_database()->getTable(name);  // 获取原始指针
+        table_ptrs.push_back(std::shared_ptr<Table>(raw_table, [](Table*) {
+            /* 空 deleter，避免重复析构 */
+            }));
     }
+    //std::vector<std::pair<uint64_t, std::unordered_map<std::string, std::string>>> condition_filtered;
+
+    auto condition_filtered = temp.selectByIndex(map_filtered, table_ptrs, combined_structure, join_info != nullptr || tables.size() > 1);
 
     // ==================== 4️⃣  GROUP BY 和 聚合函数 ====================
     if (!group_by.empty()) {

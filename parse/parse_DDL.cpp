@@ -149,8 +149,9 @@ if (def.find("FOREIGN KEY") == 0) {
         std::string fkName = "FK_" + localField + "_" + refTable;  // 生成外键约束名称
         strncpy_s(cb.name, fkName.c_str(), sizeof(cb.name));  // 存储约束名称
         strncpy_s(cb.field, localField.c_str(), sizeof(cb.field));  // 存储本地字段
-        std::string paramStr = refTable + "(" + refField + ")";  // 存储外键的参考信息
-        strncpy_s(cb.param, paramStr.c_str(), sizeof(cb.param));  // 存储外键约束的参数
+        std::string paramStr = refTable + "." + refField;  // 存储为 "TABLE.FIELD"
+        strncpy_s(cb.param, paramStr.c_str(), sizeof(cb.param));
+
 
         constraints.push_back(cb);  // 添加到约束列表
     }
@@ -274,7 +275,8 @@ if (def.find("UNIQUE") == 0) {
             constraints.push_back(cb);
         }
 
-        std::regex checkRegex(R"(CHECK\s*\(([^)]+)\))", std::regex::icase);
+        std::regex checkRegex(R"(CHECK\s*\((.*)\))", std::regex::icase);
+
         std::smatch checkMatch;
         if (std::regex_search(rest, checkMatch, checkRegex)) {
 			field.integrities = 1;
@@ -371,8 +373,9 @@ void Parse::handleAddColumn(const std::smatch& m) {
         std::string fkName = "FK_" + localField + "_" + refTable;
         strncpy_s(cb.name, fkName.c_str(), sizeof(cb.name));
         strncpy_s(cb.field, localField.c_str(), sizeof(cb.field));
-        std::string paramStr = refTable + "(" + refField + ")";
+        std::string paramStr = refTable + "." + refField;  // 存储为 "TABLE.FIELD"
         strncpy_s(cb.param, paramStr.c_str(), sizeof(cb.param));
+
         constraints.push_back(cb);
     }
 
@@ -431,12 +434,13 @@ void Parse::handleAddColumn(const std::smatch& m) {
     try {
         Table* table = dbManager::getInstance().get_current_database()->getTable(tableName);
         
-		std::vector<FieldBlock> fieldsCopy = table->getFields();
-        table->addField(field);
-
         for (const auto& constraint : constraints) {
             table->addConstraint(constraint);
         }
+
+		std::vector<FieldBlock> fieldsCopy = table->getFields();
+        table->addField(field);
+
 
         //table->updateRecord(fieldsCopy);
         table;

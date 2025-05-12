@@ -279,6 +279,8 @@ void dbManager::useDatabase(const std::string& db_name) {
         throw std::runtime_error("数据库 '" + db_name + "' 不存在！");
     }
 
+    LogManager::instance().initialize(db_name);
+
     if (currentDB) {
         delete currentDB;  // 卸载当前数据库
     }

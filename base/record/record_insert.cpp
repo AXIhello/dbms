@@ -157,11 +157,23 @@ void Record::insert_into() {
         dbManager::getInstance().get_current_database()->getTable(table_name)->setLastModifyTime(std::time(nullptr));
 
         std::cout << "记录插入表 " << this->table_name << " 成功，row_id = " << row_id << "。" << std::endl;
+        
         transactionManager.addUndo(DmlType::INSERT, this->table_name, row_id);
+       
+        if (transactionManager.isActive()||(!transactionManager.isActive()&&transactionManager.isAutoCommit())) {
+            // 把字段名和数据打包成 pair
+            std::vector<std::pair<std::string, std::string>> insert_values;
+            for (size_t i = 0; i < fields.size(); ++i) {
+                insert_values.emplace_back(fields[i].name, record_values[i]);
+            }
 
+            // 记录到日志
+            LogManager::instance().logInsert(this->table_name, row_id, insert_values);
+        }
+        transactionManager.commitImplicitTransaction();
     }
     catch (const std::exception& e) {
-        transactionManager.rollback();
+        //transactionManager.rollback();
         std::cerr << "插入记录失败: " << e.what() << std::endl;
         throw; // 重新抛出异常以便外部捕获
     }
