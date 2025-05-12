@@ -12,6 +12,7 @@
 #include "AddTableDialog.h"
 #include <QGroupBox>
 #include "AddUserDialog.h"
+#include "EditTableDialog.h"
 
 MainWindow::MainWindow(QWidget* parent)
     : QMainWindow(parent)
@@ -444,10 +445,16 @@ void MainWindow::onTreeWidgetContextMenu(const QPoint& pos) {
             dbName = parent->text(0);
             tableName = item->text(0);
 
-            menu.addAction("修改表", [=]() {
-                QMessageBox::information(this, "修改表", "这里将来会弹出修改表窗口（表名：" + tableName + "）");
+            //menu.addAction("修改表", [=]() {
+              //  QMessageBox::information(this, "修改表", "这里将来会弹出修改表窗口（表名：" + tableName + "）");
 
+                //});
+
+            menu.addAction("修改表", [=]() {
+                EditTableDialog* dlg = new EditTableDialog(this, tableName);
+                dlg->exec();
                 });
+
 
             menu.addAction("删除表", [=]() {
                 QMessageBox::StandardButton reply = QMessageBox::question(this, "确认删除",
