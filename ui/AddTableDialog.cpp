@@ -7,6 +7,12 @@
 #include <QHeaderView>
 #include <QDateTime>
 
+/**
+ * 构造函数，初始化界面并设置各控件布局与信号槽连接。.
+ * 
+ * \param parent
+ * \param dbName
+ */
 AddTableDialog::AddTableDialog(QWidget* parent, const QString& dbName)
     : QDialog(parent)
 {
@@ -51,7 +57,10 @@ AddTableDialog::AddTableDialog(QWidget* parent, const QString& dbName)
     mainLayout->addLayout(fieldButtonLayout);
     mainLayout->addLayout(bottomLayout);
 }
-
+/**
+ * 添加一行用于编辑字段信息的控件组，并绑定相关逻辑控制。.
+ * 
+ */
 void AddTableDialog::addFieldRow() {
     int row = fieldTable->rowCount();
     fieldTable->insertRow(row);
@@ -114,17 +123,28 @@ void AddTableDialog::addFieldRow() {
         });
 
 }
-
+/**
+ * 删除字段表中当前选中的字段行。.
+ * 
+ */
 void AddTableDialog::removeSelectedRow() {
     int row = fieldTable->currentRow();
     if (row >= 0)
         fieldTable->removeRow(row);
 }
-
+/**
+ * 返回用户输入的表名字符串。.
+ * 
+ * \return 
+ */
 QString AddTableDialog::getTableName() const {
     return tableNameEdit->text().trimmed();
 }
-
+/**
+ * 将字段信息转换为标准SQL列定义字符串列表。.
+ * 
+ * \return 
+ */
 QStringList AddTableDialog::getColumnDefinitions() const {
     QStringList defs;
 
@@ -177,7 +197,11 @@ QStringList AddTableDialog::getColumnDefinitions() const {
 
     return defs;
 }
-
+/**
+ * 返回字段表中所有字段的详细属性数据，作为QList<QVariant>列表。.
+ * 
+ * \return 
+ */
 QList<QList<QVariant>> AddTableDialog::getFieldData() const {
     QList<QList<QVariant>> fields;
 

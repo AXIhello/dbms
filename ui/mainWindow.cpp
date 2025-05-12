@@ -77,12 +77,25 @@ MainWindow::MainWindow(QWidget* parent)
     // 设置按钮的宽度
     ui->runButton->setMinimumWidth(150);  // 设置按钮最小宽度
     ui->runButton->setMaximumWidth(150);  // 设置按钮最大宽度
+    ui->cleanButton->setMinimumWidth(150);  // 设置按钮最小宽度
+    ui->cleanButton->setMaximumWidth(150);  // 设置按钮最大宽度
 
     // 创建一个单独的QWidget来包裹runButton
     buttonWidget = new QWidget(this);  // 把 buttonWidget 声明为成员变量
     QHBoxLayout* buttonLayout = new QHBoxLayout(buttonWidget);
+    // 添加弹性空间，使按钮居中对称排列
+    buttonLayout->addStretch();
     buttonLayout->addWidget(ui->runButton);
+    buttonLayout->addSpacing(150);                // 中间间距（可调整）
+    buttonLayout->addWidget(ui->cleanButton);
+    buttonLayout->addStretch();                  // 右侧空白
     buttonWidget->setLayout(buttonLayout);
+    //连接cleanButton槽函数
+    connect(ui->cleanButton, &QPushButton::clicked, this, [=]() {
+        ui->inputEdit->clear();
+        ui->outputEdit->clear();
+        });
+
 
     ui->treeWidget->setHeaderHidden(true); // 隐藏表头
     ui->treeWidget->setMinimumWidth(200);  // 设置宽度
