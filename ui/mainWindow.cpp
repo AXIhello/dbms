@@ -18,7 +18,6 @@ MainWindow::MainWindow(QWidget* parent)
     : QMainWindow(parent)
     , ui(new Ui::MainWindow)// 初始化 UI
 {
-    //qDebug() << "GUI模式下的basePath:" << QString::fromStdString(dbManager::basePath);
     ui->setupUi(this);  // 让 UI 组件和窗口关联
     // 设置样式表
     QString styleSheet = R"(
