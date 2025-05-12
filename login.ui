@@ -6,124 +6,131 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>400</width>
-    <height>300</height>
+    <width>322</width>
+    <height>240</height>
    </rect>
   </property>
   <property name="windowTitle">
-   <string>Dialog</string>
+   <string>登录</string>
   </property>
-  <widget class="QWidget" name="layoutWidget">
+  <property name="styleSheet">
+   <string notr="true">
+	   background-color: #FFFAF0;
+	   border-radius: 15px;
+	   background-color: rgba(255, 255, 255, 128)
+	   border: none;  /* 可选，移除边框 */</string>
+  </property>
+  <widget class="QLabel" name="titleLabel">
    <property name="geometry">
     <rect>
-     <x>30</x>
-     <y>170</y>
-     <width>351</width>
-     <height>33</height>
+     <x>70</x>
+     <y>10</y>
+     <width>181</width>
+     <height>40</height>
     </rect>
    </property>
-   <layout class="QHBoxLayout">
-    <property name="spacing">
-     <number>6</number>
-    </property>
-    <property name="margin" stdset="0">
-     <number>0</number>
-    </property>
-    <item>
-     <widget class="QPushButton" name="loginBtn">
-      <property name="text">
-       <string>登录</string>
-      </property>
-     </widget>
-    </item>
-    <item>
-     <spacer>
-      <property name="orientation">
-       <enum>Qt::Horizontal</enum>
-      </property>
-      <property name="sizeType">
-       <enum>QSizePolicy::Ignored</enum>
-      </property>
-      <property name="sizeHint" stdset="0">
-       <size>
-        <width>131</width>
-        <height>31</height>
-       </size>
-      </property>
-     </spacer>
-    </item>
-    <item>
-     <widget class="QPushButton" name="exitBtn">
-      <property name="text">
-       <string>退出</string>
-      </property>
-     </widget>
-    </item>
-   </layout>
-  </widget>
-  <widget class="QLabel" name="label">
-   <property name="geometry">
-    <rect>
-     <x>90</x>
-     <y>70</y>
-     <width>54</width>
-     <height>16</height>
-    </rect>
+   <property name="styleSheet">
+    <string notr="true">font-size: 20px; 
+</string>
    </property>
    <property name="text">
-    <string>用户名：</string>
+    <string>用 户 登 录</string>
+   </property>
+   <property name="alignment">
+    <set>Qt::AlignCenter</set>
    </property>
   </widget>
   <widget class="QLineEdit" name="usrLineEdit">
    <property name="geometry">
     <rect>
-     <x>160</x>
+     <x>29</x>
      <y>70</y>
-     <width>161</width>
-     <height>20</height>
+     <width>261</width>
+     <height>25</height>
     </rect>
    </property>
    <property name="placeholderText">
-    <string>请输入用户名</string>
+    <string> 请输入用户名</string>
    </property>
    <property name="clearButtonEnabled">
     <bool>true</bool>
    </property>
   </widget>
-  <widget class="QLabel" name="label_2">
-   <property name="geometry">
-    <rect>
-     <x>90</x>
-     <y>120</y>
-     <width>54</width>
-     <height>16</height>
-    </rect>
-   </property>
-   <property name="text">
-    <string>密码：</string>
-   </property>
-  </widget>
   <widget class="QLineEdit" name="pwdLineEdit">
    <property name="geometry">
     <rect>
-     <x>160</x>
+     <x>30</x>
      <y>120</y>
-     <width>161</width>
-     <height>20</height>
+     <width>261</width>
+     <height>25</height>
     </rect>
    </property>
    <property name="echoMode">
     <enum>QLineEdit::Password</enum>
    </property>
    <property name="placeholderText">
-    <string>请输入密码</string>
-   </property>
-   <property name="cursorMoveStyle">
-    <enum>Qt::LogicalMoveStyle</enum>
+    <string> 请输入密码</string>
    </property>
    <property name="clearButtonEnabled">
     <bool>true</bool>
    </property>
+  </widget>
+  <widget class="QWidget" name="layoutWidget">
+   <property name="geometry">
+    <rect>
+     <x>29</x>
+     <y>170</y>
+     <width>261</width>
+     <height>30</height>
+    </rect>
+   </property>
+   <layout class="QHBoxLayout">
+    <property name="spacing">
+     <number>20</number>
+    </property>
+    <property name="margin" stdset="0">
+     <number>0</number>
+    </property>
+    <item>
+     <widget class="QPushButton" name="loginBtn">
+      <property name="styleSheet">
+       <string notr="true">		   QPushButton {
+		   background-color: #0000CD
+		   border: none;
+		   border-radius: 10px;
+		   padding: 6px 12px;
+		   }
+		   QPushButton:hover {
+		   background-color: #0000CD;
+		   }
+	   </string>
+      </property>
+      <property name="text">
+       <string>登 录</string>
+      </property>
+     </widget>
+    </item>
+    <item>
+     <widget class="QPushButton" name="exitBtn">
+      <property name="styleSheet">
+       <string notr="true">
+		   QPushButton {
+		   background-color: #0000CD
+		   border: none;  /* 可选，移除边框 */
+		   border-radius: 10px;
+		   padding: 6px 12px;
+		   }
+		   QPushButton:hover {
+		   background-color: #e6b96f;
+		   }
+	   </string>
+      </property>
+      <property name="text">
+       <string>退 出</string>
+      </property>
+     </widget>
+    </item>
+   </layout>
   </widget>
  </widget>
  <resources/>
@@ -135,12 +142,12 @@
    <slot>reject()</slot>
    <hints>
     <hint type="sourcelabel">
-     <x>369</x>
-     <y>253</y>
+     <x>20</x>
+     <y>20</y>
     </hint>
     <hint type="destinationlabel">
-     <x>179</x>
-     <y>282</y>
+     <x>20</x>
+     <y>20</y>
     </hint>
    </hints>
   </connection>
