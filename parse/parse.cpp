@@ -239,7 +239,7 @@ void Parse::registerPatterns() {
 
     // GRANT conn|resource ON xxx TO xxx;
     patterns.push_back({
-    std::regex(R"(^GRANT\s+(conn|resource)\s+ON\s+(\w+(?:\.\w+)?)\s+TO\s+(\w+);$)", std::regex::icase),
+    std::regex(R"(^GRANT\s+(connect|connect,resource)\s+ON\s+(\w+(?:\.\w+)?)\s+TO\s+(\w+);$)", std::regex::icase),
     [this](const std::smatch& m) { handleGrantPermission(m); }
         });
 

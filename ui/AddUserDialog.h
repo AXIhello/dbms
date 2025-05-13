@@ -5,6 +5,10 @@
 #include <QComboBox>
 #include <QPushButton>
 #include <QFormLayout>
+#include "AddTableDialog.h"
+#include <QHeaderView>
+#include <QStandardItemModel>
+
 
 class AddUserDialog : public QDialog
 {
@@ -14,16 +18,22 @@ public:
     explicit AddUserDialog(QWidget* parent = nullptr);
     QString getUsername() const;
     QString getPassword() const;
-    QString getPermission() const;
-    QString getDatabaseName() const;
-    QString getTableName() const;
+    void onAddGrantButtonClicked();
+    void onRemoveGrantButtonClicked();
+    QList<QPair<QString, QString>> getGrants() const;
+    QStandardItemModel* createResourceModel();
+
+
+
 
 private:
     QLineEdit* usernameEdit;
     QLineEdit* passwordEdit;
-    QComboBox* permissionComboBox;
-    QLineEdit* databaseEdit;
-    QLineEdit* tableEdit;
+    QTableWidget* grantTableWidget;
+    QPushButton* addGrantButton;
+    QPushButton* removeGrantButton;
     QPushButton* okButton;
     QPushButton* cancelButton;
+    QStringList permissionList;
+    QStringList resourceList;
 };
