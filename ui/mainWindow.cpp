@@ -12,12 +12,12 @@
 #include "AddTableDialog.h"
 #include <QGroupBox>
 #include "AddUserDialog.h"
+#include "EditTableDialog.h"
 
 MainWindow::MainWindow(QWidget* parent)
     : QMainWindow(parent)
     , ui(new Ui::MainWindow)// 初始化 UI
 {
-    //qDebug() << "GUI模式下的basePath:" << QString::fromStdString(dbManager::basePath);
     ui->setupUi(this);  // 让 UI 组件和窗口关联
     // 设置样式表
     QString styleSheet = R"(
@@ -474,6 +474,7 @@ void MainWindow::onTreeWidgetContextMenu(const QPoint& pos) {
                 QMessageBox::information(this, "修改表", "这里将来会弹出修改表窗口（表名：" + tableName + "）");
 
                 });
+
 
             menu.addAction("删除表", [=]() {
                 QMessageBox::StandardButton reply = QMessageBox::question(this, "确认删除",

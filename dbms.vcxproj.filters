@@ -155,6 +155,9 @@
     <ClCompile Include="ui\AddUserDialog.cpp">
       <Filter>ui</Filter>
     </ClCompile>
+    <ClCompile Include="EditTableDialog.cpp">
+      <Filter>ui</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="debug.h">
@@ -208,6 +211,9 @@
       <Filter>ui</Filter>
     </QtMoc>
     <QtMoc Include="ui\AddUserDialog.h">
+      <Filter>ui</Filter>
+    </QtMoc>
+    <QtMoc Include="EditTableDialog.h">
       <Filter>ui</Filter>
     </QtMoc>
   </ItemGroup>

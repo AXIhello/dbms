@@ -39,12 +39,12 @@
     <QtModules>core;gui;widgets</QtModules>
     <QtBuildConfig>debug</QtBuildConfig>
     <QtInstall>6.2.13_msvc2019_64</QtInstall>
-    <QtInstall>Qt 6.2.12 MSVC</QtInstall>
+    <QtInstall>6.5.3_msvc2019_64</QtInstall>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)' == 'Release|x64'" Label="QtSettings">
     <QtModules>core;gui;widgets</QtModules>
     <QtBuildConfig>release</QtBuildConfig>
-    <QtInstall>Qt 6.2.12 MSVC</QtInstall>
+    <QtInstall>6.5.3_msvc2019_64</QtInstall>
   </PropertyGroup>
   <Target Name="QtMsBuildNotFound" BeforeTargets="CustomBuild;ClCompile" Condition="!Exists('$(QtMsBuild)\qt.targets') or !Exists('$(QtMsBuild)\qt.props')">
     <Message Importance="High" Text="QtMsBuild: could not locate qt.targets, qt.props; project may not build correctly." />
@@ -115,6 +115,7 @@
     <ClCompile Include="base\record\record_update_index.cpp" />
     <ClCompile Include="base\table\table.cpp" />
     <ClCompile Include="debug.cpp" />
+    <ClCompile Include="ui\EditTableDialog.cpp" />
     <ClCompile Include="log\logManager.cpp" />
     <ClCompile Include="manager\dbManager.cpp" />
     <ClCompile Include="base\record\record_check.cpp" />
@@ -155,6 +156,7 @@
     <QtMoc Include="ui\mainWindow.h" />
     <ClInclude Include="base\BTree.h" />
     <ClInclude Include="base\table\table.h" />
+    <ClInclude Include="ui\EditTableDialog.h" />
     <ClInclude Include="log\logManager.h" />
     <ClInclude Include="manager\databaseBlock.h" />
     <ClInclude Include="debug.h" />
