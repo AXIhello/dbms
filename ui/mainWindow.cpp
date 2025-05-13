@@ -347,54 +347,56 @@ void MainWindow::onTreeWidgetContextMenu(const QPoint& pos) {
             }
             });
 
+        if (std::string(user::getCurrentUser().username) == "sys") {
+            menu.addAction("添加用户", [=]() {
+                AddUserDialog dlg(this); // 你需要自定义 AddUserDialog 类
+                if (dlg.exec() == QDialog::Accepted) {
+                    QString username = dlg.getUsername();
+                    QString password = dlg.getPassword();
+                    QString db = dlg.getDatabaseName();
+                    QString table = dlg.getTableName();
+                    QString perm = dlg.getPermission();
 
-        menu.addAction("添加用户", [=]() {
-            AddUserDialog dlg(this); // 你需要自定义 AddUserDialog 类
-            if (dlg.exec() == QDialog::Accepted) {
-                QString username = dlg.getUsername();
-                QString password = dlg.getPassword();  
-                QString db = dlg.getDatabaseName();
-                QString table = dlg.getTableName();
-                QString perm = dlg.getPermission();
+                    if (!username.isEmpty()) {
+                        QString sql = "CREATE USER " + username;
+                        if (!password.isEmpty()) {
+                            sql += " IDENTIFIED BY " + password;
+                        }
+                        sql += ";\n\n";
 
-                if (!username.isEmpty()) {
-                    QString sql = "CREATE USER " + username;
-                    if (!password.isEmpty()) {
-                        sql += " IDENTIFIED BY " + password;
-                    }
-                    sql += ";\n\n";
+                        QString currentText = ui->inputEdit->toPlainText();
+                        ui->inputEdit->setPlainText(currentText + sql + "SQL>> ");
 
-                    QString currentText = ui->inputEdit->toPlainText();
-                    ui->inputEdit->setPlainText(currentText + sql + "SQL>> ");
+                        try {
+                            Parse parser(ui->outputEdit, this);
+                            parser.execute(sql);
 
-                    try {
-                        Parse parser(ui->outputEdit, this);
-                        parser.execute(sql);
+                            // 如果填写了权限和数据库名，就自动授权
+                            if (!perm.isEmpty() && !db.isEmpty()) {
+                                QString object = db;
+                                if (!table.isEmpty()) {
+                                    object += "." + table;
+                                }
 
-                        // 如果填写了权限和数据库名，就自动授权
-                        if (!perm.isEmpty() && !db.isEmpty()) {
-                            QString object = db;
-                            if (!table.isEmpty()) {
-                                object += "." + table;
+                                QString grantSQL = "GRANT " + perm + " ON " + object + " TO " + username + ";\n\n";
+                                ui->inputEdit->moveCursor(QTextCursor::End);
+                                ui->inputEdit->insertPlainText(grantSQL + "SQL>> ");
+                                parser.execute(grantSQL);
                             }
-
-                            QString grantSQL = "GRANT " + perm + " ON " + object + " TO " + username + ";\n\n";
-                            ui->inputEdit->moveCursor(QTextCursor::End);
-                            ui->inputEdit->insertPlainText(grantSQL + "SQL>> ");
-                            parser.execute(grantSQL);
+                        }
+                        catch (const std::exception& e) {
+                            Output::printError(ui->outputEdit, QString("创建用户失败: ") + e.what());
                         }
                     }
-                    catch (const std::exception& e) {
-                        Output::printError(ui->outputEdit, QString("创建用户失败: ") + e.what());
+                    else {
+                        Output::printError(ui->outputEdit, "用户名不能为空！");
                     }
                 }
-                else {
-                    Output::printError(ui->outputEdit, "用户名不能为空！");
-                }
-            }
 
-            }
-        );
+                }
+
+            );
+        }
     }
     else {
         QTreeWidgetItem* parent = item->parent();
