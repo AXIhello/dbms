@@ -6,8 +6,8 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>322</width>
-    <height>240</height>
+    <width>328</width>
+    <height>246</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -31,10 +31,14 @@
    </property>
    <property name="styleSheet">
     <string notr="true">font-size: 20px; 
+font:  12pt &quot;Microsoft YaHei&quot;;
 </string>
    </property>
    <property name="text">
     <string>用 户 登 录</string>
+   </property>
+   <property name="textFormat">
+    <enum>Qt::MarkdownText</enum>
    </property>
    <property name="alignment">
     <set>Qt::AlignCenter</set>
@@ -43,10 +47,10 @@
   <widget class="QLineEdit" name="usrLineEdit">
    <property name="geometry">
     <rect>
-     <x>29</x>
+     <x>50</x>
      <y>70</y>
-     <width>261</width>
-     <height>25</height>
+     <width>221</width>
+     <height>31</height>
     </rect>
    </property>
    <property name="placeholderText">
@@ -59,10 +63,10 @@
   <widget class="QLineEdit" name="pwdLineEdit">
    <property name="geometry">
     <rect>
-     <x>30</x>
+     <x>50</x>
      <y>120</y>
-     <width>261</width>
-     <height>25</height>
+     <width>221</width>
+     <height>31</height>
     </rect>
    </property>
    <property name="echoMode">
@@ -108,6 +112,12 @@
       <property name="text">
        <string>登 录</string>
       </property>
+      <property name="default">
+       <bool>true</bool>
+      </property>
+      <property name="flat">
+       <bool>false</bool>
+      </property>
      </widget>
     </item>
     <item>
@@ -127,6 +137,9 @@
       </property>
       <property name="text">
        <string>退 出</string>
+      </property>
+      <property name="autoDefault">
+       <bool>false</bool>
       </property>
      </widget>
     </item>

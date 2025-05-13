@@ -34,7 +34,7 @@
      </rect>
     </property>
     <property name="text">
-     <string>运 行</string>
+     <string>run</string>
     </property>
    </widget>
    <widget class="QTreeWidget" name="treeWidget">
@@ -72,7 +72,7 @@
      </rect>
     </property>
     <property name="text">
-     <string>清 空</string>
+     <string>clean</string>
     </property>
    </widget>
   </widget>
