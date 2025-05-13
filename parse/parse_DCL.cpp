@@ -41,12 +41,12 @@ void Parse::handleGrantPermission(const std::smatch& m) {
         dbName = object;
     }
 
-    if (user::grantPermission(username, permission, dbName, tableName)) {
+    if (user::grantPermission(username, permission, dbName, tableName, this->outputEdit)) {
         Output::printMessage(outputEdit, "已授予用户'" + QString::fromStdString(username) + " '在 '" + QString::fromStdString(object) + "' 上的" 
             +QString::fromStdString(permission) +"' 权限'");
     }
     else {
-        Output::printMessage(outputEdit, "授权失败，用户 '" + QString::fromStdString(username) + "' 不存在。");
+        //Output::printMessage(outputEdit, "授权失败，用户 '" + QString::fromStdString(username) + "' 不存在。");
     }
 }
 

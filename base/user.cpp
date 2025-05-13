@@ -173,11 +173,47 @@ bool user::createUser(const std::string& username, const std::string& password) 
 
 // 授权
 bool user::grantPermission(const std::string& username,const std::string& permission,
-    const std::string& dbName,const std::string& tableName) 
+    const std::string& dbName,const std::string& tableName, QTextEdit* outputEdit)
 {
+    // 权限验证：确认当前用户是否有权授权此数据库
+    std::string currentUser = std::string(user::getCurrentUser().username);  
+    std::string sysDBPath = dbManager::basePath + "/ruanko.db";
+
+    std::ifstream dbFileIn1(sysDBPath, std::ios::binary);
+    if (!dbFileIn1) {
+        Output::printMessage(outputEdit, "授权时无法打开数据库文件");
+        return false;
+    }
+
+    bool isCurrentUserAuthorized = false;
+    std::vector<DatabaseBlock> dbs;
+    DatabaseBlock block{};
+
+    while (dbFileIn1.read(reinterpret_cast<char*>(&block), sizeof(block))) {
+        dbs.push_back(block);
+        if (block.dbName == dbName) {
+            std::string abledUsers(block.abledUsername);
+            std::stringstream ss(abledUsers);
+            std::string user;
+            while (std::getline(ss, user, '|')) {
+                if (user == currentUser) {
+                    isCurrentUserAuthorized = true;
+                    break;
+                }
+            }
+            break;  // 找到目标数据库后就可退出
+        }
+    }
+    dbFileIn1.close();
+
+    if (!isCurrentUserAuthorized) {
+        Output::printMessage(outputEdit, "你没有权限授权该数据库，请联系管理员");
+        return false;
+    }
+
+    // Step 1: 更新用户结构体中的权限字段
     std::vector<User> users = loadUsers();
     bool userExists = false;
-    // Step 1: 更新用户结构体中的权限字段
     for (auto& u : users) {
         if (u.username == username) {
             std::string perms(u.permissions);
@@ -211,20 +247,6 @@ bool user::grantPermission(const std::string& username,const std::string& permis
     file.close();
     
     // Step 3: 更新数据库文件
-    std::string sysDBPath = dbManager::basePath + "/ruanko.db";
-    std::ifstream dbFileIn(sysDBPath, std::ios::binary);
-    if (!dbFileIn) {
-        Output::printMessage(outputEdit, "授权时无法打开数据库文件");
-        return false;
-    }
-    
-    std::vector<DatabaseBlock> dbs;
-    DatabaseBlock block;
-    while (dbFileIn.read(reinterpret_cast<char*>(&block), sizeof(block))) {
-        dbs.push_back(block);
-    }
-    dbFileIn.close();
-
     for (auto& db : dbs) {
         // 比对数据库名
         if (db.dbName == dbName) {
@@ -243,6 +265,10 @@ bool user::grantPermission(const std::string& username,const std::string& permis
     }
         // Step 4: 写回数据库信息
         std::ofstream dbFileOut(sysDBPath, std::ios::binary | std::ios::trunc);
+        if (!dbFileOut) {
+            Output::printMessage(outputEdit, "写回数据库文件失败");
+            return false;
+        }
         for (const auto& db : dbs) {
             dbFileOut.write(reinterpret_cast<const char*>(&db), sizeof(db));
         }
