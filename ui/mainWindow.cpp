@@ -64,7 +64,7 @@ MainWindow::MainWindow(QWidget* parent)
     connect(ui->treeWidget, &QTreeWidget::itemClicked, this, &MainWindow::onTreeItemClicked);
     connect(ui->treeWidget, &QTreeWidget::customContextMenuRequested,
         this, &MainWindow::onTreeWidgetContextMenu);
-    setWindowTitle("My Database Client"); // 设置窗口标题
+    setWindowTitle("DBMS 工作台"); // 设置窗口标题
     setGeometry(100, 100, 1000, 600);  // 设置窗口大小
 
     // 设置菜单栏
@@ -75,10 +75,13 @@ MainWindow::MainWindow(QWidget* parent)
     ui->outputEdit->setReadOnly(true);
 
     // 设置按钮的宽度
-    ui->runButton->setMinimumWidth(150);  // 设置按钮最小宽度
-    ui->runButton->setMaximumWidth(150);  // 设置按钮最大宽度
-    ui->cleanButton->setMinimumWidth(150);  // 设置按钮最小宽度
-    ui->cleanButton->setMaximumWidth(150);  // 设置按钮最大宽度
+    ui->runButton->setMinimumWidth(91);  // 设置按钮最小宽度
+    ui->runButton->setMaximumWidth(91);  // 设置按钮最大宽度
+    ui->cleanButton->setMinimumWidth(91);  // 设置按钮最小宽度
+    ui->cleanButton->setMaximumWidth(91);  // 设置按钮最大宽度
+    //设置按钮高度
+    ui->runButton->setFixedHeight(31);
+    ui->cleanButton->setFixedHeight(31);
 
     // 创建一个单独的QWidget来包裹runButton
     buttonWidget = new QWidget(this);  // 把 buttonWidget 声明为成员变量
@@ -90,9 +93,10 @@ MainWindow::MainWindow(QWidget* parent)
     buttonLayout->addWidget(ui->cleanButton);
     buttonLayout->addStretch();                  // 右侧空白
     buttonWidget->setLayout(buttonLayout);
+    buttonWidget->setFixedHeight(50);
     //连接cleanButton槽函数
     connect(ui->cleanButton, &QPushButton::clicked, this, [=]() {
-        ui->inputEdit->clear();
+        ui->inputEdit->setPlainText("SQL>> ");
         ui->outputEdit->clear();
         });
 
