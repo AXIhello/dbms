@@ -117,9 +117,17 @@ MainWindow::MainWindow(QWidget* parent)
     // ===== 创建左侧：数据库资源管理器 =====
     QGroupBox* treeGroupBox = new QGroupBox("数据库资源管理器");
     QVBoxLayout* treeLayout = new QVBoxLayout(treeGroupBox);
+    // 添加刷新按钮
+    QPushButton* refreshButton = new QPushButton("🔄 刷新", this);
+    refreshButton->setFixedHeight(28);
+    refreshButton->setStyleSheet("font-size: 11pt; font-weight: bold;");
+    treeLayout->addWidget(refreshButton);  // 放在 treeWidget 上方
+    // 添加资源树
     treeLayout->addWidget(ui->treeWidget);
     treeGroupBox->setMinimumWidth(200);
     treeGroupBox->setStyleSheet("QGroupBox { font-weight: bold; font-size: 14pt; }");
+    // 绑定刷新按钮槽函数
+    connect(refreshButton, &QPushButton::clicked, this, &MainWindow::refreshTree);
 
     // ===== 创建右侧：控制台区域 =====
     QGroupBox* consoleGroupBox = new QGroupBox;
@@ -353,9 +361,6 @@ void MainWindow::onTreeWidgetContextMenu(const QPoint& pos) {
                 if (dlg.exec() == QDialog::Accepted) {
                     QString username = dlg.getUsername();
                     QString password = dlg.getPassword();
-                    QString db = dlg.getDatabaseName();
-                    QString table = dlg.getTableName();
-                    QString perm = dlg.getPermission();
 
                     if (!username.isEmpty()) {
                         QString sql = "CREATE USER " + username;
@@ -371,17 +376,19 @@ void MainWindow::onTreeWidgetContextMenu(const QPoint& pos) {
                             Parse parser(ui->outputEdit, this);
                             parser.execute(sql);
 
-                            // 如果填写了权限和数据库名，就自动授权
-                            if (!perm.isEmpty() && !db.isEmpty()) {
-                                QString object = db;
-                                if (!table.isEmpty()) {
-                                    object += "." + table;
-                                }
+                            // 获取用户填写的授权列表
+                            QList<QPair<QString, QString>> grants = dlg.getGrants(); 
 
-                                QString grantSQL = "GRANT " + perm + " ON " + object + " TO " + username + ";\n\n";
-                                ui->inputEdit->moveCursor(QTextCursor::End);
-                                ui->inputEdit->insertPlainText(grantSQL + "SQL>> ");
-                                parser.execute(grantSQL);
+                            for (const auto& grant : grants) {
+                                const QString& object = grant.first;   // 如 db 或 db.table
+                                const QString& perm = grant.second;    // 如 connect、resource
+
+                                if (!object.isEmpty() && !perm.isEmpty()) {
+                                    QString grantSQL = "GRANT " + perm + " ON " + object + " TO " + username + ";\n\n";
+                                    ui->inputEdit->moveCursor(QTextCursor::End);
+                                    ui->inputEdit->insertPlainText(grantSQL + "SQL>> ");
+                                    parser.execute(grantSQL);
+                                }
                             }
                         }
                         catch (const std::exception& e) {
