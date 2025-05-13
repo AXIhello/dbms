@@ -11,6 +11,7 @@
 #include "AddDatabaseDialog.h"
 #include "AddTableDialog.h"
 #include <QGroupBox>
+#include <QListWidget>
 #include "AddUserDialog.h"
 #include "EditTableDialog.h"
 
@@ -129,6 +130,8 @@ MainWindow::MainWindow(QWidget* parent)
     // 绑定刷新按钮槽函数
     connect(refreshButton, &QPushButton::clicked, this, &MainWindow::refreshTree);
 
+   
+
     // ===== 创建右侧：控制台区域 =====
     QGroupBox* consoleGroupBox = new QGroupBox;
     QVBoxLayout* consoleLayout = new QVBoxLayout(consoleGroupBox);
@@ -142,17 +145,62 @@ MainWindow::MainWindow(QWidget* parent)
     mainSplitter->setStretchFactor(0, 1); // 左边占小
     mainSplitter->setStretchFactor(1, 4); // 右边占大
 
+    // ========== 用户信息区域 ==========
+    userInfoGroupBox = new QGroupBox(this);
+    QVBoxLayout* userInfoLayout = new QVBoxLayout(userInfoGroupBox);
 
+    // 当前用户标签
+    QString currentUser = QString::fromStdString(user::getCurrentUser().username);
+    QLabel* userLabel = new QLabel("当前用户为：" + currentUser);
+    userLabel->setStyleSheet("font-weight: bold; font-size: 13pt;");
+    userInfoLayout->addWidget(userLabel);
+
+    // 折叠按钮
+    toggleUserListButton = new QPushButton("▶ 显示用户列表");
+    toggleUserListButton->setStyleSheet("text-align: left;");
+    userInfoLayout->addWidget(toggleUserListButton);
+
+    // 用户列表
+    userListWidget = new QListWidget();
+    userListWidget->setVisible(false);  // 默认隐藏
+
+    // 只有 sys 用户能看到所有用户
+    if (std::string(user::getCurrentUser().username) == "sys") {
+        std::vector<user::User> users = user::loadUsers();
+        for (const auto& u : users) {
+            QString username = QString::fromStdString(std::string(u.username));
+            userListWidget->addItem(username);
+        }
+    }
+    else {
+        userListWidget->addItem(QString::fromStdString(std::string(user::getCurrentUser().username)));
+    }
+
+    userInfoLayout->addWidget(userListWidget);
+    userInfoGroupBox->setLayout(userInfoLayout);
+    userInfoGroupBox->setStyleSheet("QGroupBox { font-weight: bold; font-size: 13pt; }");
+
+    
 
     // 主窗口部件
     QWidget* centralWidget = new QWidget(this);
     QVBoxLayout* mainLayout = new QVBoxLayout(centralWidget);
+    // 添加到主界面布局
+    mainLayout->addWidget(userInfoGroupBox);
+
     mainLayout->addWidget(mainSplitter);
     setCentralWidget(centralWidget);
 
     ui->inputEdit->setPlainText("SQL>> ");
 
     refreshTree(); 
+
+    connect(toggleUserListButton, &QPushButton::clicked, this, [=]() mutable {
+        userListExpanded = !userListExpanded;
+        userListWidget->setVisible(userListExpanded);
+        toggleUserListButton->setText(userListExpanded ? "▼ 收起用户列表" : "▶ 显示用户列表");
+        });
+
    }
 
 MainWindow::~MainWindow() {
@@ -164,6 +212,7 @@ void MainWindow::onSwitchUser() {
     emit requestSwitchUser(); // 自定义信号
     close(); // 关闭主窗口
 }
+
 
 
 void MainWindow::onRunButtonClicked() {
@@ -184,10 +233,6 @@ void MainWindow::onRunButtonClicked() {
         return;
     }
 
-    //if (sql.isEmpty()) {
-      //  QMessageBox::warning(this, "警告", "SQL 语句不能为空！");
-      //  return;
-    //}
 
     // 分割多个 SQL 语句，以分号为分隔符
     QStringList sqlStatements = sql.split(";", Qt::SkipEmptyParts); // 按分号分割，跳过空部分
