@@ -229,7 +229,7 @@ bool user::grantPermission(const std::string& username,const std::string& permis
         // 比对数据库名
         if (db.dbName == dbName) {
             // 只处理数据库级别的权限
-            if (permission == "conn" || (permission == "resource" && tableName.empty())) {
+            if (permission == "CONN" || (permission == "RESOURCE" && tableName.empty())) {
                 std::string abledUsers(db.abledUsername);
                 if (abledUsers.find(username) == std::string::npos) {
                     if (!abledUsers.empty()) abledUsers += "|";

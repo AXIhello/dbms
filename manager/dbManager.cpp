@@ -10,10 +10,12 @@
 
 namespace fs = std::filesystem;
 std::string dbManager::basePath = std::filesystem::current_path().string() + "/DBMS_ROOT";
-
+Database* dbManager::currentDB = nullptr;
+std::string dbManager::currentDBName = "";
 
 // 构造函数
 dbManager::dbManager() {
+
 
 
     if (!fs::exists(basePath)) {
@@ -289,6 +291,13 @@ void dbManager::useDatabase(const std::string& db_name) {
     currentDBName = db_name;
 }
 
+void dbManager::unloadCurrentDatabase() {
+    if (currentDB) {
+        delete currentDB;
+        currentDB = nullptr;
+    }
+    currentDBName.clear();
+}
 
 
 Database* dbManager::get_current_database() {

@@ -59,7 +59,7 @@ public:
     void delete_user_db(const std::string& db_name); 
     
     void useDatabase(const std::string& db_name);  // 切换数据库
-
+    static void unloadCurrentDatabase();
     
     bool isConnected();//待扩展与实现；
 
@@ -77,9 +77,9 @@ private:
     //std::string basePath;  // 根目录
     const std::string systemDBFile = "ruanko.db";  // 系统数据库文件名(后期可更改）
     
-    Database* currentDB = nullptr;
+    static Database* currentDB ;
     
-    std::string currentDBName;
+    static std::string currentDBName;
     
     std::unordered_map<std::string, Database*> dbCache;  //缓存池
 

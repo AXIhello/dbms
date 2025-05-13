@@ -9,6 +9,12 @@ login::login(QDialog *parent)
 
 	ui.usrLineEdit->setInputMethodHints(Qt::ImhPreferLatin);
 	ui.pwdLineEdit->setInputMethodHints(Qt::ImhPreferLatin);
+	// 给用户名输入框添加用户图标
+	ui.usrLineEdit->addAction(QIcon(":/image/icons_user.png"), QLineEdit::LeadingPosition);
+
+	// 给密码输入框添加锁图标
+	ui.pwdLineEdit->addAction(QIcon(":/image/icons_pwd.png"), QLineEdit::LeadingPosition);
+
 }
 
 login::~login()
