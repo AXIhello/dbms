@@ -519,10 +519,10 @@ void MainWindow::onTreeWidgetContextMenu(const QPoint& pos) {
             dbName = parent->text(0);
             tableName = item->text(0);
 
-            menu.addAction("修改表", [=]() {
-                QMessageBox::information(this, "修改表", "这里将来会弹出修改表窗口（表名：" + tableName + "）");
+            //menu.addAction("修改表", [=]() {
+              //  QMessageBox::information(this, "修改表", "这里将来会弹出修改表窗口（表名：" + tableName + "）");
 
-                });
+                //});
 
 
             menu.addAction("删除表", [=]() {
