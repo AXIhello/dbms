@@ -121,6 +121,10 @@ public:
     int rollback_update_by_rowid(const std::string& table_name, const std::vector<std::pair<uint64_t, std::vector<std::pair<std::string, std::string>>>>& undo_list);
     int rollback_delete_by_rowid(const std::string& tableName, uint64_t rowId);
     int rollback_insert_by_rowid(const std::string& tableName, uint64_t rowId);
+
+    void insertByRowid(uint64_t rowId, const std::vector<std::pair<std::string, std::string>>& values);
+    void updateByRowid(uint64_t rowId, const std::vector<std::pair<std::string, std::string>>& newValues);
+    void deleteByRowid(uint64_t rowId);
     // 辅助函数
     static std::vector<std::string> tokenize(const std::string& expr);
     static bool table_exists(const std::string& table_name);

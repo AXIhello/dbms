@@ -179,3 +179,27 @@ void Record::insert_into() {
     }
 }
 
+void Record::insertByRowid(uint64_t rowId, const std::vector<std::pair<std::string, std::string>>& values) {
+    std::string file_path = dbManager::getInstance().get_current_database()->getDBPath() + "/" + this->table_name + ".trd";
+    std::ofstream file(file_path, std::ios::app | std::ios::binary);
+    if (!file) throw std::runtime_error("无法打开文件以插入");
+
+    std::vector<FieldBlock> fields = read_field_blocks(this->table_name);
+
+    file.write(reinterpret_cast<const char*>(&rowId), sizeof(uint64_t));
+    char delete_flag = 0;
+    file.write(&delete_flag, sizeof(char));
+
+    std::unordered_map<std::string, std::string> val_map;
+    for (const auto& [col, val] : values) {
+        val_map[col] = val;
+    }
+
+    for (const auto& field : fields) {
+        std::string value = val_map.count(field.name) ? val_map[field.name] : "NULL";
+        write_field(file, field, value);
+    }
+
+    file.close();
+    dbManager::getInstance().get_current_database()->getTable(table_name)->incrementRecordCount(1);
+}

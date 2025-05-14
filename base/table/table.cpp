@@ -579,3 +579,20 @@ void Table::deleteFilesDisk()
 		}
 	}
 }
+
+size_t get_field_size(const FieldBlock& field) {
+    switch (field.type) {
+    case 1: // INT
+        return sizeof(int);
+    case 2: // DOUBLE
+        return sizeof(double);
+    case 3: // VARCHAR(n)
+        return static_cast<size_t>(field.param);  // 最长 n 字节（用户定义）
+    case 4: // BOOL
+        return sizeof(char);
+    case 5: // DATETIME
+        return 16; // 定长字符串（如 "YYYY-MM-DD HH:MM"）
+    default:
+        throw std::runtime_error("未知字段类型: " + std::to_string(field.type));
+    }
+}

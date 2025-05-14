@@ -145,3 +145,29 @@ int Record::update(const std::string& tableName, const std::string& setClause, c
 }
 
 
+void Record::updateByRowid(uint64_t rowId, const std::vector<std::pair<std::string, std::string>>& newValues) {
+    std::string file_path = dbManager::getInstance().get_current_database()->getDBPath() + "/" + this->table_name + ".trd";
+    std::ofstream file(file_path, std::ios::in | std::ios::out | std::ios::binary);
+    if (!file) throw std::runtime_error("无法打开文件进行更新");
+
+    std::vector<FieldBlock> fields = read_field_blocks(this->table_name);
+    size_t record_size = sizeof(uint64_t) + sizeof(char);
+    for (const auto& f : fields) {
+        record_size += get_field_size(f);
+    }
+
+    std::streampos pos = (rowId - 1) * record_size;
+    file.seekp(std::streamoff(pos) + sizeof(uint64_t) + sizeof(char), std::ios::beg);
+
+    std::unordered_map<std::string, std::string> val_map;
+    for (const auto& [col, val] : newValues) {
+        val_map[col] = val;
+    }
+
+    for (const auto& field : fields) {
+        std::string value = val_map.count(field.name) ? val_map[field.name] : "NULL";
+        write_field(file, field, value);
+    }
+
+    file.close();
+}

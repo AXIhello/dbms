@@ -252,3 +252,23 @@ int Record::delete_by_flag(const std::string& tableName) {
 
     return deleted_count;
 }
+
+void Record::deleteByRowid(uint64_t rowId) {
+    std::string file_path = dbManager::getInstance().get_current_database()->getDBPath() + "/" + this->table_name + ".trd";
+    std::fstream file(file_path, std::ios::in | std::ios::out | std::ios::binary);
+    if (!file) throw std::runtime_error("无法打开文件进行删除");
+
+    std::vector<FieldBlock> fields = read_field_blocks(this->table_name);
+    size_t record_size = sizeof(uint64_t) + sizeof(char);
+    for (const auto& f : fields) {
+        record_size += get_field_size(f); // 你应该能获得字段字节数
+    }
+
+    std::streampos pos = (rowId - 1) * record_size + sizeof(uint64_t);  // skip row_id
+    file.seekp(pos, std::ios::beg);
+
+    char delete_flag = 1;
+    file.write(&delete_flag, sizeof(char));
+    file.close();
+}
+
