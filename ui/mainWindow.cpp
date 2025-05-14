@@ -83,6 +83,18 @@ MainWindow::MainWindow(QWidget* parent)
     userMenu->addAction(userListAction);
     connect(userListAction, &QAction::triggered, this, [=]() { userListDialog->show(); });
 
+    // 只有 sys 用户显示“添加用户”
+    if (std::string(user::getCurrentUser().username) == "sys") {
+        QAction* addUserAction = new QAction("添加用户", this);
+        userMenu->addAction(addUserAction);
+        connect(addUserAction, &QAction::triggered, this, [=]() {
+            AddUserDialog dialog(this);
+            dialog.exec();
+            refreshTree(); // 添加成功后刷新（可选）
+            });
+    }
+
+
     ui->outputEdit->setReadOnly(true);
 
     // 设置按钮的宽度
