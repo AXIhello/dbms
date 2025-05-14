@@ -65,14 +65,24 @@ MainWindow::MainWindow(QWidget* parent)
     connect(ui->treeWidget, &QTreeWidget::itemClicked, this, &MainWindow::onTreeItemClicked);
     connect(ui->treeWidget, &QTreeWidget::customContextMenuRequested,
         this, &MainWindow::onTreeWidgetContextMenu);
-    setWindowTitle("DBMS 工作台"); // 设置窗口标题
+
+    QString currentUser = QString::fromStdString(user::getCurrentUser().username);
+    setWindowTitle(QString("DBMS 工作台（当前用户为：%1）").arg(currentUser)); // 设置窗口标题
     setGeometry(100, 100, 1000, 600);  // 设置窗口大小
 
     // 设置菜单栏
     //menuBar()->setStyleSheet("QMenuBar { background-color: lightgray; }");
+
+    QMenu* userMenu = menuBar()->addMenu("用户管理");
     QAction* switchUserAction = new QAction("切换用户", this);
-    menuBar()->addAction(switchUserAction);
+    userMenu->addAction(switchUserAction);
     connect(switchUserAction, &QAction::triggered, this, &MainWindow::onSwitchUser);
+
+    // 创建显示用户列表的动作
+    QAction* userListAction = new QAction("用户列表", this);
+    userMenu->addAction(userListAction);
+    connect(userListAction, &QAction::triggered, this, [=]() { userListDialog->show(); });
+
     ui->outputEdit->setReadOnly(true);
 
     // 设置按钮的宽度
@@ -145,49 +155,13 @@ MainWindow::MainWindow(QWidget* parent)
     mainSplitter->setStretchFactor(0, 1); // 左边占小
     mainSplitter->setStretchFactor(1, 4); // 右边占大
 
-    // ========== 用户信息区域 ==========
-    userInfoGroupBox = new QGroupBox(this);
-    QVBoxLayout* userInfoLayout = new QVBoxLayout(userInfoGroupBox);
-
-    // 当前用户标签
-    QString currentUser = QString::fromStdString(user::getCurrentUser().username);
-    QLabel* userLabel = new QLabel("当前用户为：" + currentUser);
-    userLabel->setStyleSheet("font-weight: bold; font-size: 13pt;");
-    userInfoLayout->addWidget(userLabel);
-
-    // 折叠按钮
-    toggleUserListButton = new QPushButton("▶ 显示用户列表");
-    toggleUserListButton->setStyleSheet("text-align: left;");
-    userInfoLayout->addWidget(toggleUserListButton);
-
-    // 用户列表
-    userListWidget = new QListWidget();
-    userListWidget->setVisible(false);  // 默认隐藏
-
-    // 只有 sys 用户能看到所有用户
-    if (std::string(user::getCurrentUser().username) == "sys") {
-        std::vector<user::User> users = user::loadUsers();
-        for (const auto& u : users) {
-            QString username = QString::fromStdString(std::string(u.username));
-            userListWidget->addItem(username);
-        }
-    }
-    else {
-        userListWidget->addItem(QString::fromStdString(std::string(user::getCurrentUser().username)));
-    }
-
-    userInfoLayout->addWidget(userListWidget);
-    userInfoGroupBox->setLayout(userInfoLayout);
-    userInfoGroupBox->setStyleSheet("QGroupBox { font-weight: bold; font-size: 13pt; }");
-
-    
+    // 用户列表（弹出式）
+    createUserListDialog();
 
     // 主窗口部件
     QWidget* centralWidget = new QWidget(this);
     QVBoxLayout* mainLayout = new QVBoxLayout(centralWidget);
-    // 添加到主界面布局
-    mainLayout->addWidget(userInfoGroupBox);
-
+    
     mainLayout->addWidget(mainSplitter);
     setCentralWidget(centralWidget);
 
@@ -195,13 +169,43 @@ MainWindow::MainWindow(QWidget* parent)
 
     refreshTree(); 
 
-    connect(toggleUserListButton, &QPushButton::clicked, this, [=]() mutable {
-        userListExpanded = !userListExpanded;
-        userListWidget->setVisible(userListExpanded);
-        toggleUserListButton->setText(userListExpanded ? "▼ 收起用户列表" : "▶ 显示用户列表");
-        });
 
    }
+
+void MainWindow::createUserListDialog() {
+       // 创建用户列表对话框
+       userListDialog = new QDialog(this);
+       userListDialog->setWindowTitle("用户列表");
+       userListDialog->setModal(false); // 非模态对话框
+
+       QVBoxLayout* layout = new QVBoxLayout(userListDialog);
+
+       // 用户列表
+       userListWidget = new QListWidget(userListDialog);
+
+       // 只有 sys 用户能看到所有用户
+       if (std::string(user::getCurrentUser().username) == "sys") {
+           std::vector<user::User> users = user::loadUsers();
+           for (const auto& u : users) {
+               QString username = QString::fromStdString(std::string(u.username));
+               userListWidget->addItem(username);
+           }
+       }
+       else {
+           userListWidget->addItem(QString::fromStdString(std::string(user::getCurrentUser().username)));
+       }
+
+       layout->addWidget(userListWidget);
+
+       // 关闭按钮
+       QPushButton* closeButton = new QPushButton("关闭", userListDialog);
+       connect(closeButton, &QPushButton::clicked, userListDialog, &QDialog::close);
+       layout->addWidget(closeButton);
+
+       userListDialog->setLayout(layout);
+       userListDialog->resize(250, 300);
+ }
+
 
 MainWindow::~MainWindow() {
     delete ui;  // 释放 UI 资源
