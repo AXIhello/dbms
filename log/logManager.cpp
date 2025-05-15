@@ -258,39 +258,29 @@ void LogManager::recoverFromCrash() {
  //解析日志文件
 std::vector<LogEntry> LogManager::parseLogFile() {
     std::vector<LogEntry> entries;
-
     std::ifstream inFile(logFilePath);
     if (!inFile.is_open()) {
         std::cerr << "Failed to open log file for parsing!" << std::endl;
         return entries;
     }
-
     std::string line;
     while (std::getline(inFile, line)) {
         if (line.empty()) continue;
-
         try {
             json j = json::parse(line);
-
             LogEntry entry;
             entry.type = static_cast<LogType>(j.value("type", 0));
             entry.tableName = j.value("tableName", "");
             entry.rowId = j.value("rowId", 0);
             entry.timestamp = j.value("timestamp", "");
 
-            // 解析 oldValues 和 newValues 为键值对
-            entry.oldValues.clear();
-            if (j.contains("oldValues")) {
-                for (const auto& item : j["oldValues"].items()) {
-                    entry.oldValues.push_back({ item.key(), item.value() });
-                }
+            // 直接读取 oldValues 和 newValues 为 json 对象
+            if (j.contains("oldValues") && j["oldValues"].is_object()) {
+                entry.oldValues = j["oldValues"];
             }
 
-            entry.newValues.clear();
-            if (j.contains("newValues")) {
-                for (const auto& item : j["newValues"].items()) {
-                    entry.newValues.push_back({ item.key(), item.value() });
-                }
+            if (j.contains("newValues") && j["newValues"].is_object()) {
+                entry.newValues = j["newValues"];
             }
 
             entries.push_back(entry);
@@ -300,7 +290,6 @@ std::vector<LogEntry> LogManager::parseLogFile() {
             continue;  // 跳过解析失败的行，继续处理其他行
         }
     }
-
     return entries;
 }
 
