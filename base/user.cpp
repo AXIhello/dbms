@@ -206,9 +206,6 @@ bool user::hasPermission(const std::string& requiredPerm, const std::string& dbN
     return false;
 }
 
-
-
-
 // 创建用户
 bool user::createUser(const std::string& username, const std::string& password) {
     user::outputEdit = outputEdit;
@@ -254,6 +251,7 @@ bool user::grantPermission(const std::string& username, const std::string& permi
     std::string currentUser = std::string(user::getCurrentUser().username);
     std::string sysDBPath = dbManager::basePath + "/ruanko.db";
 
+    // Step 1: 读取所有数据库信息
     std::ifstream dbFileIn1(sysDBPath, std::ios::binary);
     if (!dbFileIn1) {
         Output::printMessage(outputEdit, "授权时无法打开数据库文件");
@@ -265,8 +263,7 @@ bool user::grantPermission(const std::string& username, const std::string& permi
     DatabaseBlock block{};
 
     while (dbFileIn1.read(reinterpret_cast<char*>(&block), sizeof(block))) {
-        dbs.push_back(block);
-        if (block.dbName == dbName) {
+        if (!isCurrentUserAuthorized && block.dbName == dbName) {
             std::string abledUsers(block.abledUsername);
             std::stringstream ss(abledUsers);
             std::string user;
@@ -276,8 +273,8 @@ bool user::grantPermission(const std::string& username, const std::string& permi
                     break;
                 }
             }
-            break;
         }
+        dbs.push_back(block);  // push 所有数据库，不能 break
     }
     dbFileIn1.close();
 
@@ -286,14 +283,14 @@ bool user::grantPermission(const std::string& username, const std::string& permi
         return false;
     }
 
-    // Step 1: 加载用户列表
+    // Step 2: 加载用户列表并修改权限字段
     std::vector<User> users = loadUsers();
     bool userExists = false;
 
     for (auto& u : users) {
         if (u.username == username) {
             std::string perms(u.permissions);
-            std::stringstream permStream(permission);  // 例如 permission = "CONNECT,RESOURCE"
+            std::stringstream permStream(permission);  // 例如 "CONNECT,RESOURCE"
             std::string singlePerm;
             while (std::getline(permStream, singlePerm, ',')) {
                 std::string fullPerm = singlePerm + ":" + dbName;
@@ -307,15 +304,15 @@ bool user::grantPermission(const std::string& username, const std::string& permi
                 }
             }
 
-            // 如果是表级权限，确保用户拥有数据库的 CONNECT 权限
+            // 表级授权要补 CONNECT:db 权限
             if (!tableName.empty()) {
                 std::string connectPerm = "CONNECT:" + dbName;
                 if (perms.find(connectPerm) == std::string::npos) {
-                    perms += "|" + connectPerm;
+                    if (!perms.empty()) perms += "|";
+                    perms += connectPerm;
                 }
             }
 
-            // 更新权限字段
             strcpy_s(u.permissions, sizeof(u.permissions), perms.c_str());
             userExists = true;
             break;
@@ -327,7 +324,7 @@ bool user::grantPermission(const std::string& username, const std::string& permi
         return false;
     }
 
-    // Step 2: 写回用户权限数据
+    // Step 3: 写回用户数据
     std::ofstream file("users.dat", std::ios::binary | std::ios::trunc);
     if (!file) {
         Output::printMessage(outputEdit, "授权时无法打开用户文件");
@@ -338,21 +335,18 @@ bool user::grantPermission(const std::string& username, const std::string& permi
     }
     file.close();
 
-    // Step 3: 更新数据库文件中授权用户列表（确保库中有用户权限）
+    // Step 4: 修改对应数据库块和表块
     for (auto& db : dbs) {
         if (db.dbName != dbName) continue;
 
         std::string abledUsers(db.abledUsername);
-        bool userInList = (abledUsers.find(username) != std::string::npos);
-
-        // 不论库级还是表级授权，都确保数据库块里有该用户
-        if (!userInList) {
+        if (abledUsers.find(username) == std::string::npos) {
             if (!abledUsers.empty()) abledUsers += "|";
             abledUsers += username;
             strcpy_s(db.abledUsername, sizeof(db.abledUsername), abledUsers.c_str());
         }
 
-        // 如果是表级授权，更新表文件中授权用户
+        // 表级授权要更新对应表块
         if (!tableName.empty()) {
             std::string tableFilePath = dbManager::basePath + "/data/" + dbName + "/" + dbName + ".tb";
             std::fstream tableFile(tableFilePath, std::ios::in | std::ios::out | std::ios::binary);
@@ -379,28 +373,30 @@ bool user::grantPermission(const std::string& username, const std::string& permi
                 }
             }
             tableFile.close();
+
             if (!found) {
                 Output::printMessage(outputEdit, QString::fromStdString("未找到目标表: " + tableName));
                 return false;
             }
         }
 
-        break;
+        break;  // 授权完目标库就可以退出
     }
 
-    // Step 4: 写回数据库文件
+    // Step 5: 写回所有数据库块
     std::ofstream dbFileOut(sysDBPath, std::ios::binary | std::ios::trunc);
     if (!dbFileOut) {
         Output::printMessage(outputEdit, "写回数据库文件失败");
         return false;
     }
     for (const auto& db : dbs) {
-        dbFileOut.write(reinterpret_cast<const char*>(&db), sizeof(db));
+        dbFileOut.write(reinterpret_cast<const char*>(&db), sizeof(DatabaseBlock));
     }
     dbFileOut.close();
 
     return true;
 }
+
 
 
 
