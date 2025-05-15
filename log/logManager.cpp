@@ -21,7 +21,7 @@ LogManager& LogManager::instance() {
 }
 
 // 构造函数
-LogManager::LogManager() : nextTransactionId(1), initialized(false) {}
+LogManager::LogManager() : initialized(false) {}
 
 // 初始化日志管理器
 bool LogManager::initialize(const std::string& dbName) {
@@ -182,12 +182,64 @@ void LogManager::writeLogEntry(const LogEntry& entry) {
     j["type"] = static_cast<int>(entry.type);  // 然后写入 type
     j["tableName"] = entry.tableName;
     j["rowId"] = entry.rowId;
-    j["oldValues"] = entry.oldValues;
-    j["newValues"] = entry.newValues;
+    // 手动转换 newValues 为 json 对象
+    json j_new;
+    for (const auto& [k, v] : entry.newValues) {
+        j_new[k] = v;
+    }
+    j["newValues"] = j_new;
+
+    // 手动转换 oldValues 为 json 对象
+    json j_old;
+    for (const auto& [k, v] : entry.oldValues) {
+        j_old[k] = v;
+    }
+    j["oldValues"] = j_old;
     j["timestamp"] = entry.timestamp;
 
     logFile << j.dump() << std::endl;  // 一行一个 JSON 对象
     logFile.flush();  // 确保写入磁盘
+}
+
+std::vector<LogEntry> LogManager::parseLogFile() {
+    std::vector<LogEntry> entries;
+    std::ifstream inFile(logFilePath);
+    if (!inFile.is_open()) {
+        std::cerr << "Failed to open log file for parsing!" << std::endl;
+        return entries;
+    }
+    std::string line;
+    while (std::getline(inFile, line)) {
+        if (line.empty()) continue;
+        try {
+            json j = json::parse(line);
+            LogEntry entry;
+            entry.type = static_cast<LogType>(j.value("type", 0));
+            entry.tableName = j.value("tableName", "");
+            entry.rowId = j.value("rowId", 0);
+            entry.timestamp = j.value("timestamp", "");
+
+			// 直接读取 oldValues 和 newValues 为 json 对象，并转换为 std::vector<std::pair<std::string, std::string>>
+            if (j.contains("oldValues") && j["oldValues"].is_object()) {
+                for (auto& [key, val] : j["oldValues"].items()) {
+                    entry.oldValues.emplace_back(key, val.get<std::string>());
+                }
+            }
+
+            if (j.contains("newValues") && j["newValues"].is_object()) {
+                for (auto& [key, val] : j["newValues"].items()) {
+                    entry.newValues.emplace_back(key, val.get<std::string>());
+                }
+            }
+
+            entries.push_back(entry);
+        }
+        catch (const std::exception& e) {
+            std::cerr << "Failed to parse log line: " << e.what() << std::endl;
+            continue;  // 跳过解析失败的行，继续处理其他行
+        }
+    }
+    return entries;
 }
 
 void LogManager::recoverFromCrash() {
@@ -217,57 +269,8 @@ void LogManager::recoverFromCrash() {
     // Undo 最后一个未提交事务（如果有）
     if (!currentTxn.empty()) {
         undoOperations(currentTxn);
+        logRollback();
     }
-}
-
-
- //解析日志文件
-std::vector<LogEntry> LogManager::parseLogFile() {
-    std::vector<LogEntry> entries;
-
-    std::ifstream inFile(logFilePath);
-    if (!inFile.is_open()) {
-        std::cerr << "Failed to open log file for parsing!" << std::endl;
-        return entries;
-    }
-
-    std::string line;
-    while (std::getline(inFile, line)) {
-        if (line.empty()) continue;
-
-        try {
-            json j = json::parse(line);
-
-            LogEntry entry;
-            entry.type = static_cast<LogType>(j.value("type", 0));
-            entry.tableName = j.value("tableName", "");
-            entry.rowId = j.value("rowId", 0);
-            entry.timestamp = j.value("timestamp", "");
-
-            // 解析 oldValues 和 newValues 为键值对
-            entry.oldValues.clear();
-            if (j.contains("oldValues")) {
-                for (const auto& item : j["oldValues"].items()) {
-                    entry.oldValues.push_back({ item.key(), item.value() });
-                }
-            }
-
-            entry.newValues.clear();
-            if (j.contains("newValues")) {
-                for (const auto& item : j["newValues"].items()) {
-                    entry.newValues.push_back({ item.key(), item.value() });
-                }
-            }
-
-            entries.push_back(entry);
-        }
-        catch (const std::exception& e) {
-            std::cerr << "Failed to parse log line: " << e.what() << std::endl;
-            continue;  // 跳过解析失败的行，继续处理其他行
-        }
-    }
-
-    return entries;
 }
 
 // 执行 redo 操作：将日志中的操作再次执行（用于提交成功的事务）

@@ -703,11 +703,6 @@ void Parse::handleDropIndex(const std::smatch& m) {
 
         if (!table) throw std::runtime_error("未选择表。");
 
-        // 确保索引名符合长度要求，截取前两个字符避免溢出
-        if (indexName.size() > 2) {
-            indexName = indexName.substr(0, 2);  // 保证索引名不超过2字符
-        }
-
         // 删除索引
         table->dropIndex(indexName);
 
