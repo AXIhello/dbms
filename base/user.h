@@ -17,12 +17,11 @@ public:
     static bool userExists(const std::string& username);
     static bool createUser(const std::string& username, const std::string& password);
     static bool grantPermission(const std::string& username, const std::string& permission,const std::string& dbName, const std::string& tableName = "", QTextEdit* outputEdit=nullptr);
-    static bool revokePermission(const std::string& username, const std::string& permission);
+    static bool revokePermission(const std::string& username, const std::string& permission,
+        const std::string& dbName, const std::string& tableName, QTextEdit* outputEdit);
+
     static void createSysDBA();  
-    bool grantTablePermission(const std::string& username,
-        const std::string& dbName,
-        const std::string& tableName,
-        QTextEdit* outputEdit);
+    
     //当前登录用户
     static void setCurrentUser(const User& user);
     static const User& getCurrentUser();
