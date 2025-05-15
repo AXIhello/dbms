@@ -1,6 +1,5 @@
 #include "parse/parse.h"
 
-
 QString Parse::cleanSQL(const QString& sql) {
     QString cleaned = sql.trimmed();
     // 统一换行符为空格
