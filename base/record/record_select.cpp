@@ -78,6 +78,8 @@ std::vector<Record> Record::select(
 
             // 执行JOIN操作
             std::vector<std::pair<uint64_t, std::unordered_map<std::string, std::string>>> new_result;
+            uint64_t row = 1;  // 初始化行号
+
             for (const auto& [row_r1, r1] : result) {
                 for (const auto& [row_r2, r2] : right_prefixed) {
                     bool match = true;
@@ -89,15 +91,12 @@ std::vector<Record> Record::select(
                             join.left_table == join_info->tables[i] ||
                             join.right_table == join_info->tables[i];
 
-                        // 如果此JOIN条件不涉及当前表，则跳过
                         if (!involves_current_table) continue;
 
-                        // 获取JOIN条件中的两个表名
                         std::string other_table = (join.left_table == join_info->tables[i])
                             ? join.right_table
                             : join.left_table;
 
-                        // 检查另一个表是否是已经处理过的表（即在result中）
                         bool involves_processed_table = false;
                         for (size_t j = 0; j < i; ++j) {
                             if (other_table == join_info->tables[j]) {
@@ -105,8 +104,6 @@ std::vector<Record> Record::select(
                                 break;
                             }
                         }
-
-                        // 如果JOIN条件不涉及已处理的表，则跳过
                         if (!involves_processed_table) continue;
 
                         // 应用JOIN条件
@@ -116,12 +113,12 @@ std::vector<Record> Record::select(
 
                             std::string field1, field2;
                             if (join.left_table == join_info->tables[i]) {
-                                field1 = left_field;  // 当前表中的字段
-                                field2 = right_field; // 之前表中的字段
+                                field1 = left_field;
+                                field2 = right_field;
                             }
                             else {
-                                field1 = right_field; // 当前表中的字段
-                                field2 = left_field;  // 之前表中的字段
+                                field1 = right_field;
+                                field2 = left_field;
                             }
 
                             auto current_field_it = r2.find(field1);
@@ -139,7 +136,8 @@ std::vector<Record> Record::select(
                     if (match) {
                         auto combined = r1;
                         combined.insert(r2.begin(), r2.end());
-                        new_result.emplace_back(0, std::move(combined));
+                        new_result.emplace_back(row, std::move(combined));  // 使用 row 作为新的 row_id
+                        ++row;  // 自增
                     }
                 }
             }
@@ -180,18 +178,18 @@ std::vector<Record> Record::select(
                 }
                 right_prefixed.emplace_back(row_id, std::move(prefixed));
             }
-
+            int row = 1;
             // 执行连接
             std::vector<std::pair<uint64_t, std::unordered_map<std::string, std::string>>> new_result;
             for (const auto& [row_r1, r1] : filtered) {
                 for (const auto& [row_r2, r2] : right_prefixed) {
                     auto combined = r1;
                     combined.insert(r2.begin(), r2.end());
-                    new_result.emplace_back(0, std::move(combined));
+                    new_result.emplace_back(row, std::move(combined));
+                    row++;
                 }
             }
             filtered = std::move(new_result);
-
         }
     }
 
