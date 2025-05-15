@@ -21,6 +21,8 @@ namespace fs = std::filesystem;
 
 class dbManager {
 public:
+    static std::string getCurrentDBName();
+
     static dbManager& getInstance(); // 获取全局唯一实例
 	
     // 禁用拷贝构造函数和赋值运算符
