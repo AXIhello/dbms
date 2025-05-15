@@ -505,40 +505,80 @@ void Parse::handleDropColumn(const std::smatch& match) {
 
 //待修改
 void Parse::handleModifyColumn(const std::smatch& match) {
-    std::string tableName = match[1];  // 获取表名
+    std::string tableName = match[1];
     std::string dbName = dbManager::getCurrentDBName();
+
     if (!(user::hasPermission("CONNECT", dbName) && user::hasPermission("RESOURCE", dbName))) {
-        Output::printError(outputEdit, QString::fromStdString("权限不足，无法对表 " + tableName + "修改列。"));
+        Output::printError(outputEdit, QString::fromStdString("权限不足，无法对表 " + tableName + " 修改列。"));
         return;
     }
-    std::string oldColumnName = match[2];  // 获取旧列名
-    std::string newColumnName = match[3];  // 获取新列名
-    std::string newColumnType = match[4];  // 获取新列类型
+
+    std::string oldColumnName = match[2];
+    std::string token3 = match[3];
+    std::string token4 = match[4];
     std::string paramStr = match[5];
+    std::string extra = match[6];
+
+    // 支持的类型集合，用于判断 token 是类型名还是字段名
+    static const std::unordered_set<std::string> typeSet = {
+        "int", "float", "double", "char", "varchar", "bool", "date"
+    };
+
+    auto toLower = [](std::string s) {
+        std::transform(s.begin(), s.end(), s.begin(), ::tolower);
+        return s;
+        };
+
+    std::string newColumnName;
+    std::string newColumnType;
+
+    // 判断 token3 是类型名还是新字段名
+    if (!token3.empty() && typeSet.count(toLower(token3))) {
+        newColumnType = token3;
+    }
+    else {
+        newColumnName = token3;
+        if (!token4.empty() && typeSet.count(toLower(token4))) {
+            newColumnType = token4;
+        }
+    }
 
     try {
-        Table* table = dbManager::getInstance().get_current_database()->getTable(tableName);  // 获取表对象
-        if (table) {
-            FieldBlock newField;
+        Table* table = dbManager::getInstance().get_current_database()->getTable(tableName);
+        if (!table) throw std::runtime_error("表 " + tableName + " 不存在！");
+
+        const FieldBlock* oldField = table->getFieldByName(oldColumnName);
+        if (!oldField) throw std::runtime_error("列 " + oldColumnName + " 不存在！");
+
+        FieldBlock newField = *oldField;
+
+        // 更新字段名（如果提供）
+        if (!newColumnName.empty() && newColumnName != oldColumnName) {
             strcpy_s(newField.name, sizeof(newField.name), newColumnName.c_str());
+        }
+
+        // 更新字段类型（如果提供）
+        if (!newColumnType.empty()) {
             newField.type = getTypeFromString(newColumnType);
-            newField.param = paramStr.empty() ? 0 : std::stoi(paramStr);
-            //newField.order = 0;
-            newField.mtime = std::time(nullptr);
-            newField.integrities = 0;
-
-            table->updateField(oldColumnName, newField);
-
-            Output::printMessage(outputEdit, QString::fromStdString("ALTER TABLE " + tableName + " RENAME COLUMN 执行成功。"));
         }
-        else {
-            throw std::runtime_error("表 " + tableName + " 不存在！");
+
+        // 更新参数（如果提供）
+        if (!paramStr.empty()) {
+            newField.param = std::stoi(paramStr);
         }
+
+        newField.mtime = std::time(nullptr);
+
+        table->updateField(oldColumnName, newField);
+
+        Output::printMessage(outputEdit, QString::fromStdString("ALTER TABLE " + tableName + " MODIFY 执行成功。"));
     }
     catch (const std::exception& e) {
         Output::printError(outputEdit, QString::fromStdString(e.what()));
     }
 }
+
+
 
 void Parse::handleAddConstraint(const std::smatch& m) {
     std::string tableName = m[1];  // 表名
