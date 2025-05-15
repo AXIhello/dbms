@@ -182,8 +182,19 @@ void LogManager::writeLogEntry(const LogEntry& entry) {
     j["type"] = static_cast<int>(entry.type);  // 然后写入 type
     j["tableName"] = entry.tableName;
     j["rowId"] = entry.rowId;
-    j["oldValues"] = entry.oldValues;
-    j["newValues"] = entry.newValues;
+    // 手动转换 newValues 为 json 对象
+    json j_new;
+    for (const auto& [k, v] : entry.newValues) {
+        j_new[k] = v;
+    }
+    j["newValues"] = j_new;
+
+    // 手动转换 oldValues 为 json 对象
+    json j_old;
+    for (const auto& [k, v] : entry.oldValues) {
+        j_old[k] = v;
+    }
+    j["oldValues"] = j_old;
     j["timestamp"] = entry.timestamp;
 
     logFile << j.dump() << std::endl;  // 一行一个 JSON 对象
