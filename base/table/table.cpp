@@ -598,7 +598,7 @@ size_t get_field_size(const FieldBlock& field) {
         throw std::runtime_error("未知字段类型: " + std::to_string(field.type));
     }
 }
-}
+
 
 void Table::addAbledUser(const std::string& username) {
     if (!isUserAuthorized(username)) {
