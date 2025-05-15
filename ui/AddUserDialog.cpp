@@ -94,14 +94,14 @@ void AddUserDialog::onAddGrantButtonClicked()
     resourceCombo->lineEdit()->setPlaceholderText("object_name");  // 初始提示
     //resourceCombo->lineEdit()->setReadOnly(true); // 防止用户直接编辑
     resourceCombo->setEditable(false); // 设置完提示后恢复不可编辑状态
-    //grantTableWidget->setCellWidget(row, 0, resourceCombo);//放入表格
+    grantTableWidget->setCellWidget(row, 0, resourceCombo);//放入表格
     
     // 权限下拉框
     QComboBox* permissionCombo = new QComboBox(this);
     permissionCombo->addItem("No grant");
     permissionCombo->addItem("connect");
     permissionCombo->addItem("connect,resource");
-    //grantTableWidget->setCellWidget(row, 1, permissionCombo);
+    grantTableWidget->setCellWidget(row, 1, permissionCombo);
 }
 
 void AddUserDialog::onRemoveGrantButtonClicked() {
