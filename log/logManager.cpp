@@ -42,28 +42,12 @@ bool LogManager::initialize(const std::string& dbName) {
     std::vector<LogEntry> entries = parseLogFile();
 
     // 3. 检查是否有未提交事务（崩溃恢复）
-    /*if (isSystemCrashed(entries)) {
+    if (isSystemCrashed(entries)) {
         recoverFromCrash();
-    }*/
+    }
 
     initialized = true;
     return true;
-}
-
-// 关闭日志管理器
-void LogManager::shutdown() {
-    std::lock_guard<std::mutex> lock(logMutex);
-
-    if (!initialized) return;
-
-    // 写入SHUTDOWN日志
-    LogEntry entry;
-    entry.type = LogType::SHUTDOWN;
-    entry.timestamp = getCurrentTimestamp();
-    writeLogEntry(entry);
-
-    logFile.close();
-    initialized = false;
 }
 
 
@@ -184,25 +168,7 @@ void LogManager::logRollback() {
     writeLogEntry(entry);
 }
 
-// 创建检查点
-void LogManager::createCheckpoint() {
-    std::lock_guard<std::mutex> lock(logMutex);
 
-    if (!initialized) {
-        std::cerr << "LogManager not initialized!" << std::endl;
-        return;
-    }
-
-    // 此处应将当前数据库状态持久化到磁盘
-    // 具体实现取决于数据库的存储方式...
-
-    // 记录检查点日志
-    LogEntry entry;
-    entry.type = LogType::CHECKPOINT;
-    entry.timestamp = getCurrentTimestamp();
-
-    writeLogEntry(entry);
-}
 
 
 // 写入日志条目
@@ -510,16 +476,18 @@ void LogManager::recoverUndo() {
 //    }
 //}
 
-//// 检查系统是否崩溃
-//bool LogManager::isSystemCrashed(const std::vector<LogEntry>& entries) {
-//    if (entries.empty()) {
-//        return false;
-//    }
-//
-//    // 检查最后一条日志是否为SHUTDOWN
-//    const LogEntry& lastEntry = entries.back();
-//    return lastEntry.type != LogType::SHUTDOWN;
-//}
+// 检查系统是否崩溃
+bool LogManager::isSystemCrashed(const std::vector<LogEntry>& entries) {
+    if (entries.empty()) {
+        return false;
+    }
+
+    // 检查最后一条日志
+    const LogEntry& lastEntry = entries.back();
+
+    // 只有最后是 COMMIT 或 ROLLBACK 才说明事务正常结束
+    return !(lastEntry.type == LogType::COMMIT || lastEntry.type == LogType::ROLLBACK);
+}
 
 // 获取当前时间戳
 std::string LogManager::getCurrentTimestamp() {
