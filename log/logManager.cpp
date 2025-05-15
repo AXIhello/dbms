@@ -42,28 +42,12 @@ bool LogManager::initialize(const std::string& dbName) {
     std::vector<LogEntry> entries = parseLogFile();
 
     // 3. 检查是否有未提交事务（崩溃恢复）
-    /*if (isSystemCrashed(entries)) {
+    if (isSystemCrashed(entries)) {
         recoverFromCrash();
-    }*/
+    }
 
     initialized = true;
     return true;
-}
-
-// 关闭日志管理器
-void LogManager::shutdown() {
-    std::lock_guard<std::mutex> lock(logMutex);
-
-    if (!initialized) return;
-
-    // 写入SHUTDOWN日志
-    LogEntry entry;
-    entry.type = LogType::SHUTDOWN;
-    entry.timestamp = getCurrentTimestamp();
-    writeLogEntry(entry);
-
-    logFile.close();
-    initialized = false;
 }
 
 
@@ -184,25 +168,7 @@ void LogManager::logRollback() {
     writeLogEntry(entry);
 }
 
-// 创建检查点
-void LogManager::createCheckpoint() {
-    std::lock_guard<std::mutex> lock(logMutex);
 
-    if (!initialized) {
-        std::cerr << "LogManager not initialized!" << std::endl;
-        return;
-    }
-
-    // 此处应将当前数据库状态持久化到磁盘
-    // 具体实现取决于数据库的存储方式...
-
-    // 记录检查点日志
-    LogEntry entry;
-    entry.type = LogType::CHECKPOINT;
-    entry.timestamp = getCurrentTimestamp();
-
-    writeLogEntry(entry);
-}
 
 
 // 写入日志条目
@@ -222,6 +188,43 @@ void LogManager::writeLogEntry(const LogEntry& entry) {
 
     logFile << j.dump() << std::endl;  // 一行一个 JSON 对象
     logFile.flush();  // 确保写入磁盘
+}
+
+std::vector<LogEntry> LogManager::parseLogFile() {
+    std::vector<LogEntry> entries;
+    std::ifstream inFile(logFilePath);
+    if (!inFile.is_open()) {
+        std::cerr << "Failed to open log file for parsing!" << std::endl;
+        return entries;
+    }
+    std::string line;
+    while (std::getline(inFile, line)) {
+        if (line.empty()) continue;
+        try {
+            json j = json::parse(line);
+            LogEntry entry;
+            entry.type = static_cast<LogType>(j.value("type", 0));
+            entry.tableName = j.value("tableName", "");
+            entry.rowId = j.value("rowId", 0);
+            entry.timestamp = j.value("timestamp", "");
+
+            // 直接读取 oldValues 和 newValues 为 json 对象
+            if (j.contains("oldValues") && j["oldValues"].is_object()) {
+                entry.oldValues = j["oldValues"];
+            }
+
+            if (j.contains("newValues") && j["newValues"].is_object()) {
+                entry.newValues = j["newValues"];
+            }
+
+            entries.push_back(entry);
+        }
+        catch (const std::exception& e) {
+            std::cerr << "Failed to parse log line: " << e.what() << std::endl;
+            continue;  // 跳过解析失败的行，继续处理其他行
+        }
+    }
+    return entries;
 }
 
 void LogManager::recoverFromCrash() {
@@ -252,56 +255,6 @@ void LogManager::recoverFromCrash() {
     if (!currentTxn.empty()) {
         undoOperations(currentTxn);
     }
-}
-
-
- //解析日志文件
-std::vector<LogEntry> LogManager::parseLogFile() {
-    std::vector<LogEntry> entries;
-
-    std::ifstream inFile(logFilePath);
-    if (!inFile.is_open()) {
-        std::cerr << "Failed to open log file for parsing!" << std::endl;
-        return entries;
-    }
-
-    std::string line;
-    while (std::getline(inFile, line)) {
-        if (line.empty()) continue;
-
-        try {
-            json j = json::parse(line);
-
-            LogEntry entry;
-            entry.type = static_cast<LogType>(j.value("type", 0));
-            entry.tableName = j.value("tableName", "");
-            entry.rowId = j.value("rowId", 0);
-            entry.timestamp = j.value("timestamp", "");
-
-            // 解析 oldValues 和 newValues 为键值对
-            entry.oldValues.clear();
-            if (j.contains("oldValues")) {
-                for (const auto& item : j["oldValues"].items()) {
-                    entry.oldValues.push_back({ item.key(), item.value() });
-                }
-            }
-
-            entry.newValues.clear();
-            if (j.contains("newValues")) {
-                for (const auto& item : j["newValues"].items()) {
-                    entry.newValues.push_back({ item.key(), item.value() });
-                }
-            }
-
-            entries.push_back(entry);
-        }
-        catch (const std::exception& e) {
-            std::cerr << "Failed to parse log line: " << e.what() << std::endl;
-            continue;  // 跳过解析失败的行，继续处理其他行
-        }
-    }
-
-    return entries;
 }
 
 // 执行 redo 操作：将日志中的操作再次执行（用于提交成功的事务）
@@ -510,16 +463,18 @@ void LogManager::recoverUndo() {
 //    }
 //}
 
-//// 检查系统是否崩溃
-//bool LogManager::isSystemCrashed(const std::vector<LogEntry>& entries) {
-//    if (entries.empty()) {
-//        return false;
-//    }
-//
-//    // 检查最后一条日志是否为SHUTDOWN
-//    const LogEntry& lastEntry = entries.back();
-//    return lastEntry.type != LogType::SHUTDOWN;
-//}
+// 检查系统是否崩溃
+bool LogManager::isSystemCrashed(const std::vector<LogEntry>& entries) {
+    if (entries.empty()) {
+        return false;
+    }
+
+    // 检查最后一条日志
+    const LogEntry& lastEntry = entries.back();
+
+    // 只有最后是 COMMIT 或 ROLLBACK 才说明事务正常结束
+    return !(lastEntry.type == LogType::COMMIT || lastEntry.type == LogType::ROLLBACK);
+}
 
 // 获取当前时间戳
 std::string LogManager::getCurrentTimestamp() {

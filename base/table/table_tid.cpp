@@ -31,7 +31,7 @@ void Table::loadIndex() {
     }
 
     indexes.clear();
-    m_btrees.clear(); // ⚠️ 清空已有的 B 树指针，防止重复加载
+    m_btrees.clear(); // 清空已有的 B 树指针，防止重复加载
 
     while (in.peek() != EOF) {
         IndexBlock index;
