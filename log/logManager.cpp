@@ -208,13 +208,17 @@ std::vector<LogEntry> LogManager::parseLogFile() {
             entry.rowId = j.value("rowId", 0);
             entry.timestamp = j.value("timestamp", "");
 
-            // 直接读取 oldValues 和 newValues 为 json 对象
+			// 直接读取 oldValues 和 newValues 为 json 对象，并转换为 std::vector<std::pair<std::string, std::string>>
             if (j.contains("oldValues") && j["oldValues"].is_object()) {
-                entry.oldValues = j["oldValues"];
+                for (auto& [key, val] : j["oldValues"].items()) {
+                    entry.oldValues.emplace_back(key, val.get<std::string>());
+                }
             }
 
             if (j.contains("newValues") && j["newValues"].is_object()) {
-                entry.newValues = j["newValues"];
+                for (auto& [key, val] : j["newValues"].items()) {
+                    entry.newValues.emplace_back(key, val.get<std::string>());
+                }
             }
 
             entries.push_back(entry);
