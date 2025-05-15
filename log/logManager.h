@@ -18,8 +18,6 @@ enum class LogType {
     UPDATE,         // 更新操作 3
     COMMIT,         // 事务提交 4
     ROLLBACK,       // 事务回滚 5
-    CHECKPOINT,     // 检查点 6
-    SHUTDOWN        // 正常关闭 7
 };
 
 // 日志项结构
