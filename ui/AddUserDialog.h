@@ -20,6 +20,7 @@ public:
     QString getPassword() const;
     void onAddGrantButtonClicked();
     void onRemoveGrantButtonClicked();
+    void onOkButtonClicked();
     QList<QPair<QString, QString>> getGrants() const;
     QStandardItemModel* createResourceModel();
 

@@ -78,6 +78,8 @@ std::vector<Record> Record::select(
 
             // 执行JOIN操作
             std::vector<std::pair<uint64_t, std::unordered_map<std::string, std::string>>> new_result;
+            uint64_t row = 1;  // 初始化行号
+
             for (const auto& [row_r1, r1] : result) {
                 for (const auto& [row_r2, r2] : right_prefixed) {
                     bool match = true;
@@ -89,15 +91,12 @@ std::vector<Record> Record::select(
                             join.left_table == join_info->tables[i] ||
                             join.right_table == join_info->tables[i];
 
-                        // 如果此JOIN条件不涉及当前表，则跳过
                         if (!involves_current_table) continue;
 
-                        // 获取JOIN条件中的两个表名
                         std::string other_table = (join.left_table == join_info->tables[i])
                             ? join.right_table
                             : join.left_table;
 
-                        // 检查另一个表是否是已经处理过的表（即在result中）
                         bool involves_processed_table = false;
                         for (size_t j = 0; j < i; ++j) {
                             if (other_table == join_info->tables[j]) {
@@ -105,8 +104,6 @@ std::vector<Record> Record::select(
                                 break;
                             }
                         }
-
-                        // 如果JOIN条件不涉及已处理的表，则跳过
                         if (!involves_processed_table) continue;
 
                         // 应用JOIN条件
@@ -116,12 +113,12 @@ std::vector<Record> Record::select(
 
                             std::string field1, field2;
                             if (join.left_table == join_info->tables[i]) {
-                                field1 = left_field;  // 当前表中的字段
-                                field2 = right_field; // 之前表中的字段
+                                field1 = left_field;
+                                field2 = right_field;
                             }
                             else {
-                                field1 = right_field; // 当前表中的字段
-                                field2 = left_field;  // 之前表中的字段
+                                field1 = right_field;
+                                field2 = left_field;
                             }
 
                             auto current_field_it = r2.find(field1);
@@ -139,7 +136,8 @@ std::vector<Record> Record::select(
                     if (match) {
                         auto combined = r1;
                         combined.insert(r2.begin(), r2.end());
-                        new_result.emplace_back(0, std::move(combined));
+                        new_result.emplace_back(row, std::move(combined));  // 使用 row 作为新的 row_id
+                        ++row;  // 自增
                     }
                 }
             }
@@ -160,6 +158,9 @@ std::vector<Record> Record::select(
         auto first_table_records = read_records(tables[0]);
         combined_structure = read_table_structure_static(tables[0]);
         filtered = std::move(first_table_records);
+
+        // 初始化行号
+        uint64_t row = 1;
 
         for (size_t i = 1; i < tables.size(); ++i) {
             if (!table_exists(tables[i])) {
@@ -187,31 +188,55 @@ std::vector<Record> Record::select(
                 for (const auto& [row_r2, r2] : right_prefixed) {
                     auto combined = r1;
                     combined.insert(r2.begin(), r2.end());
-                    new_result.emplace_back(0, std::move(combined));
+                    new_result.emplace_back(row, std::move(combined));  // 这里有序递增
+                    ++row;
                 }
             }
             filtered = std::move(new_result);
-
         }
-    }
+}
 
     // ==================== 3️⃣  WHERE 过滤 ====================
     Record temp;
     temp.set_table_name(tables.size() == 1 ? tables[0] : "");
     temp.table_structure = combined_structure;
     if (!condition.empty()) temp.parse_condition(condition);
+
     auto map_filtered = vectorToMap(filtered);
+
+    // 构造共享指针列表（避免析构）
     std::vector<std::shared_ptr<Table>> table_ptrs;
     for (const auto& name : tables) {
-        Table* raw_table = dbManager::getInstance().get_current_database()->getTable(name);  // 获取原始指针
-        table_ptrs.push_back(std::shared_ptr<Table>(raw_table, [](Table*) {
-            /* 空 deleter，避免重复析构 */
-            }));
+        Table* raw_table = dbManager::getInstance().get_current_database()->getTable(name);
+        table_ptrs.push_back(std::shared_ptr<Table>(raw_table, [](Table*) {}));
     }
-    //std::vector<std::pair<uint64_t, std::unordered_map<std::string, std::string>>> condition_filtered;
 
-    auto condition_filtered = temp.selectByIndex(map_filtered, table_ptrs, combined_structure, join_info != nullptr || tables.size() > 1);
+    // 判断是否有索引字段
+    bool has_index = false;
+    for (const auto& table : table_ptrs) {
+        for (const auto& idx : table->getIndexes()) {
+            if (condition.find(idx.field[0]) != std::string::npos) {
+                has_index = true;
+                break;
+            }
+        }
+        if (has_index) break;
+    }
 
+    // 根据是否有索引决定处理方式
+    std::vector<std::pair<uint64_t, std::unordered_map<std::string, std::string>>> condition_filtered;
+
+    if (has_index) {
+        condition_filtered = temp.selectByIndex(map_filtered, table_ptrs, combined_structure, join_info != nullptr || tables.size() > 1);
+    }
+    else {
+        // fallback：直接根据 matches_condition 过滤
+        for (const auto& [row_id, rec] : map_filtered) {
+            if (condition.empty() || temp.matches_condition(rec, join_info != nullptr || tables.size() > 1)) {
+                condition_filtered.emplace_back(row_id, rec);
+            }
+        }
+    }
     // ==================== 4️⃣  GROUP BY 和 聚合函数 ====================
     if (!group_by.empty()) {
         // 按组分类记录

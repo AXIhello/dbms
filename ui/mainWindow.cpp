@@ -287,6 +287,8 @@ void MainWindow::refreshTree() {
         // 图标
         QIcon dbIcon(":/image/icons_database.png");
         QIcon tableIcon(":/image/icons_table.png");
+        // 当前用户名
+        std::string currentUser = user::getCurrentUser().username;
 
         //获取所有数据库和库名
         const auto& dbList = dbManager::getInstance().get_database_list_by_db();
