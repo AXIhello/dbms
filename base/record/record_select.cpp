@@ -159,6 +159,9 @@ std::vector<Record> Record::select(
         combined_structure = read_table_structure_static(tables[0]);
         filtered = std::move(first_table_records);
 
+        // 初始化行号
+        uint64_t row = 1;
+
         for (size_t i = 1; i < tables.size(); ++i) {
             if (!table_exists(tables[i])) {
                 throw std::runtime_error("表 '" + tables[i] + "' 不存在。");
@@ -178,20 +181,20 @@ std::vector<Record> Record::select(
                 }
                 right_prefixed.emplace_back(row_id, std::move(prefixed));
             }
-            int row = 1;
+
             // 执行连接
             std::vector<std::pair<uint64_t, std::unordered_map<std::string, std::string>>> new_result;
             for (const auto& [row_r1, r1] : filtered) {
                 for (const auto& [row_r2, r2] : right_prefixed) {
                     auto combined = r1;
                     combined.insert(r2.begin(), r2.end());
-                    new_result.emplace_back(row, std::move(combined));
-                    row++;
+                    new_result.emplace_back(row, std::move(combined));  // 这里有序递增
+                    ++row;
                 }
             }
             filtered = std::move(new_result);
         }
-    }
+}
 
     // ==================== 3️⃣  WHERE 过滤 ====================
     Record temp;
