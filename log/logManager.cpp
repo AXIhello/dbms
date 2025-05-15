@@ -21,7 +21,7 @@ LogManager& LogManager::instance() {
 }
 
 // 构造函数
-LogManager::LogManager() : nextTransactionId(1), initialized(false) {}
+LogManager::LogManager() : initialized(false) {}
 
 // 初始化日志管理器
 bool LogManager::initialize(const std::string& dbName) {
