@@ -2,5 +2,7 @@
     <qresource prefix="/image">
         <file>icons_database.png</file>
         <file>icons_table.png</file>
+        <file>icons_pwd.png</file>
+        <file>icons_user.png</file>
     </qresource>
 </RCC>

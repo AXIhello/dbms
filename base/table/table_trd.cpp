@@ -39,13 +39,8 @@ void Table::updateRecord_add(FieldBlock& new_field) {
 
     auto records = Record::read_records(m_tableName);
 
-    std::string default_value = "NULL";
-    for (const auto& constraint : m_constraints) {
-        if (constraint.type == 6 && constraint.field == new_field.name) {
-            default_value = constraint.param;
-            break;
-        }
-    }
+    std::string default_value = getDefaultValue(new_field.name);
+
 
     // 添加新字段到每条记录
     for (auto& [row_id, record] : records) {

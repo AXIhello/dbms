@@ -87,7 +87,7 @@ RecordPointer Record::get_last_inserted_record_pointer(const std::string& table_
     }
 
     RecordPointer ptr;
-    //ptr.row_id = allRecords.back().first;  // 获取最后插入的 row_id
+    ptr.row_id = allRecords.back().first;  // 获取最后插入的 row_id
     return ptr;
 }
 

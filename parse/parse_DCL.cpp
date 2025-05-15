@@ -1,7 +1,10 @@
 #include "parse.h"
 void Parse::handleUseDatabase(const std::smatch& m) {
     std::string dbName = m[1];
-
+    if (!user::hasPermission("CONNECT", dbName)) {
+        Output::printError(outputEdit, QString::fromStdString("没有权限使用数据库 " + dbName ));
+        return;
+    }
     try {
         // 尝试切换数据库
         dbManager::getInstance().useDatabase(dbName);
@@ -41,13 +44,12 @@ void Parse::handleGrantPermission(const std::smatch& m) {
         dbName = object;
     }
 
-    if (user::grantPermission(username, permission, dbName, tableName)) {
-        Output::printMessage(outputEdit, "已授予 '" + QString::fromStdString(permission) +
-            "' 权限给用户 '" + QString::fromStdString(username) +
-            "' 在 '" + QString::fromStdString(object) + "' 上。");
+    if (user::grantPermission(username, permission, dbName, tableName, this->outputEdit)) {
+        Output::printMessage(outputEdit, "已授予用户'" + QString::fromStdString(username) + " '在 '" + QString::fromStdString(object) + "' 上的" 
+            +QString::fromStdString(permission) +"' 权限'");
     }
     else {
-        Output::printMessage(outputEdit, "授权失败，用户 '" + QString::fromStdString(username) + "' 不存在。");
+        //Output::printMessage(outputEdit, "授权失败，用户 '" + QString::fromStdString(username) + "' 不存在。");
     }
 }
 

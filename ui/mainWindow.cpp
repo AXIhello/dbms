@@ -11,13 +11,14 @@
 #include "AddDatabaseDialog.h"
 #include "AddTableDialog.h"
 #include <QGroupBox>
+#include <QListWidget>
 #include "AddUserDialog.h"
+#include "EditTableDialog.h"
 
 MainWindow::MainWindow(QWidget* parent)
     : QMainWindow(parent)
     , ui(new Ui::MainWindow)// 初始化 UI
 {
-    //qDebug() << "GUI模式下的basePath:" << QString::fromStdString(dbManager::basePath);
     ui->setupUi(this);  // 让 UI 组件和窗口关联
     // 设置样式表
     QString styleSheet = R"(
@@ -64,25 +65,64 @@ MainWindow::MainWindow(QWidget* parent)
     connect(ui->treeWidget, &QTreeWidget::itemClicked, this, &MainWindow::onTreeItemClicked);
     connect(ui->treeWidget, &QTreeWidget::customContextMenuRequested,
         this, &MainWindow::onTreeWidgetContextMenu);
-    setWindowTitle("My Database Client"); // 设置窗口标题
+
+    QString currentUser = QString::fromStdString(user::getCurrentUser().username);
+    setWindowTitle(QString("DBMS 工作台（当前用户为：%1）").arg(currentUser)); // 设置窗口标题
     setGeometry(100, 100, 1000, 600);  // 设置窗口大小
 
     // 设置菜单栏
     //menuBar()->setStyleSheet("QMenuBar { background-color: lightgray; }");
+
+    QMenu* userMenu = menuBar()->addMenu("用户管理");
     QAction* switchUserAction = new QAction("切换用户", this);
-    menuBar()->addAction(switchUserAction);
+    userMenu->addAction(switchUserAction);
     connect(switchUserAction, &QAction::triggered, this, &MainWindow::onSwitchUser);
+
+    // 创建显示用户列表的动作
+    QAction* userListAction = new QAction("用户列表", this);
+    userMenu->addAction(userListAction);
+    connect(userListAction, &QAction::triggered, this, [=]() { userListDialog->show(); });
+
+    // 只有 sys 用户显示“添加用户”
+    if (std::string(user::getCurrentUser().username) == "sys") {
+        QAction* addUserAction = new QAction("添加用户", this);
+        userMenu->addAction(addUserAction);
+        connect(addUserAction, &QAction::triggered, this, [=]() {
+            AddUserDialog dialog(this);
+            dialog.exec();
+            refreshTree(); // 添加成功后刷新（可选）
+            });
+    }
+
+
     ui->outputEdit->setReadOnly(true);
 
     // 设置按钮的宽度
-    ui->runButton->setMinimumWidth(150);  // 设置按钮最小宽度
-    ui->runButton->setMaximumWidth(150);  // 设置按钮最大宽度
+    ui->runButton->setMinimumWidth(91);  // 设置按钮最小宽度
+    ui->runButton->setMaximumWidth(91);  // 设置按钮最大宽度
+    ui->cleanButton->setMinimumWidth(91);  // 设置按钮最小宽度
+    ui->cleanButton->setMaximumWidth(91);  // 设置按钮最大宽度
+    //设置按钮高度
+    ui->runButton->setFixedHeight(31);
+    ui->cleanButton->setFixedHeight(31);
 
     // 创建一个单独的QWidget来包裹runButton
     buttonWidget = new QWidget(this);  // 把 buttonWidget 声明为成员变量
     QHBoxLayout* buttonLayout = new QHBoxLayout(buttonWidget);
+    // 添加弹性空间，使按钮居中对称排列
+    buttonLayout->addStretch();
     buttonLayout->addWidget(ui->runButton);
+    buttonLayout->addSpacing(150);                // 中间间距（可调整）
+    buttonLayout->addWidget(ui->cleanButton);
+    buttonLayout->addStretch();                  // 右侧空白
     buttonWidget->setLayout(buttonLayout);
+    buttonWidget->setFixedHeight(50);
+    //连接cleanButton槽函数
+    connect(ui->cleanButton, &QPushButton::clicked, this, [=]() {
+        ui->inputEdit->setPlainText("SQL>> ");
+        ui->outputEdit->clear();
+        });
+
 
     ui->treeWidget->setHeaderHidden(true); // 隐藏表头
     ui->treeWidget->setMinimumWidth(200);  // 设置宽度
@@ -100,9 +140,19 @@ MainWindow::MainWindow(QWidget* parent)
     // ===== 创建左侧：数据库资源管理器 =====
     QGroupBox* treeGroupBox = new QGroupBox("数据库资源管理器");
     QVBoxLayout* treeLayout = new QVBoxLayout(treeGroupBox);
+    // 添加刷新按钮
+    QPushButton* refreshButton = new QPushButton("🔄 刷新", this);
+    refreshButton->setFixedHeight(28);
+    refreshButton->setStyleSheet("font-size: 11pt; font-weight: bold;");
+    treeLayout->addWidget(refreshButton);  // 放在 treeWidget 上方
+    // 添加资源树
     treeLayout->addWidget(ui->treeWidget);
     treeGroupBox->setMinimumWidth(200);
     treeGroupBox->setStyleSheet("QGroupBox { font-weight: bold; font-size: 14pt; }");
+    // 绑定刷新按钮槽函数
+    connect(refreshButton, &QPushButton::clicked, this, &MainWindow::refreshTree);
+
+   
 
     // ===== 创建右侧：控制台区域 =====
     QGroupBox* consoleGroupBox = new QGroupBox;
@@ -117,18 +167,57 @@ MainWindow::MainWindow(QWidget* parent)
     mainSplitter->setStretchFactor(0, 1); // 左边占小
     mainSplitter->setStretchFactor(1, 4); // 右边占大
 
-
+    // 用户列表（弹出式）
+    createUserListDialog();
 
     // 主窗口部件
     QWidget* centralWidget = new QWidget(this);
     QVBoxLayout* mainLayout = new QVBoxLayout(centralWidget);
+    
     mainLayout->addWidget(mainSplitter);
     setCentralWidget(centralWidget);
 
     ui->inputEdit->setPlainText("SQL>> ");
 
     refreshTree(); 
+
+
    }
+
+void MainWindow::createUserListDialog() {
+       // 创建用户列表对话框
+       userListDialog = new QDialog(this);
+       userListDialog->setWindowTitle("用户列表");
+       userListDialog->setModal(false); // 非模态对话框
+
+       QVBoxLayout* layout = new QVBoxLayout(userListDialog);
+
+       // 用户列表
+       userListWidget = new QListWidget(userListDialog);
+
+       // 只有 sys 用户能看到所有用户
+       if (std::string(user::getCurrentUser().username) == "sys") {
+           std::vector<user::User> users = user::loadUsers();
+           for (const auto& u : users) {
+               QString username = QString::fromStdString(std::string(u.username));
+               userListWidget->addItem(username);
+           }
+       }
+       else {
+           userListWidget->addItem(QString::fromStdString(std::string(user::getCurrentUser().username)));
+       }
+
+       layout->addWidget(userListWidget);
+
+       // 关闭按钮
+       QPushButton* closeButton = new QPushButton("关闭", userListDialog);
+       connect(closeButton, &QPushButton::clicked, userListDialog, &QDialog::close);
+       layout->addWidget(closeButton);
+
+       userListDialog->setLayout(layout);
+       userListDialog->resize(250, 300);
+ }
+
 
 MainWindow::~MainWindow() {
     delete ui;  // 释放 UI 资源
@@ -139,6 +228,7 @@ void MainWindow::onSwitchUser() {
     emit requestSwitchUser(); // 自定义信号
     close(); // 关闭主窗口
 }
+
 
 
 void MainWindow::onRunButtonClicked() {
@@ -159,10 +249,6 @@ void MainWindow::onRunButtonClicked() {
         return;
     }
 
-    //if (sql.isEmpty()) {
-      //  QMessageBox::warning(this, "警告", "SQL 语句不能为空！");
-      //  return;
-    //}
 
     // 分割多个 SQL 语句，以分号为分隔符
     QStringList sqlStatements = sql.split(";", Qt::SkipEmptyParts); // 按分号分割，跳过空部分
@@ -330,54 +416,55 @@ void MainWindow::onTreeWidgetContextMenu(const QPoint& pos) {
             }
             });
 
+        if (std::string(user::getCurrentUser().username) == "sys") {
+            menu.addAction("添加用户", [=]() {
+                AddUserDialog dlg(this); // 你需要自定义 AddUserDialog 类
+                if (dlg.exec() == QDialog::Accepted) {
+                    QString username = dlg.getUsername();
+                    QString password = dlg.getPassword();
 
-        menu.addAction("添加用户", [=]() {
-            AddUserDialog dlg(this); // 你需要自定义 AddUserDialog 类
-            if (dlg.exec() == QDialog::Accepted) {
-                QString username = dlg.getUsername();
-                QString password = dlg.getPassword();  
-                QString db = dlg.getDatabaseName();
-                QString table = dlg.getTableName();
-                QString perm = dlg.getPermission();
+                    if (!username.isEmpty()) {
+                        QString sql = "CREATE USER " + username;
+                        if (!password.isEmpty()) {
+                            sql += " IDENTIFIED BY " + password;
+                        }
+                        sql += ";\n\n";
 
-                if (!username.isEmpty()) {
-                    QString sql = "CREATE USER " + username;
-                    if (!password.isEmpty()) {
-                        sql += " IDENTIFIED BY " + password;
-                    }
-                    sql += ";\n\n";
+                        QString currentText = ui->inputEdit->toPlainText();
+                        ui->inputEdit->setPlainText(currentText + sql + "SQL>> ");
 
-                    QString currentText = ui->inputEdit->toPlainText();
-                    ui->inputEdit->setPlainText(currentText + sql + "SQL>> ");
+                        try {
+                            Parse parser(ui->outputEdit, this);
+                            parser.execute(sql);
 
-                    try {
-                        Parse parser(ui->outputEdit, this);
-                        parser.execute(sql);
+                            // 获取用户填写的授权列表
+                            QList<QPair<QString, QString>> grants = dlg.getGrants(); 
 
-                        // 如果填写了权限和数据库名，就自动授权
-                        if (!perm.isEmpty() && !db.isEmpty()) {
-                            QString object = db;
-                            if (!table.isEmpty()) {
-                                object += "." + table;
+                            for (const auto& grant : grants) {
+                                const QString& object = grant.first;   // 如 db 或 db.table
+                                const QString& perm = grant.second;    // 如 connect、resource
+
+                                if (!object.isEmpty() && !perm.isEmpty()) {
+                                    QString grantSQL = "GRANT " + perm + " ON " + object + " TO " + username + ";\n\n";
+                                    ui->inputEdit->moveCursor(QTextCursor::End);
+                                    ui->inputEdit->insertPlainText(grantSQL + "SQL>> ");
+                                    parser.execute(grantSQL);
+                                }
                             }
-
-                            QString grantSQL = "GRANT " + perm + " ON " + object + " TO " + username + ";\n\n";
-                            ui->inputEdit->moveCursor(QTextCursor::End);
-                            ui->inputEdit->insertPlainText(grantSQL + "SQL>> ");
-                            parser.execute(grantSQL);
+                        }
+                        catch (const std::exception& e) {
+                            Output::printError(ui->outputEdit, QString("创建用户失败: ") + e.what());
                         }
                     }
-                    catch (const std::exception& e) {
-                        Output::printError(ui->outputEdit, QString("创建用户失败: ") + e.what());
+                    else {
+                        Output::printError(ui->outputEdit, "用户名不能为空！");
                     }
                 }
-                else {
-                    Output::printError(ui->outputEdit, "用户名不能为空！");
-                }
-            }
 
-            }
-        );
+                }
+
+            );
+        }
     }
     else {
         QTreeWidgetItem* parent = item->parent();
@@ -444,10 +531,11 @@ void MainWindow::onTreeWidgetContextMenu(const QPoint& pos) {
             dbName = parent->text(0);
             tableName = item->text(0);
 
-            menu.addAction("修改表", [=]() {
-                QMessageBox::information(this, "修改表", "这里将来会弹出修改表窗口（表名：" + tableName + "）");
+            //menu.addAction("修改表", [=]() {
+              //  QMessageBox::information(this, "修改表", "这里将来会弹出修改表窗口（表名：" + tableName + "）");
 
-                });
+                //});
+
 
             menu.addAction("删除表", [=]() {
                 QMessageBox::StandardButton reply = QMessageBox::question(this, "确认删除",

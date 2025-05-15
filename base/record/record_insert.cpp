@@ -42,7 +42,7 @@ void Record::insert_record(const std::string& table_name, const std::string& col
     }
     insert_into();
     // 新增：插入后更新所有相关索引
-    //updateIndexesAfterInsert();
+    updateIndexesAfterInsert(table_name);
 }
 
 void Record::parse_columns(const std::string& cols) {
@@ -157,13 +157,49 @@ void Record::insert_into() {
         dbManager::getInstance().get_current_database()->getTable(table_name)->setLastModifyTime(std::time(nullptr));
 
         std::cout << "记录插入表 " << this->table_name << " 成功，row_id = " << row_id << "。" << std::endl;
+        
         transactionManager.addUndo(DmlType::INSERT, this->table_name, row_id);
+       
+        if (transactionManager.isActive()||(!transactionManager.isActive()&&transactionManager.isAutoCommit())) {
+            // 把字段名和数据打包成 pair
+            std::vector<std::pair<std::string, std::string>> insert_values;
+            for (size_t i = 0; i < fields.size(); ++i) {
+                insert_values.emplace_back(fields[i].name, record_values[i]);
+            }
 
+            // 记录到日志
+            LogManager::instance().logInsert(this->table_name, row_id, insert_values);
+        }
+        transactionManager.commitImplicitTransaction();
     }
     catch (const std::exception& e) {
-        transactionManager.rollback();
+        //transactionManager.rollback();
         std::cerr << "插入记录失败: " << e.what() << std::endl;
         throw; // 重新抛出异常以便外部捕获
     }
 }
 
+void Record::insertByRowid(uint64_t rowId, const std::vector<std::pair<std::string, std::string>>& values) {
+    std::string file_path = dbManager::getInstance().get_current_database()->getDBPath() + "/" + this->table_name + ".trd";
+    std::ofstream file(file_path, std::ios::app | std::ios::binary);
+    if (!file) throw std::runtime_error("无法打开文件以插入");
+
+    std::vector<FieldBlock> fields = read_field_blocks(this->table_name);
+
+    file.write(reinterpret_cast<const char*>(&rowId), sizeof(uint64_t));
+    char delete_flag = 0;
+    file.write(&delete_flag, sizeof(char));
+
+    std::unordered_map<std::string, std::string> val_map;
+    for (const auto& [col, val] : values) {
+        val_map[col] = val;
+    }
+
+    for (const auto& field : fields) {
+        std::string value = val_map.count(field.name) ? val_map[field.name] : "NULL";
+        write_field(file, field, value);
+    }
+
+    file.close();
+    dbManager::getInstance().get_current_database()->getTable(table_name)->incrementRecordCount(1);
+}

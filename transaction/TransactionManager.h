@@ -7,6 +7,7 @@
 #include <stdexcept>
 #include"base/record/Record.h"
 #include"manager/dbManager.h"
+#include "log/logManager.h"
 #include <optional>
 
 enum class DmlType {
@@ -44,6 +45,8 @@ public:
 
     void setAutoCommit(bool flag);
 
+    //uint64_t getTransactionId() const; // 
+
    
 private:
     TransactionManager();  // 构造函数私有化
@@ -51,6 +54,7 @@ private:
     bool autoCommit;  // 是否启用自动提交
     std::optional<bool> lastAutoCommit;
     std::vector<UndoOperation> undoStack;  // 存储UNDO操作
-
-    
+   
+   // uint64_t transactionId;      // 当前事务ID
+    //static uint64_t nextTransactionId; // 静态ID生成器
 };

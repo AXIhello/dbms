@@ -8,22 +8,22 @@ BTree::BTree(const IndexBlock* indexBlock) : m_index(indexBlock) {
 // B树析构
 BTree::~BTree() {
     deleteNodes(root);
-    // 获取索引文件路径
-    std::string filename = m_index->index_file;
 
-    if (filename.empty()) {
-        std::cerr << "文件名为空，无法删除。" << std::endl;
-        return;
-    }
+    //table中方法已删
+    //std::string filename = m_index->index_file;
+    //if (filename.empty()) {
+    //    std::cerr << "文件名为空，无法删除。" << std::endl;
+    //    return;
+    //}
 
-    // 调用 remove() 删除文件，返回 0 表示成功，非 0 表示失败
-    if (std::remove(filename.c_str()) == 0) {
-        std::cout << "索引数据文件 " << filename << " 删除成功。" << std::endl;
-    }
-    else {
-        std::perror(("索引数据文件 " + filename + " 删除失败。").c_str());
-    }
+    //if (std::remove(filename.c_str()) == 0) {
+    //    std::cout << "索引数据文件 " << filename << " 删除成功。" << std::endl;
+    //}
+    //else {
+    //    std::perror(("索引数据文件 " + filename + " 删除失败。").c_str());
+    //}
 }
+
 
 // 删除所有节点
 void BTree::deleteNodes(BTreeNode* node) {

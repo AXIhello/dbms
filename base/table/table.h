@@ -73,6 +73,12 @@ public:
     std::vector<std::vector<std::string>> selectAll() const;
 
     //表完整性文件
+
+    //获取约束
+	std::vector<ConstraintBlock> getConstraints() const {
+		return m_constraints;
+	}
+
     void addConstraint(const std::string& constraintName,
         const std::string& constraintType,
         const std::string& constraintBody);
@@ -121,7 +127,7 @@ public:
     void renameIndex(const std::string oldName, const std::string newName);
 
     const std::vector<IndexBlock>& getIndexes() const {
-        return m_indexes;
+        return indexes;
     }
 
     //获取索引对应b树
@@ -156,20 +162,23 @@ private:
     std::string m_tid;            // 表格索引文件路径
     std::time_t m_createTime;     // 表的创建时间
     std::time_t m_lastModifyTime; // 表的最后修改时间
+    std::string m_abledUsers;       //表级权限字段
 
     std::vector<FieldBlock> m_fields;               // 存储表的字段信息
     std::vector<ConstraintBlock> m_constraints;     // 存储表的完整性约束信息
-    std::vector<IndexBlock> m_indexes;              // 存储表的索引信息
+    std::vector<IndexBlock> indexes;              // 存储表的索引信息
 
 
     std::vector<std::vector<std::string>> m_records; // 表格内容存储
     std::vector<std::unique_ptr<BTree>> m_btrees; // 存储 B 树对象
 
-
+    void addAbledUser(const std::string& username);
+    bool isUserAuthorized(const std::string& username) const;
 
     // 辅助方法：将时间戳转为字符串格式
     std::string timeToString(std::time_t time) const;
 
 };
+size_t get_field_size(const FieldBlock& field);
 
 #endif // TABLE_H

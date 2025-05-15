@@ -17,23 +17,16 @@
 inline bool is_null(const std::string& value) {
     return value == "NULL";
 }
-struct ExpressionNode {
-    std::string value;
-    ExpressionNode* left = nullptr;
-    ExpressionNode* right = nullptr;
-    ExpressionNode(const std::string& val) : value(val) {}
-};
 
-// 工具函数：检查字符串是否为运算符
-bool is_operator(const std::string& token) {
-    return token == "AND" || token == "OR";
-}
-
-std::vector<std::string> tokenize(const std::string& expr) {
+std::vector<std::string> Record::tokenize(const std::string& expr) {
     std::vector<std::string> tokens;
 
-    // 定义正则表达式来匹配条件和操作符
-    std::regex re(R"((\w+\s*(=|!=|<|>|<=|>=)\s*'[^']*'|\w+\s*(=|!=|<|>|<=|>=)\s*\w+|\bAND\b|\bOR\b))");
+    // 更新正则表达式：
+    // 1️⃣ 匹配类似于 "table1.field = table2.field"
+    // 2️⃣ 匹配 "field = 'value'" 或 "field = value"
+    // 3️⃣ 匹配 "AND" 或 "OR"
+    std::regex re(R"((\w+\.\w+\s*(=|!=|<|>|<=|>=)\s*\w+\.\w+|\w+\.\w+\s*(=|!=|<|>|<=|>=)\s*'[^']*'|\w+\s*(=|!=|<|>|<=|>=)\s*'[^']*'|\w+\s*(=|!=|<|>|<=|>=)\s*\w+|\bAND\b|\bOR\b))");
+
     std::sregex_iterator iter(expr.begin(), expr.end(), re);
     std::sregex_iterator end;
 
@@ -46,7 +39,8 @@ std::vector<std::string> tokenize(const std::string& expr) {
     return tokens;
 }
 
-ExpressionNode* build_expression_tree(const std::vector<std::string>& tokens) {
+
+ExpressionNode* Record::build_expression_tree(const std::vector<std::string>& tokens) {
     if (tokens.empty()) return nullptr;
 
     // 实现 Shunting Yard 算法来处理操作符优先级
@@ -103,7 +97,7 @@ ExpressionNode* build_expression_tree(const std::vector<std::string>& tokens) {
 bool evaluate_node(ExpressionNode* node, const std::unordered_map<std::string, std::string>& record) {
     if (!node) return false;
 
-    if (!is_operator(node->value)) {
+    if (!Record::is_operator(node->value)) {
         std::regex condition_regex(R"((\w+)\s*(=|!=|<|>|<=|>=)\s*('.*?'|\w+))");
         std::smatch match;
 

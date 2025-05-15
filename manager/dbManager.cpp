@@ -10,10 +10,12 @@
 
 namespace fs = std::filesystem;
 std::string dbManager::basePath = std::filesystem::current_path().string() + "/DBMS_ROOT";
-
+Database* dbManager::currentDB = nullptr;
+std::string dbManager::currentDBName = "";
 
 // 构造函数
 dbManager::dbManager() {
+
 
 
     if (!fs::exists(basePath)) {
@@ -219,10 +221,16 @@ std::vector<std::string> dbManager::get_database_list_by_db()
         }
         else {
             // 如果是创建者，或在授权用户名列表中
-            if (strcmp(block.abledUsername, currentUser) == 0 ||
-                std::string(block.abledUsername).find(currentUser) != std::string::npos) {
-                databases.emplace_back(block.dbName);
+            std::string abledUsersStr(block.abledUsername);
+            std::stringstream ss(abledUsersStr);
+            std::string userEntry;
+            while (std::getline(ss, userEntry, '|')) {
+                if (userEntry == currentUser) {
+                    databases.emplace_back(block.dbName);
+                    break;
+                }
             }
+
         }
         //// 只加载当前用户创建的数据库
         //if (block.type == 1 && strcmp(block.abledUsername, user::getCurrentUser().username) == 0) {  // 用户数据库
@@ -279,6 +287,8 @@ void dbManager::useDatabase(const std::string& db_name) {
         throw std::runtime_error("数据库 '" + db_name + "' 不存在！");
     }
 
+    LogManager::instance().initialize(db_name);
+
     if (currentDB) {
         delete currentDB;  // 卸载当前数据库
     }
@@ -287,6 +297,13 @@ void dbManager::useDatabase(const std::string& db_name) {
     currentDBName = db_name;
 }
 
+void dbManager::unloadCurrentDatabase() {
+    if (currentDB) {
+        delete currentDB;
+        currentDB = nullptr;
+    }
+    currentDBName.clear();
+}
 
 
 Database* dbManager::get_current_database() {
@@ -352,4 +369,8 @@ bool dbManager::database_exists_in_db(const std::string& db_name) {
     }
     file.close();
     return false;
+}
+
+std::string dbManager::getCurrentDBName() {
+    return currentDBName;
 }

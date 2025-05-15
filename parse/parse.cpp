@@ -24,7 +24,7 @@ std::string Parse::executeSQL(const std::string& sql)
         std::string upperSQL = toUpperPreserveQuoted(cleanedSQL);
 
         // 特判事务控制语句
-        if (std::regex_search(upperSQL, std::regex("^START TRANSACTION;$"))) {
+        if (std::regex_search(upperSQL, std::regex("^BEGIN TRANSACTION;$"))) {
             TransactionManager::instance().begin();
             if (Output::mode == 0) {
                 Output::printInfo_Cli("事务开始");
@@ -173,7 +173,8 @@ void Parse::registerPatterns() {
     /*  DML  */
     //√
     patterns.push_back({
-     std::regex(R"(^INSERT\s+INTO\s+(\w+)\s*(?:\(([^)]+)\))?\s*VALUES\s*((?:\([^)]*\)\s*,\s*)*\([^)]*\))\s*;$)", std::regex::icase),
+     std::regex(R"(^INSERT\s+INTO\s+(\w+)\s*(?:\(([^)]+)\))?\s*VALUES\s*(.+);$)", std::regex::icase),
+
      [this](const std::smatch& m) {
          handleInsertInto(m);
      }
@@ -238,7 +239,7 @@ void Parse::registerPatterns() {
 
     // GRANT conn|resource ON xxx TO xxx;
     patterns.push_back({
-    std::regex(R"(^GRANT\s+(conn|resource)\s+ON\s+(\w+(?:\.\w+)?)\s+TO\s+(\w+);$)", std::regex::icase),
+    std::regex(R"(^GRANT\s+(connect|connect,resource)\s+ON\s+(\w+(?:\.\w+)?)\s+TO\s+(\w+);$)", std::regex::icase),
     [this](const std::smatch& m) { handleGrantPermission(m); }
         });
 
@@ -268,7 +269,7 @@ void Parse::execute(const QString& sql_qt) {
     qDebug() << "清理后SQL长度：" << upperSQL.size();  // 打印长度确认是否有异常字符
 
     // 直接判断事务；TODO：判断之后仍会进入正则匹配，此时尚未注册
-    if (std::regex_search(upperSQL, std::regex("^START TRANSACTION;$"))) {
+    if (std::regex_search(upperSQL, std::regex("^BEGIN TRANSACTION;$"))) {
         if (TransactionManager::instance().isActive())
         {
             Output::printError(outputEdit, QString("已有事务正在进行中。"));
