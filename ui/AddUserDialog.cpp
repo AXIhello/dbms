@@ -6,6 +6,7 @@
 #include <QTimer>
 #include <QLineEdit>
 #include <QStandardItemModel>
+#include <QMessageBox>
 
 
 AddUserDialog::AddUserDialog(QWidget* parent) : QDialog(parent)
@@ -72,7 +73,7 @@ AddUserDialog::AddUserDialog(QWidget* parent) : QDialog(parent)
 
     layout->addLayout(buttonLayout2);
 
-    connect(okButton, &QPushButton::clicked, this, &QDialog::accept);
+    connect(okButton, &QPushButton::clicked, this, &AddUserDialog::onOkButtonClicked);
     connect(cancelButton, &QPushButton::clicked, this, &QDialog::reject);
 }
 
@@ -175,3 +176,14 @@ QStandardItemModel* AddUserDialog::createResourceModel() {
     return model;
 }
 
+void AddUserDialog::onOkButtonClicked()
+{
+    if (usernameEdit->text().isEmpty()) {
+        QMessageBox::warning(this, "警告", "用户名不能为空！");
+        return;
+    }
+
+    // 可以在这里做其他校验，比如权限是否为空等...
+
+    accept(); // 关闭对话框并返回 QDialog::Accepted 状态
+}

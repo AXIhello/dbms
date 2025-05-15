@@ -129,6 +129,10 @@ const user::User& user::getCurrentUser() {
 
 bool user::hasPermission(const std::string& requiredPerm, const std::string& dbName, const std::string& tableName)
 {
+    // 如果是 sys 用户，拥有所有权限
+    if (strcmp(currentUser.username, "sys") == 0) {
+        return true;
+    }
     std::string permissions(currentUser.permissions);
     std::stringstream ss(permissions);
     std::string permEntry;
