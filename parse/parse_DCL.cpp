@@ -55,14 +55,19 @@ void Parse::handleGrantPermission(const std::smatch& m) {
 
 void Parse::handleRevokePermission(const std::smatch& m) {
     std::string permission = m[1].str();
-    std::string username = m[2].str();
-    if (user::revokePermission(username, permission)) {
-        Output::printMessage(outputEdit, "已从用户 '" + QString::fromStdString(username) + "' 收回 '" + QString::fromStdString(permission) + "' 权限。");
+    std::string dbName = m[2].str();
+    std::string tableName = m[3].matched ? m[3].str() : "";
+    std::string username = m[4].str();
+
+    if (user::revokePermission(username, permission, dbName, tableName, this->outputEdit)) {
+        Output::printMessage(this->outputEdit, "已从用户 '" + QString::fromStdString(username) +
+            "' 收回 '" + QString::fromStdString(permission) + "' 权限。");
     }
     else {
-        Output::printMessage(outputEdit, "收回失败，用户 '" + QString::fromStdString(username) + "' 不存在。");
+        Output::printMessage(this->outputEdit, "收回权限失败。");
     }
 }
+
 
 void Parse::handleShowUsers(const std::smatch& m) {
     // 获取所有用户
