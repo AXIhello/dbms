@@ -12,6 +12,11 @@ void Parse::handleCreateDatabase(const std::smatch& m) {
 
 
 void Parse::handleDropDatabase(const std::smatch& m) {
+    std::string db_name = dbManager::getCurrentDBName(); // 新增
+    if (!user::hasPermission("CONNECT,RESOURCE", db_name)) {
+        Output::printError(outputEdit, QString::fromStdString("没有权限删除数据库 " + db_name));
+        return;
+    }
     try { dbManager::getInstance().delete_user_db(m[1]); }
     catch (const std::exception& e) {
         Output::printError(outputEdit, "数据库删除失败: " + QString::fromStdString(e.what()));
@@ -24,6 +29,11 @@ void Parse::handleDropDatabase(const std::smatch& m) {
 
 void Parse::handleDropTable(const std::smatch& match) {
     std::string tableName = match[1];
+    std::string dbName = dbManager::getCurrentDBName();
+    if (!user::hasPermission("CONNECT,RESOURCE", dbName, tableName)) {
+        Output::printError(outputEdit, QString::fromStdString("权限不足，无法删除表 " + tableName ));
+        return;
+    }
     // 获取当前数据库
     try {
         Database* db = dbManager::getInstance().get_current_database();
@@ -44,6 +54,12 @@ void Parse::handleDropTable(const std::smatch& match) {
 
 
 void Parse::handleCreateTable(const std::smatch& match) {
+    std::string db_name = dbManager::getCurrentDBName(); // 新增
+    if (!user::hasPermission("CONNECT,RESOURCE", db_name)) {
+        Output::printError(outputEdit, QString::fromStdString("没有权限在数据库 "+ db_name +" 中建表"));
+        return;
+    }
+
     std::string tableName = match[1];
 
     std::string rawDefinition = match[2];
@@ -317,6 +333,11 @@ if (def.find("UNIQUE") == 0) {
 
 void Parse::handleAddColumn(const std::smatch& m) {
     std::string tableName = m[1].str();
+    std::string dbName = dbManager::getCurrentDBName();
+    if (!user::hasPermission("CONNECT,RESOURCE", dbName, tableName)) {
+        Output::printError(outputEdit, QString::fromStdString("权限不足，无法对表 " + tableName + "插入列。"));
+        return;
+    }
     std::string fieldName = m[2].str();
     std::string typeStr = m[3].str();
     std::string paramStr = m[4].str();
@@ -458,6 +479,11 @@ void Parse::handleAddColumn(const std::smatch& m) {
 //dropField还未实现
 void Parse::handleDropColumn(const std::smatch& match) {
     std::string tableName = match[1];  // 获取表名
+    std::string dbName = dbManager::getCurrentDBName();
+    if (!user::hasPermission("CONNECT,RESOURCE", dbName, tableName)) {
+        Output::printError(outputEdit, QString::fromStdString("权限不足，无法对表 " + tableName + "删除列。"));
+        return;
+    }
     std::string columnName = match[2];  // 获取列名
 	Database* db = dbManager::getInstance().get_current_database();
     try {
@@ -479,6 +505,11 @@ void Parse::handleDropColumn(const std::smatch& match) {
 //待修改
 void Parse::handleModifyColumn(const std::smatch& match) {
     std::string tableName = match[1];  // 获取表名
+    std::string dbName = dbManager::getCurrentDBName();
+    if (!user::hasPermission("CONNECT,RESOURCE", dbName, tableName)) {
+        Output::printError(outputEdit, QString::fromStdString("权限不足，无法对表 " + tableName + "修改列。"));
+        return;
+    }
     std::string oldColumnName = match[2];  // 获取旧列名
     std::string newColumnName = match[3];  // 获取新列名
     std::string newColumnType = match[4];  // 获取新列类型
@@ -510,6 +541,11 @@ void Parse::handleModifyColumn(const std::smatch& match) {
 
 void Parse::handleAddConstraint(const std::smatch& m) {
     std::string tableName = m[1];  // 表名
+    std::string dbName = dbManager::getCurrentDBName();
+    if (!user::hasPermission("CONNECT,RESOURCE", dbName, tableName)) {
+        Output::printError(outputEdit, QString::fromStdString("权限不足，无法对表 " + tableName + "插入约束。"));
+        return;
+    }
     std::string constraintName = m[2];  // 约束名
     std::string constraintType = m[3];  // 约束类型：PRIMARY KEY, UNIQUE, CHECK,
     std::string constraintBody = m[4];  // 约束内容：字段名、表达式等
@@ -535,6 +571,11 @@ void Parse::handleAddConstraint(const std::smatch& m) {
 
 void Parse::handleAddForeignKey(const std::smatch& m) {
     std::string tableName = m[1];          // 表名
+    std::string dbName = dbManager::getCurrentDBName();
+    if (!user::hasPermission("CONNECT,RESOURCE", dbName, tableName)) {
+        Output::printError(outputEdit, QString::fromStdString("权限不足，无法向表 " + tableName + "插入外键。"));
+        return;
+    }
     std::string constraintName = m[2];     // 约束名
     std::string foreignKeyField = m[3];    // 外键字段
     std::string referenceTable = m[4];     // 引用表
@@ -554,6 +595,11 @@ void Parse::handleAddForeignKey(const std::smatch& m) {
 
 void Parse::handleDropConstraint(const std::smatch& m) {
 	std::string tableName = m[1];  // 表名
+    std::string dbName = dbManager::getCurrentDBName();
+    if (!user::hasPermission("CONNECT,RESOURCE", dbName, tableName)) {
+        Output::printError(outputEdit, QString::fromStdString("权限不足，无法对表 " + tableName + "删除约束。"));
+        return;
+    }
 	std::string constraintName = m[2];  // 约束名
     try {
 		Table* table = dbManager::getInstance().get_current_database()->getTable(tableName);
@@ -572,6 +618,11 @@ void Parse::handleCreateIndex(const std::smatch& m) {
     std::string tableName = m[2];     // 表名
     std::string column1 = m[3];       // 第一个字段
     std::string column2 = m[4];       // 第二个字段（可选）
+    std::string dbName = dbManager::getCurrentDBName();
+    if (!user::hasPermission("CONNECT,RESOURCE", dbName, tableName)) {
+        Output::printError(outputEdit, QString::fromStdString("权限不足，无法向表 " + tableName + "插入索引。"));
+        return;
+    }
 
     try {
         Table* table = dbManager::getInstance().get_current_database()->getTable(tableName);
@@ -639,6 +690,12 @@ void Parse::handleDropIndex(const std::smatch& m) {
         // 获取表名和索引名
         std::string indexName = m[1].str();  // 索引名
         std::string tableName = m[2].str();  // 表名
+
+        std::string dbName = dbManager::getCurrentDBName();
+        if (!user::hasPermission("CONNECT,RESOURCE", dbName, tableName)) {
+            Output::printError(outputEdit, QString::fromStdString("权限不足，无法向表 " + tableName + "删除索引。"));
+            return;
+        }
 
         // 获取当前数据库中的表
         Table* table = dbManager::getInstance().get_current_database()->getTable(tableName);

@@ -17,6 +17,8 @@ struct TableBlock {
 
     std::time_t crtime; // 创建时间
     std::time_t mtime;  // 最后修改时间
+
+    char abledUsers[128]; // 表级授权用户（用户名以 '|' 分隔）
 };
 
 #endif // TABLEBLOCK_H

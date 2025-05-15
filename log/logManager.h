@@ -36,7 +36,8 @@ public:
     static LogManager& instance();  // 单例模式
 
     // 初始化日志管理器
-    bool initialize(const std::string& dbName);
+    bool initialize(const std::string& 
+    );
 
     // 关闭日志管理器
     void shutdown();

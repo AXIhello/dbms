@@ -125,6 +125,16 @@ void Parse::handleSelect(const std::smatch& m) {
             use_join_info = true;
         }
 
+        // --- 权限检查：所有参与表必须有 CONNECT 权限 ---
+        std::string dbName = dbManager::getInstance().get_current_database()->getDBName();
+        for (const auto& tableName : join_info.tables) {
+            if (!user::hasPermission("CONNECT", dbName, tableName)) {
+                Output::printError(outputEdit, QString::fromStdString("没有权限访问表 " + tableName + "，查询被拒绝"));
+                return;
+            }
+        }
+
+
         std::vector<Record> records;
         if (use_join_info) {
             records = Record::select(columns, join_info.tables[0], condition, group_by, order_by, having, &join_info);

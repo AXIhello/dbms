@@ -1,7 +1,10 @@
 #include "parse.h"
 void Parse::handleUseDatabase(const std::smatch& m) {
     std::string dbName = m[1];
-
+    if (!user::hasPermission("CONNECT", dbName)) {
+        Output::printError(outputEdit, QString::fromStdString("没有权限使用数据库 " + dbName ));
+        return;
+    }
     try {
         // 尝试切换数据库
         dbManager::getInstance().useDatabase(dbName);

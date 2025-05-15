@@ -164,6 +164,7 @@ void Table::loadMetadataBinary()
             m_tid = tableBlock.tid;
             m_createTime = tableBlock.crtime;
             m_lastModifyTime = tableBlock.mtime;  // 复制数据
+            m_abledUsers = tableBlock.abledUsers;
 
            
             tbFile.close();
@@ -245,6 +246,7 @@ void Table::saveMetadataBinary() {
             strncpy_s(tableBlock.tic, (m_tic).c_str(), sizeof(tableBlock.tic) - 1);
             strncpy_s(tableBlock.trd, (m_trd).c_str(), sizeof(tableBlock.trd) - 1);
             strncpy_s(tableBlock.tid, (m_tid).c_str(), sizeof(tableBlock.tid) - 1);
+            strcpy_s(tableBlock.abledUsers, sizeof(tableBlock.abledUsers), m_abledUsers.c_str());  // 写入 abledUsers
 
             tbFile.write(reinterpret_cast<char*>(&tableBlock), sizeof(TableBlock));
             break;
@@ -595,4 +597,22 @@ size_t get_field_size(const FieldBlock& field) {
     default:
         throw std::runtime_error("未知字段类型: " + std::to_string(field.type));
     }
+}
+
+
+void Table::addAbledUser(const std::string& username) {
+    if (!isUserAuthorized(username)) {
+        if (!m_abledUsers.empty()) m_abledUsers += "|";
+        m_abledUsers += username;
+        saveMetadataBinary();  // 写回 .tb 文件
+    }
+}
+
+bool Table::isUserAuthorized(const std::string& username) const {
+    std::istringstream ss(m_abledUsers);
+    std::string token;
+    while (std::getline(ss, token, '|')) {
+        if (token == username) return true;
+    }
+    return false;
 }
