@@ -73,7 +73,7 @@ void Parse::handleRevokePermission(const std::smatch& m) {
 
     if (user::revokePermission(username, permission, dbName, tableName, this->outputEdit)) {
         Output::printMessage(this->outputEdit, "已从用户 '" + QString::fromStdString(username) +
-            "' 收回 '" + QString::fromStdString(permission) + "' 权限。");
+            "' 收回 " + QString::fromStdString(resource) + " 的 '" + QString::fromStdString(permission) + "' 权限。");
     }
     else {
         Output::printMessage(this->outputEdit, "收回权限失败。");
