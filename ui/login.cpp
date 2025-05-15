@@ -50,7 +50,7 @@ bool login::authenticate(const QString& username, const QString& password)
 	auto users = user::loadUsers();
 	for (const auto& u : users)
 	{
-		if (u.username == username.toStdString() && u.password == password.toStdString())
+		if (std::string(u.username) == username.toStdString() && u.password == password.toStdString())
 		{
 			user::setCurrentUser(u);
 			return true;

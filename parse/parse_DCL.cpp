@@ -54,10 +54,22 @@ void Parse::handleGrantPermission(const std::smatch& m) {
 }
 
 void Parse::handleRevokePermission(const std::smatch& m) {
-    std::string permission = m[1].str();
-    std::string dbName = m[2].str();
-    std::string tableName = m[3].matched ? m[3].str() : "";
-    std::string username = m[4].str();
+    std::string permission = m[1].str();  // connect 或 connect,resource
+    std::string resource = m[2].str();    // 可能是 db 也可能是 db.table
+    std::string username = m[3].str();
+
+    std::string dbName;
+    std::string tableName;
+
+    size_t dotPos = resource.find('.');
+    if (dotPos != std::string::npos) {
+        dbName = resource.substr(0, dotPos);
+        tableName = resource.substr(dotPos + 1);
+    }
+    else {
+        dbName = resource;
+    }
+
 
     if (user::revokePermission(username, permission, dbName, tableName, this->outputEdit)) {
         Output::printMessage(this->outputEdit, "已从用户 '" + QString::fromStdString(username) +

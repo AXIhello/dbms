@@ -246,7 +246,7 @@ void Parse::registerPatterns() {
 
     // REVOKE conn|resource FROM xxx;
     patterns.push_back({
-        std::regex(R"(^REVOKE\s+(conn|resource)\s+FROM\s+(\w+);$)", std::regex::icase),
+        std::regex(R"(^REVOKE\s+(connect|connect,resource)\s+ON\s+(\w+(?:\.\w+)?)\s+FROM\s+(\w+);$)", std::regex::icase),
         [this](const std::smatch& m) { handleRevokePermission(m); }
         });
 

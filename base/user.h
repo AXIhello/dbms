@@ -18,7 +18,7 @@ public:
     static bool createUser(const std::string& username, const std::string& password);
     static bool grantPermission(const std::string& username, const std::string& permission,const std::string& dbName, const std::string& tableName = "", QTextEdit* outputEdit=nullptr);
     static bool revokePermission(const std::string& username, const std::string& permission,
-        const std::string& dbName, const std::string& tableName, QTextEdit* outputEdit);
+        const std::string& dbName, const std::string& tableName="", QTextEdit* outputEdit= nullptr);
 
     static void createSysDBA();  
     

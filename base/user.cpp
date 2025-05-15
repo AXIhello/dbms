@@ -278,6 +278,12 @@ bool user::grantPermission(const std::string& username, const std::string& permi
     }
     dbFileIn1.close();
 
+    // *** 调试：打印读取到的数据库名 ***
+    qDebug() << "读取数据库块列表:";
+    for (const auto& db : dbs) {
+        qDebug() << " - " << QString::fromStdString(db.dbName);
+    }//
+
     if (!isCurrentUserAuthorized) {
         Output::printMessage(outputEdit, "你没有权限授权该数据库，请联系管理员");
         return false;
@@ -288,7 +294,7 @@ bool user::grantPermission(const std::string& username, const std::string& permi
     bool userExists = false;
 
     for (auto& u : users) {
-        if (u.username == username) {
+        if (std::string(u.username) == username) {
             std::string perms(u.permissions);
             std::stringstream permStream(permission);  // 例如 "CONNECT,RESOURCE"
             std::string singlePerm;
@@ -394,6 +400,20 @@ bool user::grantPermission(const std::string& username, const std::string& permi
     }
     dbFileOut.close();
 
+    // *** 调试：写回后再读一次确认数据库列表 ***
+    std::ifstream dbFileCheck(sysDBPath, std::ios::binary);
+    if (!dbFileCheck) {
+        qDebug() << "警告: 授权后无法打开数据库文件校验";
+    }
+    else {
+        qDebug() << "写回后数据库列表:";
+        DatabaseBlock dbCheckBlock{};
+        while (dbFileCheck.read(reinterpret_cast<char*>(&dbCheckBlock), sizeof(dbCheckBlock))) {
+            qDebug() << " - " << QString::fromStdString(dbCheckBlock.dbName);
+        }
+        dbFileCheck.close();
+    }//
+
     return true;
 }
 
@@ -441,7 +461,7 @@ bool user::revokePermission(const std::string& username, const std::string& perm
     bool userExists = false;
 
     for (auto& u : users) {
-        if (u.username == username) {
+        if (std::string(u.username) == username) {
             userExists = true;
 
             std::string perms(u.permissions);
@@ -449,18 +469,21 @@ bool user::revokePermission(const std::string& username, const std::string& perm
             std::stringstream ss(perms);
             std::string perm;
 
-            while (std::getline(ss, perm, '|')) {
-                std::string fullPerm = permission + ":" + dbName;
-                if (!tableName.empty()) fullPerm += "." + tableName;
+            // 拼接完整权限字符串（库级或表级）
+            std::string fullPerm = permission + ":" + dbName;
+            if (!tableName.empty()) {
+                fullPerm += "." + tableName;
+            }
 
-                // 不等于要撤销的权限才保留
+            // 过滤掉要撤销的权限，其他保留
+            while (std::getline(ss, perm, '|')) {
                 if (perm != fullPerm) {
                     updatedPerms.push_back(perm);
                 }
             }
 
             // 重建权限字符串
-            std::string newPerms = "";
+            std::string newPerms;
             for (size_t i = 0; i < updatedPerms.size(); ++i) {
                 if (i > 0) newPerms += "|";
                 newPerms += updatedPerms[i];
@@ -491,24 +514,22 @@ bool user::revokePermission(const std::string& username, const std::string& perm
     for (auto& db : dbs) {
         if (db.dbName != dbName) continue;
 
-        std::string newAbled;
-        std::stringstream ss(db.abledUsername);
-        std::string user;
+        // 检查用户是否仍然拥有该库的其他权限
         bool userHasOtherPerm = false;
-
-        // 判断用户是否还拥有该库下其他权限
         for (const auto& u : users) {
-            if (u.username == username) {
-                std::string perms(u.permissions);
-                if (perms.find(dbName) != std::string::npos) {
+            if (std::string(u.username) == username) {
+                if (std::string(u.permissions).find(dbName) != std::string::npos) {
                     userHasOtherPerm = true;
                     break;
                 }
             }
         }
 
-        // 仅在用户不再有该库相关权限时移除
+        // 如果用户没有其他库权限，从数据库块中移除
         if (!userHasOtherPerm) {
+            std::string newAbled;
+            std::stringstream ss(db.abledUsername);
+            std::string user;
             while (std::getline(ss, user, '|')) {
                 if (user != username) {
                     if (!newAbled.empty()) newAbled += "|";
@@ -518,7 +539,7 @@ bool user::revokePermission(const std::string& username, const std::string& perm
             strcpy_s(db.abledUsername, sizeof(db.abledUsername), newAbled.c_str());
         }
 
-        // Step 5: 如是表级权限，更新表块 abledUsers 字段
+        // Step 5: 如果是表级权限，更新表块 abledUsers 字段
         if (!tableName.empty()) {
             std::string tableFilePath = dbManager::basePath + "/data/" + dbName + "/" + dbName + ".tb";
             std::fstream tableFile(tableFilePath, std::ios::in | std::ios::out | std::ios::binary);
@@ -566,3 +587,4 @@ bool user::revokePermission(const std::string& username, const std::string& perm
 
     return true;
 }
+
