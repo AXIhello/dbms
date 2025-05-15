@@ -206,9 +206,6 @@ bool user::hasPermission(const std::string& requiredPerm, const std::string& dbN
     return false;
 }
 
-
-
-
 // 创建用户
 bool user::createUser(const std::string& username, const std::string& password) {
     user::outputEdit = outputEdit;

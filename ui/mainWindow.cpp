@@ -88,9 +88,48 @@ MainWindow::MainWindow(QWidget* parent)
         QAction* addUserAction = new QAction("添加用户", this);
         userMenu->addAction(addUserAction);
         connect(addUserAction, &QAction::triggered, this, [=]() {
-            AddUserDialog dialog(this);
-            dialog.exec();
-            refreshTree(); // 添加成功后刷新（可选）
+            AddUserDialog dlg(this);
+            if (dlg.exec() == QDialog::Accepted) {
+                QString username = dlg.getUsername();
+                QString password = dlg.getPassword();
+
+                if (!username.isEmpty()) {
+                    QString sql = "CREATE USER " + username;
+                    if (!password.isEmpty()) {
+                        sql += " IDENTIFIED BY " + password;
+                    }
+                    sql += ";\n\n";
+
+                    QString currentText = ui->inputEdit->toPlainText();
+                    ui->inputEdit->setPlainText(currentText + sql + "SQL>> ");
+
+                    try {
+                        Parse parser(ui->outputEdit, this);
+                        parser.execute(sql);
+
+                        // 获取用户填写的授权列表
+                        QList<QPair<QString, QString>> grants = dlg.getGrants();
+
+                        for (const auto& grant : grants) {
+                            const QString& object = grant.first;   // 如 db 或 db.table
+                            const QString& perm = grant.second;    // 如 connect、resource
+
+                            if (!object.isEmpty() && !perm.isEmpty()) {
+                                QString grantSQL = "GRANT " + perm + " ON " + object + " TO " + username + ";\n\n";
+                                ui->inputEdit->moveCursor(QTextCursor::End);
+                                ui->inputEdit->insertPlainText(grantSQL + "SQL>> ");
+                                parser.execute(grantSQL);
+                            }
+                        }
+                    }
+                    catch (const std::exception& e) {
+                        Output::printError(ui->outputEdit, QString("创建用户失败: ") + e.what());
+                    }
+                }
+                else {
+                    Output::printError(ui->outputEdit, "用户名不能为空！");
+                }
+            }
             });
     }
 

@@ -94,19 +94,14 @@ void AddUserDialog::onAddGrantButtonClicked()
     resourceCombo->lineEdit()->setPlaceholderText("object_name");  // 初始提示
     //resourceCombo->lineEdit()->setReadOnly(true); // 防止用户直接编辑
     resourceCombo->setEditable(false); // 设置完提示后恢复不可编辑状态
-    grantTableWidget->setCellWidget(row, 0, resourceCombo);//放入表格
+    //grantTableWidget->setCellWidget(row, 0, resourceCombo);//放入表格
     
     // 权限下拉框
     QComboBox* permissionCombo = new QComboBox(this);
     permissionCombo->addItem("No grant");
     permissionCombo->addItem("connect");
     permissionCombo->addItem("connect,resource");
-    grantTableWidget->setCellWidget(row, 1, permissionCombo);
-
-    // 自动展开资源下拉框
-    QTimer::singleShot(0, resourceCombo, SLOT(showPopup()));
-    qDebug() << "插入行：" << row << ", 模型行数：" << model->rowCount();
-
+    //grantTableWidget->setCellWidget(row, 1, permissionCombo);
 }
 
 void AddUserDialog::onRemoveGrantButtonClicked() {
@@ -184,6 +179,6 @@ void AddUserDialog::onOkButtonClicked()
     }
 
     // 可以在这里做其他校验，比如权限是否为空等...
-
-    accept(); // 关闭对话框并返回 QDialog::Accepted 状态
+    
+    done(QDialog::Accepted);  // 更加直接，不会进入死循环
 }
