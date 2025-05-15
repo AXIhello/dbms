@@ -269,6 +269,7 @@ void LogManager::recoverFromCrash() {
     // Undo 最后一个未提交事务（如果有）
     if (!currentTxn.empty()) {
         undoOperations(currentTxn);
+        logRollback();
     }
 }
 
