@@ -129,29 +129,83 @@ const user::User& user::getCurrentUser() {
 
 bool user::hasPermission(const std::string& requiredPerm, const std::string& dbName, const std::string& tableName)
 {
-    // 如果是 sys 用户，拥有所有权限
+    // sys 用户拥有所有权限
     if (strcmp(currentUser.username, "sys") == 0) {
         return true;
     }
+
+    // 如果是 CONNECT 权限，直接从数据库块的 abledUsername 判断
+    if (requiredPerm == "CONNECT" && tableName.empty()) {
+        std::string sysDBPath = dbManager::basePath + "/ruanko.db";
+        std::ifstream dbFile(sysDBPath, std::ios::binary);
+        if (!dbFile) {
+            return false;
+        }
+
+        DatabaseBlock block;
+        while (dbFile.read(reinterpret_cast<char*>(&block), sizeof(block))) {
+            if (block.dbName == dbName) {
+                std::string abledUsers(block.abledUsername);
+                std::stringstream ss(abledUsers);
+                std::string user;
+                while (std::getline(ss, user, '|')) {
+                    if (user == currentUser.username) {
+                        return true;
+                    }
+                }
+                break;
+            }
+        }
+        dbFile.close();
+        return false;
+    }
+
     std::string permissions(currentUser.permissions);
     std::stringstream ss(permissions);
     std::string permEntry;
 
-    std::string target1 = requiredPerm + ":" + dbName;  // 库级权限
-    std::string target2 = target1 + "." + tableName;     // 表级权限（可选）
+    std::string targetDbPerm = requiredPerm + ":" + dbName;         // 库级权限
+    std::string targetTablePerm = targetDbPerm + "." + tableName;   // 表级权限
+
+    /*bool hasTablePerm = false;
+    bool hasDbPerm = false;*/
 
     while (std::getline(ss, permEntry, '|')) {
-        // 若指定表，则查表级权限
         if (!tableName.empty()) {
-            if (permEntry == target2) return true;
+            /*if (permEntry == targetTablePerm) {
+                hasTablePerm = true;
+                break; // 找到表权限了直接返回
+            }
+            if (permEntry == targetDbPerm) {
+                hasDbPerm = true;  // 记录库权限，但继续寻找表权限
+            }*/
+            if (permEntry == targetTablePerm || permEntry == targetDbPerm) {
+                return true;
+            }
         }
         else {
-            // 仅判断库级权限
-            if (permEntry == target1) return true;
+            // 只检查库级权限
+            if (permEntry == targetDbPerm) {
+                return true;
+            }
         }
     }
+
+    //// 如果是检查表权限，允许库权限作为备选（这里你可以根据实际需求调整）
+    //if (!tableName.empty()) {
+    //    if (hasTablePerm) {
+    //        return true;
+    //    }
+    //    else if (hasDbPerm) {
+    //        // 如果需要表权限必须存在，则这里返回 false，  
+    //        // 如果允许库权限覆盖表权限，则返回 true
+    //        return true;  // 或者改成 false 视需求
+    //    }
+    //}
+
     return false;
 }
+
 
 
 
@@ -194,11 +248,10 @@ bool user::createUser(const std::string& username, const std::string& password) 
 }
 
 // 授权
-bool user::grantPermission(const std::string& username,const std::string& permission,
-    const std::string& dbName,const std::string& tableName, QTextEdit* outputEdit)
+bool user::grantPermission(const std::string& username, const std::string& permission,
+    const std::string& dbName, const std::string& tableName, QTextEdit* outputEdit)
 {
-    // 权限验证：确认当前用户是否有权授权此数据库
-    std::string currentUser = std::string(user::getCurrentUser().username);  
+    std::string currentUser = std::string(user::getCurrentUser().username);
     std::string sysDBPath = dbManager::basePath + "/ruanko.db";
 
     std::ifstream dbFileIn1(sysDBPath, std::ios::binary);
@@ -223,7 +276,7 @@ bool user::grantPermission(const std::string& username,const std::string& permis
                     break;
                 }
             }
-            break;  // 找到目标数据库后就可退出
+            break;
         }
     }
     dbFileIn1.close();
@@ -233,121 +286,123 @@ bool user::grantPermission(const std::string& username,const std::string& permis
         return false;
     }
 
-    // Step 1: 更新用户结构体中的权限字段
+    // Step 1: 加载用户列表
     std::vector<User> users = loadUsers();
     bool userExists = false;
+
     for (auto& u : users) {
         if (u.username == username) {
             std::string perms(u.permissions);
-            std::string fullPerm = permission + ":" + dbName;
+            std::stringstream permStream(permission);  // 例如 permission = "CONNECT,RESOURCE"
+            std::string singlePerm;
+            while (std::getline(permStream, singlePerm, ',')) {
+                std::string fullPerm = singlePerm + ":" + dbName;
+                if (!tableName.empty()) {
+                    fullPerm += "." + tableName;
+                }
+
+                if (perms.find(fullPerm) == std::string::npos) {
+                    if (!perms.empty()) perms += "|";
+                    perms += fullPerm;
+                }
+            }
+
+            // 如果是表级权限，确保用户拥有数据库的 CONNECT 权限
             if (!tableName.empty()) {
-                fullPerm += "." + tableName;
+                std::string connectPerm = "CONNECT:" + dbName;
+                if (perms.find(connectPerm) == std::string::npos) {
+                    perms += "|" + connectPerm;
+                }
             }
 
-            // 如果权限不存在则添加
-            if (perms.find(fullPerm) == std::string::npos) {
-                if (!perms.empty()) perms += "|";
-                perms += fullPerm;
-                strcpy_s(u.permissions, sizeof(u.permissions), perms.c_str());
-            }
-
+            // 更新权限字段
+            strcpy_s(u.permissions, sizeof(u.permissions), perms.c_str());
             userExists = true;
             break;
         }
     }
 
-    if (!userExists) return false;
-    // Step 2: 写回用户数据
+    if (!userExists) {
+        Output::printMessage(outputEdit, "目标用户不存在");
+        return false;
+    }
+
+    // Step 2: 写回用户权限数据
     std::ofstream file("users.dat", std::ios::binary | std::ios::trunc);
     if (!file) {
-        Output::printMessage(outputEdit, "授权时无法打开文件");
+        Output::printMessage(outputEdit, "授权时无法打开用户文件");
         return false;
     }
     for (const auto& u : users) {
-         file.write(reinterpret_cast<const char*>(&u), sizeof(User));
+        file.write(reinterpret_cast<const char*>(&u), sizeof(User));
     }
     file.close();
-    
-    // Step 3: 更新数据库文件
+
+    // Step 3: 更新数据库文件中授权用户列表（确保库中有用户权限）
     for (auto& db : dbs) {
-        // 比对数据库名
-        if (db.dbName == dbName) {
-            // 只处理数据库级别的权限
-            if (permission == "CONNECT" || (permission == "CONNECT,RESOURCE" && tableName.empty())) {
-                std::string abledUsers(db.abledUsername);
-                if (abledUsers.find(username) == std::string::npos) {
-                    if (!abledUsers.empty()) abledUsers += "|";
-                    abledUsers += username;
-                    strcpy_s(db.abledUsername, sizeof(db.abledUsername), abledUsers.c_str());
-                }
-            }
-            if (!tableName.empty()) {
-                if (permission != "CONNECT" && permission != "CONNECT,RESOURCE") {
-                    Output::printMessage(outputEdit, "表级权限仅支持 CONNECT 或 CONNECT,RESOURCE");
-                    return false;
-                }
-                // --- 合并表授权逻辑 ---
-                std::string tableFilePath = dbManager::basePath + "/data/" + dbName + "/" + dbName + ".tb";
-                std::fstream tableFile(tableFilePath, std::ios::in | std::ios::out | std::ios::binary);
-                if (!tableFile) {
-                    Output::printMessage(outputEdit, QString::fromStdString("无法打开表结构文件进行授权: " + tableFilePath));
-                    return false;
-                }
+        if (db.dbName != dbName) continue;
 
-                TableBlock block;
-                bool found = false;
-                while (tableFile.read(reinterpret_cast<char*>(&block), sizeof(block))) {
-                    if (std::string(block.name) == tableName) {
-                        std::string abledUsers(block.abledUsers);
-                        if (abledUsers.find(username) == std::string::npos) {
-                            if (!abledUsers.empty()) abledUsers += "|";
-                            abledUsers += username;
-                            strcpy_s(block.abledUsers, sizeof(block.abledUsers), abledUsers.c_str());
+        std::string abledUsers(db.abledUsername);
+        bool userInList = (abledUsers.find(username) != std::string::npos);
 
-                            tableFile.seekp(-static_cast<int>(sizeof(block)), std::ios::cur);
-                            tableFile.write(reinterpret_cast<const char*>(&block), sizeof(block));
-                        }
-                        found = true;
-                        break;
-                    }
-                }
-                tableFile.close();
-                if (!found) {
-                    Output::printMessage(outputEdit, QString::fromStdString("未找到目标表: " + tableName));
-                    return false;
-                }
+        // 不论库级还是表级授权，都确保数据库块里有该用户
+        if (!userInList) {
+            if (!abledUsers.empty()) abledUsers += "|";
+            abledUsers += username;
+            strcpy_s(db.abledUsername, sizeof(db.abledUsername), abledUsers.c_str());
+        }
 
-                // 确保数据库也授权（用于展示数据库列表）
-                for (auto& db : dbs) {
-                    if (db.dbName == dbName) {
-                        std::string abledUsers(db.abledUsername);
-                        if (abledUsers.find(username) == std::string::npos) {
-                            if (!abledUsers.empty()) abledUsers += "|";
-                            abledUsers += username;
-                            strcpy_s(db.abledUsername, sizeof(db.abledUsername), abledUsers.c_str());
-                        }
-                        break;
-                    }
-                }
+        // 如果是表级授权，更新表文件中授权用户
+        if (!tableName.empty()) {
+            std::string tableFilePath = dbManager::basePath + "/data/" + dbName + "/" + dbName + ".tb";
+            std::fstream tableFile(tableFilePath, std::ios::in | std::ios::out | std::ios::binary);
+            if (!tableFile) {
+                Output::printMessage(outputEdit, QString::fromStdString("无法打开表结构文件进行授权: " + tableFilePath));
+                return false;
             }
 
-        }
-    }
-        // Step 4: 写回数据库信息
-        std::ofstream dbFileOut(sysDBPath, std::ios::binary | std::ios::trunc);
-        if (!dbFileOut) {
-            Output::printMessage(outputEdit, "写回数据库文件失败");
-            return false;
-        }
-        for (const auto& db : dbs) {
-            dbFileOut.write(reinterpret_cast<const char*>(&db), sizeof(db));
-        }
-        dbFileOut.close();
+            TableBlock tableBlock;
+            bool found = false;
+            while (tableFile.read(reinterpret_cast<char*>(&tableBlock), sizeof(tableBlock))) {
+                if (std::string(tableBlock.name) == tableName) {
+                    std::string tableUsers(tableBlock.abledUsers);
+                    if (tableUsers.find(username) == std::string::npos) {
+                        if (!tableUsers.empty()) tableUsers += "|";
+                        tableUsers += username;
+                        strcpy_s(tableBlock.abledUsers, sizeof(tableBlock.abledUsers), tableUsers.c_str());
 
-        return true;
+                        tableFile.seekp(-static_cast<int>(sizeof(tableBlock)), std::ios::cur);
+                        tableFile.write(reinterpret_cast<const char*>(&tableBlock), sizeof(tableBlock));
+                    }
+                    found = true;
+                    break;
+                }
+            }
+            tableFile.close();
+            if (!found) {
+                Output::printMessage(outputEdit, QString::fromStdString("未找到目标表: " + tableName));
+                return false;
+            }
+        }
+
+        break;
     }
 
-    
+    // Step 4: 写回数据库文件
+    std::ofstream dbFileOut(sysDBPath, std::ios::binary | std::ios::trunc);
+    if (!dbFileOut) {
+        Output::printMessage(outputEdit, "写回数据库文件失败");
+        return false;
+    }
+    for (const auto& db : dbs) {
+        dbFileOut.write(reinterpret_cast<const char*>(&db), sizeof(db));
+    }
+    dbFileOut.close();
+
+    return true;
+}
+
+
 
 // 收回权限
 bool user::revokePermission(const std::string& username, const std::string& permission) {

@@ -13,7 +13,7 @@ void Parse::handleCreateDatabase(const std::smatch& m) {
 
 void Parse::handleDropDatabase(const std::smatch& m) {
     std::string db_name = dbManager::getCurrentDBName(); // 新增
-    if (!user::hasPermission("CONNECT,RESOURCE", db_name)) {
+    if (!(user::hasPermission("CONNECT", db_name) && user::hasPermission("RESOURCE", db_name))) {
         Output::printError(outputEdit, QString::fromStdString("没有权限删除数据库 " + db_name));
         return;
     }
@@ -30,7 +30,7 @@ void Parse::handleDropDatabase(const std::smatch& m) {
 void Parse::handleDropTable(const std::smatch& match) {
     std::string tableName = match[1];
     std::string dbName = dbManager::getCurrentDBName();
-    if (!user::hasPermission("CONNECT,RESOURCE", dbName, tableName)) {
+    if (!(user::hasPermission("CONNECT", dbName) && user::hasPermission("RESOURCE", dbName))) {
         Output::printError(outputEdit, QString::fromStdString("权限不足，无法删除表 " + tableName ));
         return;
     }
@@ -55,10 +55,11 @@ void Parse::handleDropTable(const std::smatch& match) {
 
 void Parse::handleCreateTable(const std::smatch& match) {
     std::string db_name = dbManager::getCurrentDBName(); // 新增
-    if (!user::hasPermission("CONNECT,RESOURCE", db_name)) {
-        Output::printError(outputEdit, QString::fromStdString("没有权限在数据库 "+ db_name +" 中建表"));
+    if (!(user::hasPermission("CONNECT", db_name) && user::hasPermission("RESOURCE", db_name))) {
+        Output::printError(outputEdit, QString::fromStdString("没有权限在数据库 " + db_name + " 中建表"));
         return;
     }
+
 
     std::string tableName = match[1];
 
@@ -334,7 +335,7 @@ if (def.find("UNIQUE") == 0) {
 void Parse::handleAddColumn(const std::smatch& m) {
     std::string tableName = m[1].str();
     std::string dbName = dbManager::getCurrentDBName();
-    if (!user::hasPermission("CONNECT,RESOURCE", dbName, tableName)) {
+    if (!(user::hasPermission("CONNECT", dbName) && user::hasPermission("RESOURCE", dbName))) {
         Output::printError(outputEdit, QString::fromStdString("权限不足，无法对表 " + tableName + "插入列。"));
         return;
     }
@@ -480,7 +481,7 @@ void Parse::handleAddColumn(const std::smatch& m) {
 void Parse::handleDropColumn(const std::smatch& match) {
     std::string tableName = match[1];  // 获取表名
     std::string dbName = dbManager::getCurrentDBName();
-    if (!user::hasPermission("CONNECT,RESOURCE", dbName, tableName)) {
+    if (!(user::hasPermission("CONNECT", dbName) && user::hasPermission("RESOURCE", dbName))) {
         Output::printError(outputEdit, QString::fromStdString("权限不足，无法对表 " + tableName + "删除列。"));
         return;
     }
@@ -506,7 +507,7 @@ void Parse::handleDropColumn(const std::smatch& match) {
 void Parse::handleModifyColumn(const std::smatch& match) {
     std::string tableName = match[1];  // 获取表名
     std::string dbName = dbManager::getCurrentDBName();
-    if (!user::hasPermission("CONNECT,RESOURCE", dbName, tableName)) {
+    if (!(user::hasPermission("CONNECT", dbName) && user::hasPermission("RESOURCE", dbName))) {
         Output::printError(outputEdit, QString::fromStdString("权限不足，无法对表 " + tableName + "修改列。"));
         return;
     }
@@ -542,7 +543,7 @@ void Parse::handleModifyColumn(const std::smatch& match) {
 void Parse::handleAddConstraint(const std::smatch& m) {
     std::string tableName = m[1];  // 表名
     std::string dbName = dbManager::getCurrentDBName();
-    if (!user::hasPermission("CONNECT,RESOURCE", dbName, tableName)) {
+    if (!(user::hasPermission("CONNECT", dbName) && user::hasPermission("RESOURCE", dbName))) {
         Output::printError(outputEdit, QString::fromStdString("权限不足，无法对表 " + tableName + "插入约束。"));
         return;
     }
@@ -572,7 +573,7 @@ void Parse::handleAddConstraint(const std::smatch& m) {
 void Parse::handleAddForeignKey(const std::smatch& m) {
     std::string tableName = m[1];          // 表名
     std::string dbName = dbManager::getCurrentDBName();
-    if (!user::hasPermission("CONNECT,RESOURCE", dbName, tableName)) {
+    if (!(user::hasPermission("CONNECT", dbName) && user::hasPermission("RESOURCE", dbName))) {
         Output::printError(outputEdit, QString::fromStdString("权限不足，无法向表 " + tableName + "插入外键。"));
         return;
     }
@@ -596,7 +597,7 @@ void Parse::handleAddForeignKey(const std::smatch& m) {
 void Parse::handleDropConstraint(const std::smatch& m) {
 	std::string tableName = m[1];  // 表名
     std::string dbName = dbManager::getCurrentDBName();
-    if (!user::hasPermission("CONNECT,RESOURCE", dbName, tableName)) {
+    if (!(user::hasPermission("CONNECT", dbName) && user::hasPermission("RESOURCE", dbName))) {
         Output::printError(outputEdit, QString::fromStdString("权限不足，无法对表 " + tableName + "删除约束。"));
         return;
     }
@@ -619,7 +620,7 @@ void Parse::handleCreateIndex(const std::smatch& m) {
     std::string column1 = m[3];       // 第一个字段
     std::string column2 = m[4];       // 第二个字段（可选）
     std::string dbName = dbManager::getCurrentDBName();
-    if (!user::hasPermission("CONNECT,RESOURCE", dbName, tableName)) {
+    if (!(user::hasPermission("CONNECT", dbName) && user::hasPermission("RESOURCE", dbName))) {
         Output::printError(outputEdit, QString::fromStdString("权限不足，无法向表 " + tableName + "插入索引。"));
         return;
     }
@@ -692,7 +693,7 @@ void Parse::handleDropIndex(const std::smatch& m) {
         std::string tableName = m[2].str();  // 表名
 
         std::string dbName = dbManager::getCurrentDBName();
-        if (!user::hasPermission("CONNECT,RESOURCE", dbName, tableName)) {
+        if (!(user::hasPermission("CONNECT", dbName) && user::hasPermission("RESOURCE", dbName))) {
             Output::printError(outputEdit, QString::fromStdString("权限不足，无法向表 " + tableName + "删除索引。"));
             return;
         }
