@@ -200,18 +200,42 @@ std::vector<Record> Record::select(
     temp.set_table_name(tables.size() == 1 ? tables[0] : "");
     temp.table_structure = combined_structure;
     if (!condition.empty()) temp.parse_condition(condition);
+
     auto map_filtered = vectorToMap(filtered);
+
+    // 构造共享指针列表（避免析构）
     std::vector<std::shared_ptr<Table>> table_ptrs;
     for (const auto& name : tables) {
-        Table* raw_table = dbManager::getInstance().get_current_database()->getTable(name);  // 获取原始指针
-        table_ptrs.push_back(std::shared_ptr<Table>(raw_table, [](Table*) {
-            /* 空 deleter，避免重复析构 */
-            }));
+        Table* raw_table = dbManager::getInstance().get_current_database()->getTable(name);
+        table_ptrs.push_back(std::shared_ptr<Table>(raw_table, [](Table*) {}));
     }
-    //std::vector<std::pair<uint64_t, std::unordered_map<std::string, std::string>>> condition_filtered;
 
-    auto condition_filtered = temp.selectByIndex(map_filtered, table_ptrs, combined_structure, join_info != nullptr || tables.size() > 1);
+    // 判断是否有索引字段
+    bool has_index = false;
+    for (const auto& table : table_ptrs) {
+        for (const auto& idx : table->getIndexes()) {
+            if (condition.find(idx.field[0]) != std::string::npos) {
+                has_index = true;
+                break;
+            }
+        }
+        if (has_index) break;
+    }
 
+    // 根据是否有索引决定处理方式
+    std::vector<std::pair<uint64_t, std::unordered_map<std::string, std::string>>> condition_filtered;
+
+    if (has_index) {
+        condition_filtered = temp.selectByIndex(map_filtered, table_ptrs, combined_structure, join_info != nullptr || tables.size() > 1);
+    }
+    else {
+        // fallback：直接根据 matches_condition 过滤
+        for (const auto& [row_id, rec] : map_filtered) {
+            if (condition.empty() || temp.matches_condition(rec, join_info != nullptr || tables.size() > 1)) {
+                condition_filtered.emplace_back(row_id, rec);
+            }
+        }
+    }
     // ==================== 4️⃣  GROUP BY 和 聚合函数 ====================
     if (!group_by.empty()) {
         // 按组分类记录
