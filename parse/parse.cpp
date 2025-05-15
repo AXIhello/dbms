@@ -135,8 +135,8 @@ void Parse::registerPatterns() {
 
     //解析有问题。modify修改类型，change修改字段名 
     patterns.push_back({
-      std::regex(R"(ALTER\s+TABLE\s+(\w+)\s+MODIFY\s+(\w+)\s+(\w+)(\(\d+\))?(.*);?)", std::regex::icase),
-      [this](const std::smatch& m) { handleModifyColumn(m); }
+    std::regex(R"(ALTER\s+TABLE\s+(\w+)\s+MODIFY\s+(\w+)\s+(\w+)(?:\s+(\w+))?(?:\((\d+(?:,\d+)?)\))?(.*);?)", std::regex::icase),
+    [this](const std::smatch& m) { handleModifyColumn(m); }
         });
 
     //仅支持primary key, unique和check的表级约束
