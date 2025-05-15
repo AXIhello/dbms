@@ -146,7 +146,6 @@
     <ClCompile Include="base\user.cpp" />
     <QtRcc Include="dbms.qrc" />
     <QtRcc Include="resource\Resource.qrc" />
-    <QtUic Include="DialogButtonBottom.ui" />
     <QtUic Include="login.ui" />
     <ClCompile Include="main.cpp" />
     <QtUic Include="ui\MainWindow.ui" />
