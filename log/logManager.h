@@ -66,7 +66,7 @@ public:
     void createCheckpoint();
 
     // 崩溃恢复
-    bool recoverFromCrash();
+    void recoverFromCrash();
 
 
 

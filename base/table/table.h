@@ -179,5 +179,6 @@ private:
     std::string timeToString(std::time_t time) const;
 
 };
+size_t get_field_size(const FieldBlock& field);
 
 #endif // TABLE_H

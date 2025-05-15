@@ -224,6 +224,36 @@ void LogManager::writeLogEntry(const LogEntry& entry) {
     logFile.flush();  // 确保写入磁盘
 }
 
+void LogManager::recoverFromCrash() {
+    std::vector<LogEntry> logs = parseLogFile();
+
+    std::vector<LogEntry> currentTxn;   // 当前事务日志
+    std::vector<std::vector<LogEntry>> committedTxns; // 所有已提交事务
+
+    for (const auto& log : logs) {
+        if (log.type == LogType::BEGIN) {
+            currentTxn.clear();
+        }
+        else if (log.type == LogType::COMMIT) {
+            committedTxns.push_back(currentTxn);
+            currentTxn.clear();
+        }
+        else {
+            currentTxn.push_back(log);
+        }
+    }
+
+    // Redo 所有已提交事务
+    for (const auto& txn : committedTxns) {
+        redoOperations(txn);
+    }
+
+    // Undo 最后一个未提交事务（如果有）
+    if (!currentTxn.empty()) {
+        undoOperations(currentTxn);
+    }
+}
+
 
  //解析日志文件
 std::vector<LogEntry> LogManager::parseLogFile() {
@@ -273,6 +303,54 @@ std::vector<LogEntry> LogManager::parseLogFile() {
 
     return entries;
 }
+
+// 执行 redo 操作：将日志中的操作再次执行（用于提交成功的事务）
+void LogManager::redoOperations(const std::vector<LogEntry>& entries) {
+    for (const auto& log : entries) {
+        Record record;
+        record.set_table_name(log.tableName);
+        if (log.type == LogType::INSERT) {
+            record.insertByRowid(log.rowId, log.newValues);
+        }
+        else if (log.type == LogType::UPDATE) {
+            record.updateByRowid(log.rowId, log.newValues);
+        }
+        else if (log.type == LogType::DELETE) {
+            record.deleteByRowid(log.rowId);
+        }
+    }
+}
+
+
+// 执行 undo 操作：将日志中的操作反向撤销（用于未提交的事务）
+void LogManager::undoOperations(const std::vector<LogEntry>& entries) {
+    // 撤销操作应从后往前进行
+    std::unordered_map<std::string, std::vector<std::pair<uint64_t, std::vector<std::pair<std::string, std::string>>>>> update_undo_map;
+
+    for (auto it = entries.rbegin(); it != entries.rend(); ++it) {
+        const LogEntry& log = *it;
+        Record record;
+        record.set_table_name(log.tableName);
+
+        if (log.type == LogType::INSERT) {
+            record.rollback_insert_by_rowid(log.tableName, log.rowId);
+        }
+        else if (log.type == LogType::UPDATE) {
+            update_undo_map[log.tableName].emplace_back(log.rowId, log.oldValues);
+        }
+        else if (log.type == LogType::DELETE) {
+            record.rollback_delete_by_rowid(log.tableName, log.rowId);
+        }
+    }
+
+    // 批量处理所有表的 update 撤销
+    for (const auto& [tableName, undo_list] : update_undo_map) {
+        Record record;
+        record.rollback_update_by_rowid(tableName, undo_list);
+    }
+}
+
+
 
 void LogManager::recoverUndo() {
 
