@@ -83,7 +83,7 @@ void user::createSysDBA() {  // 添加 user:: 作用域
     User sysdba;
     strcpy_s(sysdba.username, sizeof(sysdba.username), "sys");
     strcpy_s(sysdba.password, sizeof(sysdba.password), "1");
-    strcpy_s(sysdba.permissions, sizeof(sysdba.permissions), "conn|resource");
+    strcpy_s(sysdba.permissions, sizeof(sysdba.permissions), "CONNECT,RESOURCE");
 
     std::ofstream file("users.dat", std::ios::binary | std::ios::app);
 
@@ -94,7 +94,7 @@ void user::createSysDBA() {  // 添加 user:: 作用域
     file.write(reinterpret_cast<char*>(&sysdba), sizeof(User));
     file.close();
 
-    qDebug() << "sysdba 用户创建成功，并赋予 conn 和 resource 权限";
+    qDebug() << "sysdba 用户创建成功，并赋予 connect 和 resource 权限";
     Output::printMessage(outputEdit, "sysdba 用户创建成功，并赋予 resource 权限");
 
     // 读取并输出文件内容，确认是否写入成功
@@ -288,6 +288,37 @@ bool user::grantPermission(const std::string& username, const std::string& permi
         Output::printMessage(outputEdit, "你没有权限授权该数据库，请联系管理员");
         return false;
     }
+
+    // Step 1.5: 当前用户是否有权限授权这个资源（db/table）
+    if (currentUser != "sys") {
+        std::string requiredPerms = permission;  // 如 "CONNECT,RESOURCE" 或 "CONNECT"
+        std::stringstream permStream(requiredPerms);
+        std::string singlePerm;
+
+        // 获取当前用户权限串
+        const auto currentUsers = loadUsers();
+        std::string currentPerms;
+        for (const auto& u : currentUsers) {
+            if (std::string(u.username) == currentUser) {
+                currentPerms = u.permissions;
+                break;
+            }
+        }
+
+        while (std::getline(permStream, singlePerm, ',')) {
+            std::string fullPerm = singlePerm + ":" + dbName;
+            if (!tableName.empty()) {
+                fullPerm += "." + tableName;
+            }
+
+            // 如果找不到这个权限，说明当前用户无权转授
+            if (currentPerms.find(fullPerm) == std::string::npos) {
+                Output::printMessage(outputEdit, QString::fromStdString("你没有权限授权 " + fullPerm));
+                return false;
+            }
+        }
+    }
+
 
     // Step 2: 加载用户列表并修改权限字段
     std::vector<User> users = loadUsers();
