@@ -190,38 +190,6 @@ void LogManager::writeLogEntry(const LogEntry& entry) {
     logFile.flush();  // 确保写入磁盘
 }
 
-void LogManager::recoverFromCrash() {
-    std::vector<LogEntry> logs = parseLogFile();
-
-    std::vector<LogEntry> currentTxn;   // 当前事务日志
-    std::vector<std::vector<LogEntry>> committedTxns; // 所有已提交事务
-
-    for (const auto& log : logs) {
-        if (log.type == LogType::BEGIN) {
-            currentTxn.clear();
-        }
-        else if (log.type == LogType::COMMIT) {
-            committedTxns.push_back(currentTxn);
-            currentTxn.clear();
-        }
-        else {
-            currentTxn.push_back(log);
-        }
-    }
-
-    // Redo 所有已提交事务
-    for (const auto& txn : committedTxns) {
-        redoOperations(txn);
-    }
-
-    // Undo 最后一个未提交事务（如果有）
-    if (!currentTxn.empty()) {
-        undoOperations(currentTxn);
-    }
-}
-
-
- //解析日志文件
 std::vector<LogEntry> LogManager::parseLogFile() {
     std::vector<LogEntry> entries;
     std::ifstream inFile(logFilePath);
@@ -257,6 +225,36 @@ std::vector<LogEntry> LogManager::parseLogFile() {
         }
     }
     return entries;
+}
+
+void LogManager::recoverFromCrash() {
+    std::vector<LogEntry> logs = parseLogFile();
+
+    std::vector<LogEntry> currentTxn;   // 当前事务日志
+    std::vector<std::vector<LogEntry>> committedTxns; // 所有已提交事务
+
+    for (const auto& log : logs) {
+        if (log.type == LogType::BEGIN) {
+            currentTxn.clear();
+        }
+        else if (log.type == LogType::COMMIT) {
+            committedTxns.push_back(currentTxn);
+            currentTxn.clear();
+        }
+        else {
+            currentTxn.push_back(log);
+        }
+    }
+
+    // Redo 所有已提交事务
+    for (const auto& txn : committedTxns) {
+        redoOperations(txn);
+    }
+
+    // Undo 最后一个未提交事务（如果有）
+    if (!currentTxn.empty()) {
+        undoOperations(currentTxn);
+    }
 }
 
 // 执行 redo 操作：将日志中的操作再次执行（用于提交成功的事务）
