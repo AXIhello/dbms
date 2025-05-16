@@ -2,7 +2,7 @@
 #include"TransactionManager.h"
 
 //uint64_t TransactionManager::nextTransactionId = 1;  // 初始化为 1 
-TransactionManager::TransactionManager() : active(false),autoCommit(true){}
+TransactionManager::TransactionManager() : active(false),autoCommit(false){}
 
 TransactionManager& TransactionManager::instance() {
     static TransactionManager instance;
